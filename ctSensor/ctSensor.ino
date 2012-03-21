@@ -16,46 +16,46 @@ int average = 0;                // the average
 void setup()
 {
 	// initialize serial communication with computer:
-	Serial.begin(9600);                   
+	Serial.begin(9600);
 	//    Serial.begin(57600);
 	Serial.print("\n[ctSensor]");
-	// initialize all the readings to 0: 
+	// initialize all the readings to 0:
 	for (int thisReading = 0; thisReading < numReadings; thisReading++)
-	readings[thisReading] = 0;          
+	readings[thisReading] = 0;
 	// declare the ledPin as an OUTPUT:
-	pinMode(ledPin, OUTPUT);  
+	pinMode(ledPin, OUTPUT);
 
 }
 
 void loop () {
 
 	// subtract the last reading:
-	total = total - readings[index];         
-	// read from the sensor:  
-	readings[index] = analogRead(inputPin); 
+	total = total - readings[index];
+	// read from the sensor:
+	readings[index] = analogRead(inputPin);
 	// add the reading to the total:
-	total = total + readings[index];       
-	// advance to the next position in the array:  
-	index = index + 1;                    
+	total = total + readings[index];
+	// advance to the next position in the array:
+	index = index + 1;
 
 	// if we're at the end of the array...
-	if (index >= numReadings)              
-		// ...wrap around to the beginning: 
-		index = 0;                           
+	if (index >= numReadings)
+		// ...wrap around to the beginning:
+		index = 0;
 
 	// calculate the average:
-	average = total / numReadings;         
+	average = total / numReadings;
 	// send it to the computer as ASCII digits
-	Serial.println(average);               
+	Serial.println(average);
 
 	// turn the ledPin on
-	//	digitalWrite(ledPin, HIGH);  
+	//	digitalWrite(ledPin, HIGH);
 	//	// stop the program for <average> milliseconds:
-	//	delay(average);          
-	//	// turn the ledPin off:        
-	//	digitalWrite(ledPin, LOW);   
+	//	delay(average);
+	//	// turn the ledPin off:
+	//	digitalWrite(ledPin, LOW);
 	//	// stop the program for for <average> milliseconds:
-	//	delay(average);                  
+	//	delay(average);
 
 	delay(250);
 }
