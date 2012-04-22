@@ -10,3 +10,6 @@
 [submodule "TouchControlPanelDisplay"]
 	path = TouchControlPanelDisplay
 	url = git://github.com/practicalarduino/TouchControlPanelDisplay.git
+[submodule "Ps2Keyboard"]
+	path = Ps2Keyboard
+	url = git://github.com/practicalarduino/Ps2Keyboard.git
