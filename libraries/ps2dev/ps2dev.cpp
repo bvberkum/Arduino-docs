@@ -7,7 +7,7 @@
  *      probably lots of room for optimization.
  */
 
-#include "WProgram.h"
+#include "Arduino.h"
 #include "ps2dev.h"
 
 
@@ -55,7 +55,7 @@ int PS2dev::write(unsigned char data)
   unsigned char i;
   unsigned char parity = 1;
 
-  //	Serial.print("sending ");
+  //Serial.print("sending ");
   //Serial.println(data,HEX);
 
 	

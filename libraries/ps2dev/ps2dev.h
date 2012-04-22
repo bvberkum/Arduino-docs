@@ -9,7 +9,7 @@
 #ifndef ps2dev_h
 #define ps2dev_h
 
-#include "WConstants.h"
+#include "Arduino.h"
 
 class PS2dev
 {
