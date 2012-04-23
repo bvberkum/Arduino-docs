@@ -129,11 +129,11 @@ int PS2dev::read(unsigned char * value)
   
   //wait for data line to go low
   while (digitalRead(_ps2data) == HIGH) {
-
+	  Serial.println("waiting ps2data");
   } 
   //wait for clock line to go high
   while (digitalRead(_ps2clk) == LOW) {
-
+	  Serial.println("waiting ps2clk");
   } 
 
   
@@ -143,6 +143,7 @@ int PS2dev::read(unsigned char * value)
   gohi(_ps2clk);
   delayMicroseconds(CLKHALF);
 
+  //Serial.println("starting read");
   for (i=0; i < 8; i++)
     {
       if (digitalRead(_ps2data) == HIGH)
@@ -181,6 +182,7 @@ int PS2dev::read(unsigned char * value)
   delayMicroseconds(CLKHALF);
   gohi(_ps2data);
 
+  //Serial.println(data);
 
   *value = data;
   
