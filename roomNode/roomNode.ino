@@ -21,8 +21,8 @@
 #define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 
 #define SHT11_PORT  0   // defined if SHT11 is connected to a port
-#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define PIR_PORT    4   // defined if PIR is connected to a port's DIO pin
+#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
+#define PIR_PORT    1   // defined if PIR is connected to a port's DIO pin
 
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
@@ -240,7 +240,9 @@ static void doTrigger() {
 void setup () {
     #if SERIAL || DEBUG
         Serial.begin(57600);
-        Serial.print("\n[roomNode.3]");
+        Serial.println("");
+        Serial.println("roomNode");
+        delay(200);
         myNodeID = rf12_config();
     #else
         myNodeID = rf12_config(0); // don't report info on the serial port
