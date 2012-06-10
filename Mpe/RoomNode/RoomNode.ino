@@ -1,8 +1,7 @@
-//>>> The latest version of this code can be found at https://github.com/jcw/ !!
+// Mpe
 
 // New version of the Room Node, derived from rooms.pde
-// 2010-10-19 <jcw@equi4.com> http://opensource.org/licenses/mit-license.php
-// $Id: roomNode.pde 7763 2011-12-11 01:28:16Z jcw $
+// 2010-10-19 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
 // see http://jeelabs.org/2010/10/20/new-roomnode-code/
 // and http://jeelabs.org/2010/10/21/reporting-motion/
@@ -11,16 +10,15 @@
 // motion needs to be reported as soon as possible, but only once, while all the
 // other sensor values are being collected and averaged in a more regular cycle.
 
-#include <Ports.h>
+#include <JeeLib.h>
 #include <PortsSHT11.h>
-#include <RF12.h>
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
-#define SERIAL  1   // set to 1 to also report readings on the serial port
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
+#define SERIAL  0   // set to 1 to also report readings on the serial port
+#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
 
-#define SHT11_PORT  0   // defined if SHT11 is connected to a port
+#define SHT11_PORT  1   // defined if SHT11 is connected to a port
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT    4   // defined if PIR is connected to a port's DIO pin
 
@@ -70,7 +68,7 @@ struct {
 #if PIR_PORT
     #define PIR_HOLD_TIME   30  // hold PIR value this many seconds after change
     #define PIR_PULLUP      1   // set to one to pull-up the PIR input pin
-    #define PIR_FLIP        1   // 0 or 1, to match PIR reporting high or low
+    #define PIR_FLIP        0   // 0 or 1, to match PIR reporting high or low
     
     class PIR : public Port {
         volatile byte value, changed;
@@ -98,7 +96,7 @@ struct {
             if (lastOn > 0)
                 ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
                     if (millis() - lastOn < 1000 * PIR_HOLD_TIME)
-                        f = 1;
+                        f = 1 ^ PIR_FLIP;
                 }
             return f;
         }
@@ -177,6 +175,13 @@ static void doMeasure() {
     #endif
 }
 
+static void serialFlush () {
+    #if ARDUINO >= 100
+        Serial.flush();
+    #endif  
+    delay(2); // make sure tx buf is empty before going back to sleep
+}
+
 // periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport() {
     rf12_sleep(RF12_WAKEUP);
@@ -197,7 +202,7 @@ static void doReport() {
         Serial.print(' ');
         Serial.print((int) payload.lobat);
         Serial.println();
-        delay(2); // make sure tx buf is empty before going back to sleep
+        serialFlush();
     #endif
 }
 
@@ -206,7 +211,7 @@ static void doTrigger() {
     #if DEBUG
         Serial.print("PIR ");
         Serial.print((int) payload.moved);
-        delay(2);
+        serialFlush();
     #endif
 
     for (byte i = 0; i < RETRY_LIMIT; ++i) {
@@ -221,20 +226,27 @@ static void doTrigger() {
             #if DEBUG
                 Serial.print(" ack ");
                 Serial.println((int) i);
-                delay(2);
+                serialFlush();
             #endif
             // reset scheduling to start a fresh measurement cycle
             scheduler.timer(MEASURE, MEASURE_PERIOD);
             return;
         }
         
-        Sleepy::loseSomeTime(RETRY_PERIOD * 100);
+        delay(RETRY_PERIOD * 100);
     }
     scheduler.timer(MEASURE, MEASURE_PERIOD);
     #if DEBUG
         Serial.println(" no ack!");
-        delay(2);
+        serialFlush();
     #endif
+}
+
+void blink (byte pin) {
+    for (byte i = 0; i < 6; ++i) {
+        delay(100);
+        digitalWrite(pin, !digitalRead(pin));
+    }
 }
 
 void setup () {
@@ -242,6 +254,7 @@ void setup () {
         Serial.begin(57600);
         Serial.print("\n[roomNode.3]");
         myNodeID = rf12_config();
+        serialFlush();
     #else
         myNodeID = rf12_config(0); // don't report info on the serial port
     #endif
@@ -265,7 +278,7 @@ void setup () {
 void loop () {
     #if DEBUG
         Serial.print('.');
-        delay(2);
+        serialFlush();
     #endif
 
     #if PIR_PORT
@@ -295,3 +308,4 @@ void loop () {
             break;
     }
 }
+
