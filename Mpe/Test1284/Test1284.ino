@@ -5,6 +5,8 @@
  This example code is in the public domain.
  */
 
+#include "Arduino.h"
+
 void setup() {
   Serial.begin(57600);
   //Serial1.begin(9600);
