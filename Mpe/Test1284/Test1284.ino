@@ -18,7 +18,7 @@ void setup() {
 }
 
 void loop() {
-  for( int i=0 ; i<14 ; i++ )
+  for( int i=0 ; i<3 ; i++ )
   {
     digitalWrite(i, 1);
   }
@@ -27,7 +27,7 @@ void loop() {
   Serial.println(sensorValue);
   delay(50);
 
-  for( int i=0 ; i<14 ; i++ )
+  for( int i=0 ; i<3 ; i++ )
   {
     digitalWrite(i, 0);
   }

@@ -2,17 +2,15 @@
  * Slave
  */
 
-
 #include <Wire.h>
+
 
 void setup()
 {
- //Serial.begin(9600);           // start serial for output
-
+  //Serial.begin(9600);           // start serial for output
   Wire.begin(2);                // join i2c bus with address #2
   Wire.onRequest(requestEvent); // register event
   Wire.onReceive(receiveEvent); // register event
-
 }
 
 void loop()
@@ -25,7 +23,7 @@ void loop()
 void requestEvent()
 {
   Wire.write("hello "); // respond with message of 6 bytes
-                       // as expected by master
+                        // as expected by master
 }
 
 // function that executes whenever data is received from master
