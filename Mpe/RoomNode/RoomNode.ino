@@ -1,4 +1,4 @@
-// Mpe
+// Mpe - Arduino 1.0.1
 
 // New version of the Room Node, derived from rooms.pde
 // 2010-10-19 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
