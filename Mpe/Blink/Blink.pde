@@ -9,9 +9,9 @@ void blink(int led, int count, int length) {
                                                                                                                                                                                                                                     
 void setup() 
 {
-	//Serial.begin(9600);
-	//Serial.println("Blink");
-
+	Serial.begin(9600);
+	Serial.println("Atmega16A Blink");
+	Serial.println("Pins 0, 1, 8, 9");
 	// Set up the LED output pins
 	pinMode (0, OUTPUT);
         pinMode (1, OUTPUT);
