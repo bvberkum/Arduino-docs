@@ -11,14 +11,18 @@ void setup()
 {
   Serial.begin(38400);
   Serial.println("Atmega16A Blink");
-  Serial.println("Blink digital pin 8 five times");
-  pinMode(8, OUTPUT);
-  digitalWrite(8, LOW);
+  Serial.println("Blink digital pins 1-23");
+  // Set up the LED output pins
+  for (int p=0; p<24;p++) {
+    pinMode(p, OUTPUT);
+    digitalWrite(p, LOW);
+  }
 }
 
 void loop() 
 {
-  blink(8,5,80);
+  for (int p=0; p<24;p++) {
+    blink(p,5,80);
+  }
   delay(1000);
 }
-
