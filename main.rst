@@ -15,7 +15,10 @@ bootloader/
     flash `hex` `i`
     eepromp `hex` `i`
 
+    I'm not sure if the delivered device is supposed to do anything, I cant test
+    it outside of Linux, and I'm pretty sure it's not doing anything there.
 
 avrdude
   -U <memtype>:r|w|v:<filename>[:format]
+
 
