@@ -1,4 +1,12 @@
 .Trash-*
+*~
+*.log
 .cllct
 *.sw[opn]
 .DS_Store
+*.tar
+*.zip
+*.gz
+*.bz
+*.bz2
+*.rar
