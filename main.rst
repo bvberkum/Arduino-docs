@@ -8,6 +8,12 @@ Arduino and AVR (avrdude) related.
 * Alternatively, the JeeNode is used as ISP using JeeLab's Flash Board. This is
   compatible with 
 
+
+Arduino/AVRdude
+----------------
+avrdude
+  -U <memtype>:r|w|v:<filename>[:format]
+
 Using Arduino as ISP::
   
   avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 
@@ -16,19 +22,30 @@ Using Arduino as ISP::
 Module support
 --------------
 USBisp ``mx-usbisp-v3.00``
-  - an tiny Atmega8L USB package with colored slide on cover and AVR isp
-    compatible header. Blue and red onboard SMT LEDs, under a milimiter sized hole 
-    drilled in the aluminium cover. 
+  :Device signature: 0x1e9307
+  :fuse bits:
+    :hfuse: 0xbf
+    :lfuse: 0xcf
+    :lock: 0x3c
+
+  I'm not sure if the delivered device is supposed to do anything, I cant test
+  it outside of Linux, and I'm pretty sure it's not doing anything there.
+
+  - an tiny Atmega8L USB package with colored slide on metal cover and AVR isp
+    compatible header IDC header. Came with about 60cm flatcable. 
+  - Blue and red onboard SMT LEDs, under a milimiter sized hole 
+    drilled in the aluminium cover. At arduino pins 14 (blue) and 15 (red). 
   - Modded: added two buttons, one to reset, one to enable reprogramming the
     application (using USBaspLoader, to reflash bootloader another USBasp module is
-    used). Attaching program switch does not look feasible yet, need need to use
+    used). Attaching program switch does not look feasible at all, need need to use
     USBaspLoader bootloader image with timeout setting.
   - modded: removed surplus GND header pins (that would normally alternate the MOSI, 
     MISO, and SCK cores in a flat cable) and nc pin, with intention to route SDA/SCL
     and TX/RX, but chip is to small to solder. At least connector is compatible
     with other USBasp mods.
 
-  * Cannot be modded further than adding reset. SPI pins available only.
+  * Cannot be modded further than adding reset. SPI pins available only, chip is
+    too small.
   * Usable for arduino projects with SPI and USB toys.
   
   - Programmed using another USB module, an usbasp from betemcu::
@@ -59,8 +76,6 @@ USBasp ```` MiniProg
     :lfuse: 0xff
     :lock: 0x3c
 
-
-
   ::
       avrdude -v -p m8 -c usbasp -U eeprom:r:betemcu-eeprom-firmware.hex:h -U flash:r:betemcu-flash-firmware.hex:h
 
@@ -74,31 +89,14 @@ USBasp ```` MiniProg
 
 Firmware
 ---------
-- See firmware/main.rst, TODO: integrate
-
 mx-usbisp-v3.00
-  Identified by board markings, the fuse settings and firmware of the Atmega8L chip.
+  Not working.
 
-  Device signature = 0x1e9307
-
-  lfuse  0xbf
-  hfuse  0xcf
-  lock   0x3c
-  flash `hex` `i`
-  eepromp `hex` `i`
-
-  I'm not sure if the delivered device is supposed to do anything, I cant test
-  it outside of Linux, and I'm pretty sure it's not doing anything there.
-
-  Set the chips to defaults, erased flash and eeprom::
-
-    -U lfuse:w:0xbf:m -U hfuse:w:0xcf:m -U lock:w:0x3c:m -e
-
-avrdude
-  -U <memtype>:r|w|v:<filename>[:format]
+betemcu.cn USBasp MiniProg
+  Not working.
 
 Protocols
 ----------
-
+TODO: mkII, usbasp, stk500v1
 
 
