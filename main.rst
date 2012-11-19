@@ -50,7 +50,7 @@ USBisp ``mx-usbisp-v3.00``
   
   - Programmed using another USB module, an usbasp from betemcu::
 
-    avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U flash:w:alternate_USBaspLoader_betemcu_timeout.hex -U lock:w:0x0F:m
+    avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U flash:w:./firmware/betemcu-usbasp/alternate_USBaspLoader.2010-07-27_configured_for_betemcu/firmware/hexfiles/alternate_USBaspLoader_betemcu_timeout.hex -U lock:w:0x0F:m
 
   - Now it accepts any program using arduino protocol, e.g. 
    `vusb_mouse_example.hex` which turns the stick into a mouse device that
