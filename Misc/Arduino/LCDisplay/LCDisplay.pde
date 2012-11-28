@@ -37,6 +37,7 @@
 
 // include the library code:
 #include <LiquidCrystal.h>
+#include <Wire.h>
 
 // initialize the library with the numbers of the interface pins
 LiquidCrystal lcd(12, 11, 7, 6, 5, 4);

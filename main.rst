@@ -16,8 +16,36 @@ avrdude
 
 Using Arduino as ISP::
   
-  avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 
+  avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -D 
 
+Using ISP, set the fuses and bootloader. Then use the other protocols for
+program uploads. The lock bit will protect the bootloader, and load only the
+program over serial--the Arduino way.
+
+Common options::
+  
+  avrdude 
+    -C /home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf 
+    -v -v -v -v 
+    -c arduino -P /dev/ttyUSB0 -b 57600
+    -D
+    -p atmega328p
+
+Upload ArduinoISP using standard Arduino::
+
+    -U flash:firmware/ArduinoISP_mega328.hex
+
+Upload usbasp bootloader using JeeNode ISP::
+
+    avrdude -v -p m8 -c usbasp 
+      -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U lock:w:0x0F:m
+      -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+
+Using usbasp:
+
+avrdude -C/home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf -v
+-v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
+-Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
 
 Module support
 --------------
@@ -50,7 +78,9 @@ USBisp ``mx-usbisp-v3.00``
   
   - Programmed using another USB module, an usbasp from betemcu::
 
-    avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U flash:w:./firmware/betemcu-usbasp/alternate_USBaspLoader.2010-07-27_configured_for_betemcu/firmware/hexfiles/alternate_USBaspLoader_betemcu_timeout.hex -U lock:w:0x0F:m
+    avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m 
+      -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader.2010-07-27_configured_for_betemcu/firmware/hexfiles/alternate_USBaspLoader_betemcu_timeout.hex 
+      -U lock:w:0x0F:m
 
   - Now it accepts any program using arduino protocol, e.g. 
    `vusb_mouse_example.hex` which turns the stick into a mouse device that
@@ -95,8 +125,24 @@ mx-usbisp-v3.00
 betemcu.cn USBasp MiniProg
   Not working.
 
+betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+  An usbasp bootloader suitable for Atmega8L USB devices.
+
+atmega8_mkjdz.com_I2C_lcd1602.hex
+  Program data to run I2C LCD demo on USBasp 
+
+ArduinoISP_mega328.hex
+  Arduino as ISP.
+
+isp_flash_m328p.hex
+  Run a JeeNode as Arduino ISP (with the flash board).
+
+
 Protocols
 ----------
 TODO: mkII, usbasp, stk500v1
 
-
+Downloads
+---------
+firmware/betemcu-usbasp/usbprog.rar
+  From.  
