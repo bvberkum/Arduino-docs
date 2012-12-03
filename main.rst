@@ -100,22 +100,56 @@ USBasp ```` MiniProg
     with glued on female jumper strip (16 extra pins should be enough for
     almost all spare atmega pins).
   - no suitable project box or cover. 
+  - upon connecting the jumper for reprogramming, the device is no longer
+    recognized as usbasp.  
 
-  :defaults:
+  * Problem: different behaviours upon reflash. 
+  * Using two new betemcu's, one soldered to be reprogrammed. 
+    Verify using ``make verify-betemcu``, yields these fuses:
+
     :hfuse: 0xd9
     :lfuse: 0xff
     :lock: 0x3c
 
-  ::
-      avrdude -v -p m8 -c usbasp -U eeprom:r:betemcu-eeprom-firmware.hex:h -U flash:r:betemcu-flash-firmware.hex:h
+    The same fuse results for usbasp or arduinoisp.
+    However the eeprom memory dump is different.
+    This is the betemcu image: <file://./firmware/betemcu-usbasp/usbasp_atmega8l_eeprom-betemcu_download.hex>
+    Appearantly not needed, so excluding.
 
-  ::
-      sudo avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 
-            -Ulfuse:w:0xff:m -Uhfuse:w:0xd9:m \
-            -Ueeprom:w:firmware/betemcu-usbasp/eeprom-2012-11-18.hex:h \
-            -Uflash:w:firmware/betemcu-usbasp/flash-2012-11-18.hex:h 
+  * Also writing these settings on a previous (already modded) betemcu the fuse
+    bits won't "stick" ``make upload-betemcu``:
 
-  http://jethomson.wordpress.com/2011/08/18/project-ouroboros-reflashing-a-betemcu-usbasp-programmer/
+    - lfuse 0xff reads out as 0xbf
+    - hfuse 0xd8 reads 0xc8
+    - lock is okay (0x3c).
+
+    The problem seems independent of programmer. Strangely though one
+    stick reads lock 0x3f? 
+
+    After a little investigating it turns out I might have to unlock and then
+    lock before writing flash, as indicated by `project ouroboros post`_.
+
+  * Using previous observation, updated ``make upload-betemcu``. Will now erase,
+    and set lock bit to value given in ouroboros project for avrdude (0x3F). 
+    Then a second run to flash and set fuses, and then lock the lock bit. 
+    The first erase, and turning of erase on second flash-write may be 
+    important, its left untested.
+
+    :unlock: 0x3F
+    :lfuse: 0xFF
+    :hfuse: 0xD9
+    :lock: 0x0F
+
+    This now enables reflashing a betemcu USB stick to usbasp using both JeeNode
+    isp_flash (Arduino ISP) and another betemcu usbasp.
+
+    I am using the firmware given by the ouroboros downloads. It is frustrating
+    but my own download looks like garbage. Maybe also something to do with the
+    fuses. A bit of fiddling suggest then -e  flag together with the unlock
+    is needed, and rereading/verifying the flash might be impossible.
+    
+
+.. _project ouroboros post: http://jethomson.wordpress.com/2011/08/18/project-ouroboros-reflashing-a-betemcu-usbasp-programmer/
 
 Firmware
 ---------
@@ -146,3 +180,28 @@ Downloads
 ---------
 firmware/betemcu-usbasp/usbprog.rar
   From.  
+
+
+------
+
+betemcu 1 flash attempt using JeeNode ISP::
+
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -U lock:w:0x3f:m -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -v -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -U lock:w:0x0F:m
+
+
+betemcu 1 flash attempt using betemcu usbasp::
+
+  sudo avrdude -p m8 -c usbasp -e -U lock:w:0x3F:m -U hfuse:w:0xD9:m -U lfuse:w:0xFF:m
+  sudo avrdude -p m8 -c usbasp -D -v -U flash:w:firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
+  sudo avrdude -p m8 -c usbasp -U lock:w:0x3C:m
+
+betemcu 1 flash attempt using JeeNode ISP::
+
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -e -U lock:w:0x3F:m -U hfuse:w:0xD9:m -U lfuse:w:0xFF:m
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -D -v -U flash:w:firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
+  sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -U lock:w:0x3C:m
+
+
+

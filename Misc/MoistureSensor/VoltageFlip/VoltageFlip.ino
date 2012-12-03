@@ -10,9 +10,7 @@ void setup(){
   pinMode(voltageFlipPin1, OUTPUT);
   pinMode(voltageFlipPin2, OUTPUT);
   pinMode(sensorPin, INPUT);
-       
 }
-
 
 void setSensorPolarity(boolean flip){
   if(flip){
@@ -24,9 +22,7 @@ void setSensorPolarity(boolean flip){
   }
 }
 
-
 void loop(){
-  
   //
   setSensorPolarity(true);
   delay(flipTimer);
@@ -38,17 +34,12 @@ void loop(){
   int val2 = 1023 - analogRead(sensorPin);
   //
   reportLevels(val1,val2);
-    
 }
 
-
-void reportLevels(int val1,int val2){
-  
+void reportLevels(int val1, int val2){
+  // 
   int avg = (val1 + val2) / 2;
-  
   String msg = "avg: ";
   msg += avg;
   Serial.println(msg);
-
 }
-
