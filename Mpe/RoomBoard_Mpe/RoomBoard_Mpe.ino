@@ -1,20 +1,23 @@
 #include <Ports.h>
-#include <RF12.h>
-#include <avr/sleep.h>
-#include 
+#include <JeeLib.h>
 
-#define DHTTYPE DHT11   // DHT 11
-
-Port port (4);
+  DHTxx dht (5); // connected to DIO2
 
 void setup () {
   Serial.begin(57600);
+  Serial.println("\n[dht_demo]");
 }
 
 void loop () {
-  port.digiWrite2(1); // upp-up AIO
-  byte light = port.anaRead() >> 2;
-  port.digiWrite(0); // reduce power-draw in bright light
-  Serial.println(light);
-  delay(100);
+  int t, h;
+  if (dht.reading(t, h)) {
+    Serial.print("temperature = ");
+    Serial.println(t);
+    Serial.print("humidity = ");
+    Serial.println(h);
+    Serial.println();
+  }
+  else
+  Serial.println('.');
+  delay(3000);
 }

@@ -8,6 +8,8 @@ Arduino and AVR (avrdude) related.
 * Alternatively, the JeeNode is used as ISP using JeeLab's Flash Board. This is
   compatible with 
 
+- JeeNode Fuses stuff http://forum.jeelabs.net/node/848
+
 
 Arduino/AVRdude
 ----------------
