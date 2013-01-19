@@ -20,7 +20,8 @@
 // - http://learn.adafruit.com/nokia-5110-3310-monochrome-lcd
 // - http://lcdhype.condense.de/index.php?showtopic=711
 // - http://www.myplace.nu/mp3/nokialcd.htm
-// 
+// - http://web.archive.org/web/20070326175321/http://www.microsyl.com/nokialcd/shematic.gif
+//
 
 #define PIN_SCE   7 
 #define PIN_RESET 6

@@ -1,22 +1,26 @@
-/*
-
-2012-1-19
-  Made LiquidCrystalTmp_I2C copy to prevent collision with JeeLib.
-
-*/
+/* 
+ 
+ 2012-1-19
+ Made LiquidCrystalTmp_I2C copy to prevent collision with JeeLib.
+ 
+ */
 #include <Wire.h>
 #include <JeeLib.h>
-
 #include <LiquidCrystalTmp_I2C.h>
 
-
-PortI2C myBus (1);
-//PortI2C myBus (1 /*, PortI2C::KHZ400 */);
+/**
+ * Declare some JeeNode Ports. 
+ */
+//PortI2C i2cbusHW (0); /* Hardware I2C bus wrapped in JeePort */
+PortI2C i2cbus (1); /* Virtual I2C bus at JeeNode Port 1*/
+// PortI2C::KHZMAX
+// PortI2C::KHZ100 slow 
+// PortI2C::KHZ400 fast
 
 //DimmerPlug dimmer (myBus, 0x47); // my dimmer plug has all the addrees jumpers right sides soldered
 //DeviceI2C expander (myBus, 0x20); // also works with output plug if 0x26/0x27
 
-/** LCD */
+/** LCD 16x2 Character Display at 8bit I2C I/O expander (PCF8574 compatible) */
 #define I2C_ADDR    0x20
 #define BACKLIGHT_PIN     7
 #define En_pin  4
@@ -31,7 +35,7 @@ PortI2C myBus (1);
 LiquidCrystalTmp_I2C  lcd(I2C_ADDR, En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
 
 /** Lux Plug */
-LuxPlug lux (myBus, 0x39);
+LuxPlug lux (i2cbus, 0x39);
 byte highGain;
 int level = 0x1FFF;
 
@@ -41,8 +45,10 @@ int level = 0x1FFF;
 #else
 #define printByte(args)  print(args,BYTE);
 #endif
-/*
-enum {
+
+/* expander and dimmer routines
+ 
+ enum {
  MCP_IODIR, MCP_IPOL, MCP_GPINTEN, MCP_DEFVAL, MCP_INTCON, MCP_IOCON,
  MCP_GPPU, MCP_INTF, MCP_INTCAP, MCP_GPIO, MCP_OLAT
  };
@@ -63,12 +69,12 @@ enum {
  
  void cycle_expander()
  {
-  // running light
-  for (byte i = 0; i < 8; ++i) {
-    exp_write(1 << i);
-    delay(100);
-    Serial.print('.');
-  }
+ // running light
+ for (byte i = 0; i < 8; ++i) {
+ exp_write(1 << i);
+ delay(100);
+ Serial.print('.');
+ }
  }
  
  static  void   dimmer_init() {
@@ -95,75 +101,80 @@ enum {
  }
  }
  
-void cycle_dimmer()
-{
-  // Handle Dimmer plug
-  byte brightness = ++level;
-  if (level & 0x100)
-    brightness = ~ brightness;
-  byte r = level & 0x0200 ? brightness : 0;
-  byte g = level & 0x0400 ? brightness : 0;
-  byte b = level & 0x0800 ? brightness : 0;
-  byte w = level & 0x1000 ? brightness : 0;
-  // set all 16 registers in one sweep
-  dimmer.setMulti(dimmer.PWM0, w, b, g, r,
-  w, b, g, r,
-  w, b, g, r,
-  w, b, g, r, -1);
-}
+ void cycle_dimmer()
+ {
+ // Handle Dimmer plug
+ byte brightness = ++level;
+ if (level & 0x100)
+ brightness = ~ brightness;
+ byte r = level & 0x0200 ? brightness : 0;
+ byte g = level & 0x0400 ? brightness : 0;
+ byte b = level & 0x0800 ? brightness : 0;
+ byte w = level & 0x1000 ? brightness : 0;
+ // set all 16 registers in one sweep
+ dimmer.setMulti(dimmer.PWM0, w, b, g, r,
+ w, b, g, r,
+ w, b, g, r,
+ w, b, g, r, -1);
+ }
  */
 
+/** LCD routines */
 void i2c_lcd_init()
 {
   lcd.begin(16,2);
   lcd.setBacklightPin(BACKLIGHT_PIN,NEGATIVE);
   lcd.setBacklight(LED_ON);
-/*
+  /*
   lcd.createChar(0, bell);
-  lcd.createChar(1, note);
-  lcd.createChar(2, clock);
-  lcd.createChar(3, heart);
-  lcd.createChar(4, duck);
-  lcd.createChar(5, check);
-  lcd.createChar(6, cross);
-  lcd.createChar(7, retarrow);*/
+   lcd.createChar(1, note);
+   lcd.createChar(2, clock);
+   lcd.createChar(3, heart);
+   lcd.createChar(4, duck);
+   lcd.createChar(5, check);
+   lcd.createChar(6, cross);
+   lcd.createChar(7, retarrow);*/
+  lcd.setCursor(0,0);
+  lcd.print("I2C All");
   lcd.home();
 }
 
+/** Lux plug routines */
 void lux_init()
 {
   lux.begin();
-  lux.setGain(1);
 }
+
+double lux_value;
+float min_lux = 0;
+float max_lux = 0;
 
 void cycle_lux()
 {
   const word* photoDiodes = lux.getData();
-  int lux_value = lux.calcLux();
- 
+  if (highGain == 1) {
+    lux_value = lux.calcLux() / 16.0;
+  } else {
+    lux_value = lux.calcLux();
+  }
+
   Serial.print("LUX ");
   Serial.print(photoDiodes[0]);
-  Serial.print(' ');
+  Serial.print(" ");
   Serial.print(photoDiodes[1]);
-  Serial.print(' ');
-  Serial.print(lux.calcLux());
-  Serial.print(' ');
+  Serial.print(" ");
+  Serial.print(lux_value);
+  Serial.print(" ");
   Serial.println(highGain);
-  
+
+  lcd.clear();
   lcd.setCursor(0,1);
-  //lcd.clear();
-  /*
-  lcd.print("D0 / D1 / lux:");
-  lcd.setCursor(0,1);
-  lcd.print(photoDiodes[0]);
-  lcd.print(' ');
-  lcd.print(photoDiodes[1]);
-  lcd.print(' ');*/
   lcd.print(lux_value);
-  lcd.print(" lux      ");
-  //lcd.print(highGain)
+  lcd.print(" (lux)");
 }
 
+
+/* Arduino entry points */
 
 void setup()
 {
@@ -173,27 +184,20 @@ void setup()
   lux_init();
   i2c_lcd_init();
   //exp_setup();
-  
-
-  lcd.setCursor(0,0);
-  lcd.print("I2C All");
 }
 
 void loop()
 {
-  Serial.println('.');
-
   //cycle_dimmer();
   //cycle_expander();
   cycle_lux();
-  
+
   //Wire.beginTransmission(address);
   //Wire.send(REGISTER_CONFIG);
   //  Connect to device and send two bytes
   //Wire.send(0xff & dir);  //  low byte
   //Wire.send(dir >> 8);    //  high byte
   //Wire.endTransmission();
-
   /*
   if (Serial.available()) {
    // wait a bit for the entire message to arrive
@@ -211,12 +215,19 @@ void loop()
    }*/
 
   /*
-   // need to wait after changing the gain
-   //  see http://talk.jeelabs.net/topic/608
-   highGain = ! highGain;
-   lux.setGain(highGain);
+   need to a second or so wait after changing the gain
+   see http://talk.jeelabs.net/topic/608 
    */
+  if (lux_value < 1000) {
+    highGain = 1;
+  } 
+  else {
+    highGain = 0;
+  }
+  lux.setGain(highGain);
 
   delay(1000);
 }
+
+
 
