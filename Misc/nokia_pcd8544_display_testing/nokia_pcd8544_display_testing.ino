@@ -1,5 +1,28 @@
+//
+// Nokia PCD8544 84x48 graphical display pinout
+//
+// 1. VDD -------------------D1-4--- 3v3
+// 2. SCK  --+-----------------R5--- SCLK
+// 3. SDIN --|---+-------------R3--- SDIN
+// 4. D/C --R6--R8--R9-+R10 ---R1--- DC
+// 5. /CS ---|---|--+--|-------R2--- SCE
+// 6. GND ---+-+-+--+--+--+
+// 7. VOUT ----R7---------+C1
+// 8. RES -----+--------------R4---- RESET
+//
+// - C1:    4.7 uF  ElCap
+// - R1-7:  1.8kOhm
+// - R8-10: 3.3kOhm
+// - D1-D4: 1N4148
+//
+// - http://telbonic.wordpress.com/2010/01/25/modified-3310-arduino-playground-code/
+// - http://playground.arduino.cc/Code/PCD8544
+// - http://learn.adafruit.com/nokia-5110-3310-monochrome-lcd
+// - http://lcdhype.condense.de/index.php?showtopic=711
+// - http://www.myplace.nu/mp3/nokialcd.htm
+// 
 
-#define PIN_SCE   7
+#define PIN_SCE   7 
 #define PIN_RESET 6
 #define PIN_DC    5
 #define PIN_SDIN  4
@@ -262,14 +285,16 @@ void LcdWrite(byte dc, byte data)
 void setup(void)
 {
   Serial.begin(57600);
-  Serial.println("PC8544 - Nokia 3310/5510 display");
-  LcdInitialise();
-  LcdClear();
-  LcdString("Hello World!");
+
 }
 
 void loop(void)
 {
+  Serial.println("PC8544 - Nokia 3310/5510 display");
+  LcdInitialise();
+  LcdClear();
+  LcdString("Hello World!");
+  delay(500);
 }
 
 

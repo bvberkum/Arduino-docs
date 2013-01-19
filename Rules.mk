@@ -30,7 +30,6 @@ upload: I := firmware/ArduinoISP_mega328.hex
 upload: X := -D
 upload:
 	avrdude \
-		-v \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
@@ -43,7 +42,8 @@ download: X := -D
 download:
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
-	sudo avrdude -v -v -v -p $(C) \
+	sudo avrdude \
+		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		-U eeprom:r:$$I-eeprom.hex:i \
 		-U flash:r:$$I.hex:i \
@@ -54,12 +54,33 @@ upload-betemcu:
 	sudo avrdude -p m8 -e \
 		$(call key,METHODS,$(M)) \
   	-U lock:w:0x3F:m -U hfuse:w:0xD9:m -U lfuse:w:0xFF:m
-	sudo avrdude -p m8 -v -D \
+	sudo avrdude -p m8 \
+		-D \
 		$(call key,METHODS,$(M)) \
   	-U flash:w:firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
 	sudo avrdude -p m8 \
 		$(call key,METHODS,$(M)) \
   	-U lock:w:0x3C:m
+
+upload-betemcu-usbasploader: M := usbasp
+upload-betemcu-usbasploader:
+	avrdude \
+		-p m8 -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) \
+		-U hfuse:w:0xC8:m -U lfuse:w:0xBF:m
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) \
+		-U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
+
 
 # Cannot re-read protected flash without -e?
 #verify-betemcu: M := usbasp
@@ -67,7 +88,7 @@ upload-betemcu:
 #	sudo avrdude -p m8 \
 #		$(call key,METHODS,$(M)) \
 #  	-U lock:w:0x3F:m 
-#	sudo avrdude -p m8 -v -v \
+#	sudo avrdude -p m8 -v \
 #		$(call key,METHODS,$(M)) \
 #		-U flash:v:firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex:i
 #		-U lock:v:0x3C:m -U lfuse:v:0xff:m -U hfuse:v:0xd9:m

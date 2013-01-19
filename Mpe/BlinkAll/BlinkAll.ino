@@ -1,5 +1,8 @@
+int first_led = 14;
+int last_led = 15;
+
 void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
+  for (int i=0; i<count; i++) {
     digitalWrite (led, HIGH);
     delay(length);
     digitalWrite (led, LOW);
@@ -9,11 +12,11 @@ void blink(int led, int count, int length) {
 
 void setup() 
 {
-  Serial.begin(38400);
-  Serial.println("Atmega16A Blink");
-  Serial.println("Blink digital pins 1-23");
+  Serial.begin(57600);
+  Serial.println("Atmega328p Blink");
+  Serial.println("Blink pins");
   // Set up the LED output pins
-  for (int p=0; p<24;p++) {
+  for (int p=first_led; p<=last_led;p++) {
     pinMode(p, OUTPUT);
     digitalWrite(p, LOW);
   }
@@ -21,7 +24,8 @@ void setup()
 
 void loop() 
 {
-  for (int p=0; p<24;p++) {
+  for (int p=first_led; p<=last_led;p++) {
+    Serial.println(p);
     blink(p,5,80);
   }
   delay(1000);

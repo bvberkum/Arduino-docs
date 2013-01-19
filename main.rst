@@ -13,12 +13,30 @@ Arduino and AVR (avrdude) related.
 
 Arduino/AVRdude
 ----------------
-avrdude
-  -U <memtype>:r|w|v:<filename>[:format]
+Arduino NG (Nuova Generazione)
+  - An USB board with ATmega8, later ATmega168.
+Diecimilla "10.000"
+  - Celebration of 10.000 boards. Has an ATmega168 on it. PDIP.
+Duemilanove "2009"
+  - First an ATmega168, then ATmega328p. PDIP.
+UNO
+  - USB board. Now at rev3. PDIP.
+
+As usual,8, 168 and 328 are interchangeable with notes on implementation
+details and implication for applications.
+
+Lilypad is an extremely cool line of fabric circuits build from conducting 
+fabrics and small PCB's or epoxy embedded components. Simply sew it together
+with conductive yarns. Together with velcro and or magnets might make an 
+interesting connector alternative, also for regular plastic project cases.
+
+::
+  avrdude
+    -U <memtype>:r|w|v:<filename>[:format]
 
 Using Arduino as ISP::
   
-  avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -D 
+  avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b 19200 -D 
 
 Using ISP, set the fuses and bootloader. Then use the other protocols for
 program uploads. The lock bit will protect the bootloader, and load only the
@@ -37,27 +55,54 @@ Upload ArduinoISP using standard Arduino::
 
     -U flash:firmware/ArduinoISP_mega328.hex
 
-Upload usbasp bootloader using JeeNode ISP::
+XXX:Upload usbasp bootloader using JeeNode ISP?::
 
     avrdude -v -p m8 -c usbasp 
       -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U lock:w:0x0F:m
       -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
 
-Using usbasp:
+Using usbasp::
+  
+  avrdude -C/home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf -v
+  -v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
+  -Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
 
-avrdude -C/home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf -v
--v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
--Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
+So, again, that means:
+
+=================== ======== ==================
+Protocol            Baudrate Device
+=================== ======== ==================
+Arduino (328/2009)  57600    USB BUB II
+Arduino ISP         19200    JeeNode
+Uno (optiboot?)     115200    
+=================== ======== ==================
+
+Also listed the device I use.
+
+Device ID's
+_____________
+
+And also fuses and bootloader file for various devices.
+
+=================== ============== ================= ===== ======
+Board               U1 Device ID   Fuses             Lock  Unlock
+=================== ============== ================= ===== ======
+                                   Low   High  Ext    
+=================== ============== ===== ===== ===== ===== ======
+Arduino 328/2009    0x1e950f       0xFF  0xDE  0x05  0x    0x  
+Arduino UNO         "              0xFF  0XDE  0x05  0x    0x  
+JeeNode m328p       "              0x    0X    0x05  0x    0x  
+Arduino 32          0x1e950e       0xE1  0X99  0x05  0x    0x  
+Arduino 48          0x1e920a       0x    0X    0x    0x    0x  
+48A                 0x1e9205       0x    0X    0x    0x    0x  
+USBisp m8           0x1e9307       0xCF  0xBF  -     0x3C  0x  
+eBay Sanguino 1284  0x             0x    0x    0x    0x    0x  
+=================== ============== ===== ===== ===== ===== ======
+
 
 Module support
 --------------
 USBisp ``mx-usbisp-v3.00``
-  :Device signature: 0x1e9307
-  :fuse bits:
-    :hfuse: 0xbf
-    :lfuse: 0xcf
-    :lock: 0x3c
-
   I'm not sure if the delivered device is supposed to do anything, I cant test
   it outside of Linux, and I'm pretty sure it's not doing anything there.
 
@@ -96,7 +141,7 @@ USBisp ``mx-usbisp-v3.00``
 
   More info with ouroboros project using USBaspLoader.
 
-USBasp ```` MiniProg
+USBasp ``betemcu-usbasp-miniprog`` MiniProg
   - from betemcu.cn, Atmega8L TQFP. Yellow led (D4) at m8 PC0: and red (D3) at PC1.
   - Moddable to route I2C/TWI (SDA/SCL) and serial (TX/RX). Additional routes
     with glued on female jumper strip (16 extra pins should be enough for
@@ -164,6 +209,9 @@ betemcu.cn USBasp MiniProg
 betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
   An usbasp bootloader suitable for Atmega8L USB devices.
 
+betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
+  Working bootloader
+  
 atmega8_mkjdz.com_I2C_lcd1602.hex
   Program data to run I2C LCD demo on USBasp 
 
