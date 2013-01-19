@@ -9,12 +9,12 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_SR3W.h
+// @file LiquidCrystalTmp_SR3W.h
 // This file implements a basic liquid crystal library that comes as standard
 // in the Arduino SDK but using a generic SHIFT REGISTER extension board.
 // 
 // @brief 
-// This is a basic implementation of the LiquidCrystal library of the
+// This is a basic implementation of the LiquidCrystalTmp library of the
 // Arduino SDK. The original library has been reworked in such a way that 
 // this class implements the all methods to command an LCD based
 // on the Hitachi HD44780 and compatible chipsets using a 3 wire latching
@@ -50,7 +50,7 @@
 // NOTE: Rw is not used by the driver so it can be connected to GND.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library.
+// to the original functionality of the Arduino LiquidCrystalTmp library.
 //
 //
 // @author F. Malpartida - fmalpartida@gmail.com
@@ -63,7 +63,7 @@
 #include "FastIO.h"
 
 
-class LiquidCrystal_SR3W : public LCD 
+class LiquidCrystalTmp_SR3W : public LCD 
 {
 public:
    
@@ -87,9 +87,9 @@ public:
     @param      data[in] digital IO connected to the shiftregister data pin.
     @param      clk[in] digital IO connected to the shiftregister clock pin.
     */
-   LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe);
+   LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe);
    // Constructor with backlight control
-   LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
+   LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
                       uint8_t backlighPin, t_backlighPol pol);   
    
    /*!
@@ -109,11 +109,11 @@ public:
     @param      d6[in] LCD data 6 pin map to the SR output pin.
     @param      d7[in] LCD data 7 pin map to the SR output pin.
     */
-   LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
+   LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
                       uint8_t En, uint8_t Rw, uint8_t Rs, 
                       uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7 );
    // Constructor with backlight control
-   LiquidCrystal_SR3W( uint8_t data, uint8_t clk, uint8_t strobe,
+   LiquidCrystalTmp_SR3W( uint8_t data, uint8_t clk, uint8_t strobe,
                       uint8_t En, uint8_t Rw, uint8_t Rs, 
                       uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7,
                       uint8_t backlighPin, t_backlighPol pol);

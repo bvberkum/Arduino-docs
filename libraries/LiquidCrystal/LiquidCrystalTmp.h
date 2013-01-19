@@ -9,12 +9,12 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal.h
+// @file LiquidCrystalTmp.h
 // This file implements a basic liquid crystal library that comes as standard
 // in the Arduino SDK.
 // 
 // @brief 
-// This is a basic implementation of the LiquidCrystal library of the
+// This is a basic implementation of the LiquidCrystalTmp library of the
 // Arduino SDK. The original library has been reworked in such a way that 
 // this class implements the all methods to command an LCD based
 // on the Hitachi HD44780 and compatible chipsets using the parallel port of
@@ -24,8 +24,8 @@
 //
 // @author F. Malpartida - fmalpartida@gmail.com
 // ---------------------------------------------------------------------------
-#ifndef LiquidCrystal_4bit_h
-#define LiquidCrystal_4bit_h
+#ifndef LiquidCrystalTmp_4bit_h
+#define LiquidCrystalTmp_4bit_h
 
 #include <inttypes.h>
 
@@ -41,7 +41,7 @@
  */
 #define EXEC_TIME 37
 
-class LiquidCrystal : public LCD
+class LiquidCrystalTmp : public LCD
 {
 public:
    /*!
@@ -50,19 +50,19 @@ public:
     @discussion Defines the pin assignment that the LCD will have.
     The constructor does not initialize the LCD.
     */
-   LiquidCrystal(uint8_t rs, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
-   LiquidCrystal(uint8_t rs, uint8_t rw, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t rw, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
    
    // Constructors with backlight control
-   LiquidCrystal(uint8_t rs, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7,
                  uint8_t backlightPin, t_backlighPol pol);
-   LiquidCrystal(uint8_t rs, uint8_t rw, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t rw, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7,
                  uint8_t backlightPin, t_backlighPol pol);   
@@ -72,16 +72,16 @@ public:
     @discussion Defines the pin assignment that the LCD will have.
     The constructor does not initialize the LCD.
     */
-   LiquidCrystal(uint8_t rs, uint8_t rw, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t rw, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3);
-   LiquidCrystal(uint8_t rs, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3);
    
    // Constructors with backlight control
-   LiquidCrystal(uint8_t rs, uint8_t rw, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t rw, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t backlightPin, t_backlighPol pol);
-   LiquidCrystal(uint8_t rs, uint8_t enable,
+   LiquidCrystalTmp(uint8_t rs, uint8_t enable,
                  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
                  uint8_t backlightPin, t_backlighPol pol);
    /*!

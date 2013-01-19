@@ -9,7 +9,7 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_SR2W.cpp
+// @file LiquidCrystalTmp_SR2W.cpp
 // Connects a hd44780 LCD using 2 pins from the Arduino, via an 8-bit 
 // ShiftRegister (SR2W from now on).
 // 
@@ -29,12 +29,12 @@
 // @author B. Perry - bperrybap@opensource.billsworld.billandterrie.com
 // ---------------------------------------------------------------------------
 
-#include "LiquidCrystal_SR2W.h"
+#include "LiquidCrystalTmp_SR2W.h"
 
 // CONSTRUCTORS
 // ---------------------------------------------------------------------------
 // Assuming 1 line 8 pixel high font
-LiquidCrystal_SR2W::LiquidCrystal_SR2W (uint8_t srdata, uint8_t srclock, t_backlighPol blpol)
+LiquidCrystalTmp_SR2W::LiquidCrystalTmp_SR2W (uint8_t srdata, uint8_t srclock, t_backlighPol blpol)
 {
 	init ( srdata, srclock, blpol, 1, 0 );
 }
@@ -45,7 +45,7 @@ LiquidCrystal_SR2W::LiquidCrystal_SR2W (uint8_t srdata, uint8_t srclock, t_backl
 
 //
 // init
-void LiquidCrystal_SR2W::init(uint8_t srdata, uint8_t srclock, t_backlighPol blpol, uint8_t lines, uint8_t font)
+void LiquidCrystalTmp_SR2W::init(uint8_t srdata, uint8_t srclock, t_backlighPol blpol, uint8_t lines, uint8_t font)
 {
 	_srDataRegister = fio_pinToOutputRegister(srdata);
 	_srDataMask = fio_pinToBit(srdata);
@@ -61,7 +61,7 @@ void LiquidCrystal_SR2W::init(uint8_t srdata, uint8_t srclock, t_backlighPol blp
 
 //
 // loadSR
-void LiquidCrystal_SR2W::loadSR(uint8_t val)
+void LiquidCrystalTmp_SR2W::loadSR(uint8_t val)
 {
 	// Clear to keep Enable LOW while clocking in new bits
 	fio_shiftOut(_srDataRegister, _srDataMask, _srClockRegister, _srClockMask);
@@ -87,7 +87,7 @@ void LiquidCrystal_SR2W::loadSR(uint8_t val)
 /************ low level data pushing commands **********/
 //
 // send
-void LiquidCrystal_SR2W::send(uint8_t value, uint8_t mode)
+void LiquidCrystalTmp_SR2W::send(uint8_t value, uint8_t mode)
 {
 	uint8_t myMode = ( mode == DATA ) ? SR2W_RS_MASK : 0; 
    
@@ -114,7 +114,7 @@ void LiquidCrystal_SR2W::send(uint8_t value, uint8_t mode)
 
 //
 // setBacklight
-void LiquidCrystal_SR2W::setBacklight ( uint8_t value ) 
+void LiquidCrystalTmp_SR2W::setBacklight ( uint8_t value ) 
 { 
 	// Check for polarity to configure mask accordingly
 	// ----------------------------------------------------------

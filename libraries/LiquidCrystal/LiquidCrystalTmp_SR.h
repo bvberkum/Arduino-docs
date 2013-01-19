@@ -9,7 +9,7 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_SR.h
+// @file LiquidCrystalTmp_SR.h
 //  Connects an LCD using 2 or 3 pins from the Arduino, via an 8-bit 
 // ShiftRegister (SR from now on).
 // 
@@ -18,7 +18,7 @@
 // LCD library.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library and can
+// to the original functionality of the Arduino LiquidCrystalTmp library and can
 // be used as such.
 //
 // Modified to work serially with the shiftOut() function, an 8-bit
@@ -68,10 +68,10 @@
 //             posting this, so I had to fix it.
 //             Renamed a function, but no improvements or functional changes.
 // 2009.07.23  Incorporated some proper initialization routines
-//             inspired (lets say copy-paste-tweaked) from LiquidCrystal
+//             inspired (lets say copy-paste-tweaked) from LiquidCrystalTmp
 //             library improvements from LadyAda.
 // 2009.05.23  raron - first version, but based mostly (as in almost verbatim)
-//             on the "official" LiquidCrystal library.
+//             on the "official" LiquidCrystalTmp library.
 //
 //
 //
@@ -91,7 +91,7 @@
 #define SR_RS_BIT 0x04
 #define SR_EN_BIT 0x80
 
-class LiquidCrystal_SR : public LCD
+class LiquidCrystalTmp_SR : public LCD
 {
 public:
    /*!
@@ -105,7 +105,7 @@ public:
     @param srclock[in]  pin for shiftregister clock line.
     @param enable[in]   optional direct enable pin for the LCD
     */
-   LiquidCrystal_SR ( uint8_t srdata, uint8_t srclock, uint8_t enable=TWO_WIRE );
+   LiquidCrystalTmp_SR ( uint8_t srdata, uint8_t srclock, uint8_t enable=TWO_WIRE );
    
    /*!
     @function

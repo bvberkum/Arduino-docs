@@ -9,7 +9,7 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_SR.h
+// @file LiquidCrystalTmp_SR.h
 //  Connects an LCD using 2 or 3 pins from the Arduino, via an 8-bit 
 // ShiftRegister (SR from now on).
 // 
@@ -18,7 +18,7 @@
 // LCD library.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library and can
+// to the original functionality of the Arduino LiquidCrystalTmp library and can
 // be used as such.
 //
 // Modified to work serially with the shiftOut() function, an 8-bit
@@ -70,10 +70,10 @@
 //             posting this, so I had to fix it.
 //             Renamed a function, but no improvements or functional changes.
 // 2009.07.23  Incorporated some proper initialization routines
-//             inspired (lets say copy-paste-tweaked) from LiquidCrystal
+//             inspired (lets say copy-paste-tweaked) from LiquidCrystalTmp
 //             library improvements from LadyAda.
 // 2009.05.23  raron - first version, but based mostly (as in almost verbatim)
-//             on the "official" LiquidCrystal library.
+//             on the "official" LiquidCrystalTmp library.
 //
 //
 // @author F. Malpartida - fmalpartida@gmail.com
@@ -87,7 +87,7 @@
 #else
 #include <Arduino.h>
 #endif
-#include "LiquidCrystal_SR.h"
+#include "LiquidCrystalTmp_SR.h"
 
 #include "FastIO.h"
 
@@ -95,7 +95,7 @@
 // CONSTRUCTORS
 // ---------------------------------------------------------------------------
 // Assuming 1 line 8 pixel high font
-LiquidCrystal_SR::LiquidCrystal_SR (uint8_t srdata, uint8_t srclock, 
+LiquidCrystalTmp_SR::LiquidCrystalTmp_SR (uint8_t srdata, uint8_t srclock, 
                                     uint8_t enable ) 
 {
 	init ( srdata, srclock, enable, 1, 0 );
@@ -107,7 +107,7 @@ LiquidCrystal_SR::LiquidCrystal_SR (uint8_t srdata, uint8_t srclock,
 
 //
 // init
-void LiquidCrystal_SR::init(uint8_t srdata, uint8_t srclock, uint8_t enable, 
+void LiquidCrystalTmp_SR::init(uint8_t srdata, uint8_t srclock, uint8_t enable, 
                             uint8_t lines, uint8_t font)
 {
    // Initialise private variables
@@ -138,7 +138,7 @@ void LiquidCrystal_SR::init(uint8_t srdata, uint8_t srclock, uint8_t enable,
 
 //
 // shiftIt
-void LiquidCrystal_SR::shiftIt(uint8_t val)
+void LiquidCrystalTmp_SR::shiftIt(uint8_t val)
 {
    if (_two_wire)
    {
@@ -169,7 +169,7 @@ void LiquidCrystal_SR::shiftIt(uint8_t val)
 /************ low level data pushing commands **********/
 //
 // send
-void LiquidCrystal_SR::send(uint8_t value, uint8_t mode)
+void LiquidCrystalTmp_SR::send(uint8_t value, uint8_t mode)
 {
    // Divide byte in two nibbles include the RS signal
    // and format it for shiftregister output wiring to the LCD
@@ -199,11 +199,11 @@ void LiquidCrystal_SR::send(uint8_t value, uint8_t mode)
 
 //
 // setBacklightPin
-void LiquidCrystal_SR::setBacklightPin ( uint8_t pin, t_backlighPol pol )
+void LiquidCrystalTmp_SR::setBacklightPin ( uint8_t pin, t_backlighPol pol )
 { }
 
 //
 // setBacklight
-void LiquidCrystal_SR::setBacklight ( uint8_t mode ) 
+void LiquidCrystalTmp_SR::setBacklight ( uint8_t mode ) 
 { }
 

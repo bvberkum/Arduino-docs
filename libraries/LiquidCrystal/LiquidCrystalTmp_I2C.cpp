@@ -9,19 +9,19 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_I2C.c
+// @file LiquidCrystalTmp_I2C.c
 // This file implements a basic liquid crystal library that comes as standard
 // in the Arduino SDK but using an I2C IO extension board.
 // 
 // @brief 
-// This is a basic implementation of the LiquidCrystal library of the
+// This is a basic implementation of the LiquidCrystalTmp library of the
 // Arduino SDK. The original library has been reworked in such a way that 
 // this class implements the all methods to command an LCD based
 // on the Hitachi HD44780 and compatible chipsets using I2C extension
 // backpacks such as the I2CLCDextraIO with the PCF8574* I2C IO Expander ASIC.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library.
+// to the original functionality of the Arduino LiquidCrystalTmp library.
 //
 //
 //
@@ -34,7 +34,7 @@
 #endif
 #include <inttypes.h>
 #include "I2CIO.h"
-#include "LiquidCrystal_I2C.h"
+#include "LiquidCrystalTmp_I2C.h"
 
 // CONSTANT  definitions
 // ---------------------------------------------------------------------------
@@ -93,26 +93,26 @@
 
 // CONSTRUCTORS
 // ---------------------------------------------------------------------------
-LiquidCrystal_I2C::LiquidCrystal_I2C( uint8_t lcd_Addr )
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C( uint8_t lcd_Addr )
 {
    config(lcd_Addr, EN, RW, RS, D4, D5, D6, D7);
 }
 
 
-LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t backlighPin, 
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t backlighPin, 
                                      t_backlighPol pol = POSITIVE)
 {
    config(lcd_Addr, EN, RW, RS, D4, D5, D6, D7);
    setBacklightPin(backlighPin, pol);
 }
 
-LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
                                      uint8_t Rs)
 {
    config(lcd_Addr, En, Rw, Rs, D4, D5, D6, D7);
 }
 
-LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
                                      uint8_t Rs, uint8_t backlighPin, 
                                      t_backlighPol pol = POSITIVE)
 {
@@ -120,14 +120,14 @@ LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
    setBacklightPin(backlighPin, pol);
 }
 
-LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
                                      uint8_t Rs, uint8_t d4, uint8_t d5,
                                      uint8_t d6, uint8_t d7 )
 {
    config(lcd_Addr, En, Rw, Rs, d4, d5, d6, d7);
 }
 
-LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
+LiquidCrystalTmp_I2C::LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
                                      uint8_t Rs, uint8_t d4, uint8_t d5,
                                      uint8_t d6, uint8_t d7, uint8_t backlighPin, 
                                      t_backlighPol pol = POSITIVE )
@@ -141,7 +141,7 @@ LiquidCrystal_I2C::LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw,
 
 //
 // begin
-void LiquidCrystal_I2C::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) 
+void LiquidCrystalTmp_I2C::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) 
 {
    
    init();     // Initialise the I2C expander interface
@@ -155,7 +155,7 @@ void LiquidCrystal_I2C::begin(uint8_t cols, uint8_t lines, uint8_t dotsize)
 
 //
 // setBacklightPin
-void LiquidCrystal_I2C::setBacklightPin ( uint8_t value, t_backlighPol pol = POSITIVE )
+void LiquidCrystalTmp_I2C::setBacklightPin ( uint8_t value, t_backlighPol pol = POSITIVE )
 {
    _backlightPinMask = ( 1 << value );
    _polarity = pol;
@@ -164,7 +164,7 @@ void LiquidCrystal_I2C::setBacklightPin ( uint8_t value, t_backlighPol pol = POS
 
 //
 // setBacklight
-void LiquidCrystal_I2C::setBacklight( uint8_t value ) 
+void LiquidCrystalTmp_I2C::setBacklight( uint8_t value ) 
 {
    // Check if backlight is available
    // ----------------------------------------------------
@@ -191,7 +191,7 @@ void LiquidCrystal_I2C::setBacklight( uint8_t value )
 
 //
 // init
-int LiquidCrystal_I2C::init()
+int LiquidCrystalTmp_I2C::init()
 {
    int status = 0;
    
@@ -210,7 +210,7 @@ int LiquidCrystal_I2C::init()
 
 //
 // config
-void LiquidCrystal_I2C::config (uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
+void LiquidCrystalTmp_I2C::config (uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
                                 uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7 )
 {
    _Addr = lcd_Addr;
@@ -237,7 +237,7 @@ void LiquidCrystal_I2C::config (uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_
 
 //
 // send - write either command or data
-void LiquidCrystal_I2C::send(uint8_t value, uint8_t mode) 
+void LiquidCrystalTmp_I2C::send(uint8_t value, uint8_t mode) 
 {
    // No need to use the delay routines since the time taken to write takes
    // longer that what is needed both for toggling and enable pin an to execute
@@ -256,7 +256,7 @@ void LiquidCrystal_I2C::send(uint8_t value, uint8_t mode)
 
 //
 // write4bits
-void LiquidCrystal_I2C::write4bits ( uint8_t value, uint8_t mode ) 
+void LiquidCrystalTmp_I2C::write4bits ( uint8_t value, uint8_t mode ) 
 {
    uint8_t pinMapValue = 0;
    
@@ -284,7 +284,7 @@ void LiquidCrystal_I2C::write4bits ( uint8_t value, uint8_t mode )
 
 //
 // pulseEnable
-void LiquidCrystal_I2C::pulseEnable (uint8_t data)
+void LiquidCrystalTmp_I2C::pulseEnable (uint8_t data)
 {
    _i2cio.write (data | _En);   // En HIGH
    _i2cio.write (data & ~_En);  // En LOW

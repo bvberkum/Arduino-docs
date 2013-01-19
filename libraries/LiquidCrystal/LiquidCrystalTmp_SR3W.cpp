@@ -9,12 +9,12 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_SRG.h
+// @file LiquidCrystalTmp_SRG.h
 // This file implements a basic liquid crystal library that comes as standard
 // in the Arduino SDK but using a generic SHIFT REGISTER extension board.
 // 
 // @brief 
-// This is a basic implementation of the LiquidCrystal library of the
+// This is a basic implementation of the LiquidCrystalTmp library of the
 // Arduino SDK. The original library has been reworked in such a way that 
 // this class implements the all methods to command an LCD based
 // on the Hitachi HD44780 and compatible chipsets using a 3 wire latching
@@ -50,7 +50,7 @@
 // NOTE: Rw is not used by the driver so it can be connected to GND.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library.
+// to the original functionality of the Arduino LiquidCrystalTmp library.
 //
 //
 // History
@@ -74,7 +74,7 @@
 #else
 #include <Arduino.h>
 #endif
-#include "LiquidCrystal_SR3W.h"
+#include "LiquidCrystalTmp_SR3W.h"
 
 #include "FastIO.h"
 
@@ -130,26 +130,26 @@
 
 
 
-LiquidCrystal_SR3W::LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe)
+LiquidCrystalTmp_SR3W::LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe)
 {
    init( data, clk, strobe, RS, RW, EN, D4, D5, D6, D7 );
 }
 
-LiquidCrystal_SR3W::LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe,
+LiquidCrystalTmp_SR3W::LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe,
                                        uint8_t backlighPin, t_backlighPol pol)
 {
    init( data, clk, strobe, RS, RW, EN, D4, D5, D6, D7 );
    setBacklightPin(backlighPin, pol);
 }
 
-LiquidCrystal_SR3W::LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe,
+LiquidCrystalTmp_SR3W::LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe,
                                        uint8_t En, uint8_t Rw, uint8_t Rs, 
                                        uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7 )
 {
    init( data, clk, strobe, Rs, Rw, En, d4, d5, d6, d7 );
 }
 
-LiquidCrystal_SR3W::LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
+LiquidCrystalTmp_SR3W::LiquidCrystalTmp_SR3W(uint8_t data, uint8_t clk, uint8_t strobe, 
                                        uint8_t En, uint8_t Rw, uint8_t Rs, 
                                        uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7,
                                        uint8_t backlighPin, t_backlighPol pol)
@@ -159,7 +159,7 @@ LiquidCrystal_SR3W::LiquidCrystal_SR3W(uint8_t data, uint8_t clk, uint8_t strobe
 }
 
 
-void LiquidCrystal_SR3W::send(uint8_t value, uint8_t mode)
+void LiquidCrystalTmp_SR3W::send(uint8_t value, uint8_t mode)
 {
    
    if ( mode != FOUR_BITS )
@@ -180,7 +180,7 @@ void LiquidCrystal_SR3W::send(uint8_t value, uint8_t mode)
 }
 
 
-void LiquidCrystal_SR3W::setBacklightPin ( uint8_t value, t_backlighPol pol = POSITIVE )
+void LiquidCrystalTmp_SR3W::setBacklightPin ( uint8_t value, t_backlighPol pol = POSITIVE )
 {
    _backlightPinMask = ( 1 << value );
    _backlightStsMask = LCD_NOBACKLIGHT;
@@ -188,7 +188,7 @@ void LiquidCrystal_SR3W::setBacklightPin ( uint8_t value, t_backlighPol pol = PO
    setBacklight (BACKLIGHT_OFF);     // Set backlight to off as initial setup
 }
 
-void LiquidCrystal_SR3W::setBacklight ( uint8_t value )
+void LiquidCrystalTmp_SR3W::setBacklight ( uint8_t value )
 {
    // Check if backlight is available
    // ----------------------------------------------------
@@ -213,7 +213,7 @@ void LiquidCrystal_SR3W::setBacklight ( uint8_t value )
 // PRIVATE METHODS
 // -----------------------------------------------------------------------------
 
-int LiquidCrystal_SR3W::init(uint8_t data, uint8_t clk, uint8_t strobe, 
+int LiquidCrystalTmp_SR3W::init(uint8_t data, uint8_t clk, uint8_t strobe, 
                              uint8_t Rs, uint8_t Rw, uint8_t En,
                              uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
 {
@@ -244,7 +244,7 @@ int LiquidCrystal_SR3W::init(uint8_t data, uint8_t clk, uint8_t strobe,
    return (1);
 }
 
-void LiquidCrystal_SR3W::write4bits(uint8_t value, uint8_t mode)
+void LiquidCrystalTmp_SR3W::write4bits(uint8_t value, uint8_t mode)
 {
    uint8_t pinMapValue = 0;
    
@@ -269,7 +269,7 @@ void LiquidCrystal_SR3W::write4bits(uint8_t value, uint8_t mode)
 }
 
 
-void LiquidCrystal_SR3W::loadSR(uint8_t value) 
+void LiquidCrystalTmp_SR3W::loadSR(uint8_t value) 
 {
    // Load the shift register with information
    fio_shiftOut(_data_reg, _data, _clk_reg, _clk, value, MSBFIRST);

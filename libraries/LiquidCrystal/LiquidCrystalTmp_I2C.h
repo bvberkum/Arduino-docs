@@ -9,25 +9,25 @@
 // Thread Safe: No
 // Extendable: Yes
 //
-// @file LiquidCrystal_I2C.h
+// @file LiquidCrystalTmp_I2C.h
 // This file implements a basic liquid crystal library that comes as standard
 // in the Arduino SDK but using an I2C IO extension board.
 // 
 // @brief 
-// This is a basic implementation of the LiquidCrystal library of the
+// This is a basic implementation of the LiquidCrystalTmp library of the
 // Arduino SDK. The original library has been reworked in such a way that 
 // this class implements the all methods to command an LCD based
 // on the Hitachi HD44780 and compatible chipsets using I2C extension
 // backpacks such as the I2CLCDextraIO with the PCF8574* I2C IO Expander ASIC.
 //
 // The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library.
+// to the original functionality of the Arduino LiquidCrystalTmp library.
 //
 //
 // @author F. Malpartida - fmalpartida@gmail.com
 // ---------------------------------------------------------------------------
-#ifndef LiquidCrystal_I2C_h
-#define LiquidCrystal_I2C_h
+#ifndef LiquidCrystalTmp_I2C_h
+#define LiquidCrystalTmp_I2C_h
 #include <inttypes.h>
 #include <Print.h>
 
@@ -35,7 +35,7 @@
 #include "LCD.h"
 
 
-class LiquidCrystal_I2C : public LCD 
+class LiquidCrystalTmp_I2C : public LCD 
 {
 public:
    
@@ -48,9 +48,9 @@ public:
     @param      lcd_Addr[in] I2C address of the IO expansion module. For I2CLCDextraIO,
     the address can be configured using the on board jumpers.
     */
-   LiquidCrystal_I2C (uint8_t lcd_Addr);
+   LiquidCrystalTmp_I2C (uint8_t lcd_Addr);
    // Constructor with backlight control
-   LiquidCrystal_I2C (uint8_t lcd_Addr, uint8_t backlighPin, t_backlighPol pol);
+   LiquidCrystalTmp_I2C (uint8_t lcd_Addr, uint8_t backlighPin, t_backlighPol pol);
    
    /*!
     @method     
@@ -64,9 +64,9 @@ public:
     @param      Rw[in] LCD Rw (Read/write) pin connected to the IO extender module
     @param      Rs[in] LCD Rs (Reset) pin connected to the IO extender module
     */
-   LiquidCrystal_I2C( uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs);
+   LiquidCrystalTmp_I2C( uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs);
    // Constructor with backlight control
-   LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs,
+   LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs,
                      uint8_t backlighPin, t_backlighPol pol);   
    
    /*!
@@ -85,10 +85,10 @@ public:
     @param      d6[in] LCD data 2 pin map on IO extender module
     @param      d7[in] LCD data 3 pin map on IO extender module
     */
-   LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
+   LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
                      uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7 );
    // Constructor with backlight control
-   LiquidCrystal_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
+   LiquidCrystalTmp_I2C(uint8_t lcd_Addr, uint8_t En, uint8_t Rw, uint8_t Rs, 
                      uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7,
                      uint8_t backlighPin, t_backlighPol pol);
    /*!

@@ -45,7 +45,7 @@ static char dummyvar; // dummy declaration for STUPID IDE!!!!
  * independent of the size of the actual LCD display that is running the test.
  *
  * All times & rates are measured and calculeted from what a sketch "sees"
- * using the LiquidCrystal API.
+ * using the LiquidCrystalTmp API.
  * It includes any/all s/w overhead including the time to go through the
  * Arduino Print class and LCD library.
  * The actual low level hardware times are obviously lower.
@@ -97,51 +97,51 @@ static char dummyvar; // dummy declaration for STUPID IDE!!!!
 #if defined(LCDIF_4BIT)
 
 // Include the Liquid Crystal library code:
-#include <LiquidCrystal.h>
+#include <LiquidCrystalTmp.h>
 
 // initialize the library with the numbers of the interface pins
 //            lcd(RS,  E, d4, d5, d6, d7, bl, polarity)
 #ifdef BACKLIGHT_ON
-LiquidCrystal lcd( 8,  9,  4,  5,  6,  7, 10, POSITIVE); // new constructor with backlight support
+LiquidCrystalTmp lcd( 8,  9,  4,  5,  6,  7, 10, POSITIVE); // new constructor with backlight support
 #else
-LiquidCrystal lcd( 8,  9,  4,  5,  6,  7); // old style constructor w/o backlight (to test old library)
+LiquidCrystalTmp lcd( 8,  9,  4,  5,  6,  7); // old style constructor w/o backlight (to test old library)
 #endif
 
 #elif defined(LCDIF_I2C)
 #include <Wire.h> 
-#include <LiquidCrystal_I2C.h>
+#include <LiquidCrystalTmp_I2C.h>
 
-LiquidCrystal_I2C lcd(0x38);  // Set the LCD I2C address
+LiquidCrystalTmp_I2C lcd(0x38);  // Set the LCD I2C address
 
 
 #elif defined(LCDIF_SR3W)
-#include <LiquidCrystal_SR3W.h>
+#include <LiquidCrystalTmp_SR3W.h>
                  //     d,clk,strb, en,rw,rs,d4,d5,d6,d7,bl,blpol
-//LiquidCrystal_SR3W lcd (2, 3,  4,    6, 7, 1, 2, 3, 4, 5, 0, POSITIVE);
-LiquidCrystal_SR3W lcd(3, 2, 4);
+//LiquidCrystalTmp_SR3W lcd (2, 3,  4,    6, 7, 1, 2, 3, 4, 5, 0, POSITIVE);
+LiquidCrystalTmp_SR3W lcd(3, 2, 4);
 
 #elif defined(LCDIF_SR2W)
 
-#include <LiquidCrystal_SR2W.h>
+#include <LiquidCrystalTmp_SR2W.h>
                  //   d, clk, (blPolarity optional, defaults to POSITIVE)
-LiquidCrystal_SR2W lcd (2, 3);
+LiquidCrystalTmp_SR2W lcd (2, 3);
 
 #elif defined(LCDIF_SR1W)
 
-#include <LiquidCrystal_SR1W.h>
-LiquidCrystal_SR1W lcd (2);
+#include <LiquidCrystalTmp_SR1W.h>
+LiquidCrystalTmp_SR1W lcd (2);
 
 #elif defined(LCDIF_SR_2W)
 
-#include <LiquidCrystal_SR.h>
+#include <LiquidCrystalTmp_SR.h>
                  //   d, clk
-LiquidCrystal_SR lcd (2, 3);
+LiquidCrystalTmp_SR lcd (2, 3);
 
 #elif defined(LCDIF_SR_3W)
 
-#include <LiquidCrystal_SR.h>
+#include <LiquidCrystalTmp_SR.h>
                  //   d,clk,strb
-LiquidCrystal_SR lcd (2, 3,  4);
+LiquidCrystalTmp_SR lcd (2, 3,  4);
 
 #endif
 

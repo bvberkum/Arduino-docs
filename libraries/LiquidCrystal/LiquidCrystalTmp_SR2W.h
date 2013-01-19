@@ -6,7 +6,7 @@
 // This software is furnished "as is", without technical support, and with no 
 // warranty, express or implied, as to its usefulness for any purpose.
 //
-// @file LiquidCrystal_SR2W.h
+// @file LiquidCrystalTmp_SR2W.h
 // Connects a hd44780 LCD using 2 pins from the Arduino, via an 8-bit 
 // ShiftRegister (SR2W from now on).
 // 
@@ -14,7 +14,7 @@
 // This is the 2 wire shift register interface class for the LCD library
 //
 // The functionality provided by this class and its base class is a superset of
-// the original functionality of the Arduino LiquidCrystal library and can
+// the original functionality of the Arduino LiquidCrystalTmp library and can
 // be used as such.
 // See the LCD class for a full description of the API functions available.
 //
@@ -134,7 +134,7 @@
 #define SR2W_DATA_MASK 0x78	// data bits are hard coded to be SR bits 6,5,4,3
 #define SR2W_EN_MASK 0x80	// cannot ever be changed
 
-class LiquidCrystal_SR2W : public LCD
+class LiquidCrystalTmp_SR2W : public LCD
 {
 public:
    /*!
@@ -148,7 +148,7 @@ public:
     @param srclock[in]  Arduino pin for shift register clock line.
     @param blpol[in]    optional backlight polarity (default = POSITIVE)
     */
-   LiquidCrystal_SR2W (uint8_t srdata, uint8_t srclock, t_backlighPol blpol = POSITIVE);
+   LiquidCrystalTmp_SR2W (uint8_t srdata, uint8_t srclock, t_backlighPol blpol = POSITIVE);
    
    /*!
     @function
