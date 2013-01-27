@@ -14,20 +14,23 @@ MK                  += $(MK_$d)
 # CLN += $/tmpfile
 # TEST += $/testtarget
 
-METHODS := \
-		arduino="-c arduino -P /dev/ttyUSB0 -b 57600"; \
-		arduinoisp="-cstk500v1 -P/dev/ttyUSB0 -b19200"; \
+METHODS = \
+		arduino="-c arduino -P /dev/ttyUSB$(USB) -b 57600"; \
+		arduinoisp="-cstk500v1 -P/dev/ttyUSB$(USB) -b19200"; \
 	  usbasp="-c usbasp -P usb"
 #IMAGES := \
 #	blink=firmware/betemcu-usbasp/misc/betemcu_blink/betemcu_blink.cpp.hex\
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
+find:
+	find ./ -iname '*.hex'
 
 upload: C := m328p
 upload: M := arduino
 upload: I := firmware/ArduinoISP_mega328.hex
 upload: X := -D
+upload: USB := 0
 upload:
 	avrdude \
 		$(call key,METHODS,$(M))\
@@ -39,6 +42,7 @@ download: C := m328p
 download: M := arduino
 download: I := 
 download: X := -D
+download: USB := 0
 download:
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
@@ -50,6 +54,7 @@ download:
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
 
 upload-betemcu: M := usbasp
+upload-betemcu: USB := 0
 upload-betemcu:
 	sudo avrdude -p m8 -e \
 		$(call key,METHODS,$(M)) \
@@ -63,6 +68,7 @@ upload-betemcu:
   	-U lock:w:0x3C:m
 
 upload-betemcu-usbasploader: M := usbasp
+upload-betemcu-usbasploader: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
 upload-betemcu-usbasploader:
 	avrdude \
 		-p m8 -e \
@@ -75,12 +81,82 @@ upload-betemcu-usbasploader:
 	avrdude \
 		-p m8 \
 		$(call key,METHODS,$(M)) \
-		-U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+		-U flash:w:$(I)
 	avrdude \
 		-p m8 \
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
+m32-DI-8Mhz-int: M := arduinoisp
+m32-DI-8Mhz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
+m32-DI-8Mhz-int: USB := 0
+m32-DI-8Mhz-int:
+	avrdude \
+		-p m32 -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xD4:m -U hfuse:w:0x99:m
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
+
+m8: M := arduinoisp
+m8: 
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) 
+
+m328p: M := arduinoisp
+m328p: 
+	avrdude \
+		-p m328p \
+		$(call key,METHODS,$(M)) 
+
+m1284p: M := arduinoisp
+m1284p: 
+	avrdude \
+		-p m1284p \
+		$(call key,METHODS,$(M)) 
+
+# Internal 8Mhz/57600baud 328 target
+m328p-8Mhz: I := firmware/ATmegaBOOT_168_atmega328_pro_8MHz.hex
+m328p-8Mhz: M := arduinoisp
+m328p-8Mhz: USB := 1
+m328p-8Mhz:
+	avrdude \
+		-p m328p -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xE2:m -U hfuse:w:0xDA:m -U efuse:w:0x05:m
+	avrdude \
+		-p m328p \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m328p \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
+
+m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
+#m328p-16Mhz: I := firmware/optiboot_atmega328.hex
+m328p-16Mhz: M := arduinoisp
+m328p-16Mhz: USB := 1
+m328p-16Mhz:
+	avrdude \
+		-p m328p -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x05:m
+	avrdude \
+		-p m328p \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m328p \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
 
 # Cannot re-read protected flash without -e?
 #verify-betemcu: M := usbasp

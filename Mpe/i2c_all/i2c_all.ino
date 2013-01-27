@@ -1,17 +1,17 @@
-/* 
- 
- 2012-1-19
- Made LiquidCrystalTmp_I2C copy to prevent collision with JeeLib.
- 
+/*** I2C All
+ * 
+ * 2012-1-19
+ * Made LiquidCrystalTmp_I2C copy to prevent collision with JeeLib.
+ * 
  */
 #include <Wire.h>
 #include <JeeLib.h>
-#include <LiquidCrystalTmp_I2C.h>
+//#include <LiquidCrystalCustomI2C.h>
 
-/**
- * Declare some JeeNode Ports. 
- */
-//PortI2C i2cbusHW (0); /* Hardware I2C bus wrapped in JeePort */
+boolean SERIAL_DEBUG = true;
+
+/** Declare some JeeNode Ports */
+PortI2C i2cbusHW (0); /* Hardware I2C bus wrapped in JeePort */
 PortI2C i2cbus (1); /* Virtual I2C bus at JeeNode Port 1*/
 // PortI2C::KHZMAX
 // PortI2C::KHZ100 slow 
@@ -32,7 +32,8 @@ PortI2C i2cbus (1); /* Virtual I2C bus at JeeNode Port 1*/
 #define D7_pin  3
 #define LED_OFF 0
 #define LED_ON  1
-LiquidCrystalTmp_I2C  lcd(I2C_ADDR, En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
+
+LiquidCrystalI2C lcd(i2cbusHW);//, En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
 
 /** Lux Plug */
 LuxPlug lux (i2cbus, 0x39);
@@ -145,7 +146,7 @@ void lux_init()
   lux.begin();
 }
 
-double lux_value;
+float lux_value;
 float min_lux = 0;
 float max_lux = 0;
 
@@ -154,18 +155,21 @@ void cycle_lux()
   const word* photoDiodes = lux.getData();
   if (highGain == 1) {
     lux_value = lux.calcLux() / 16.0;
-  } else {
+  } 
+  else {
     lux_value = lux.calcLux();
   }
 
-  Serial.print("LUX ");
-  Serial.print(photoDiodes[0]);
-  Serial.print(" ");
-  Serial.print(photoDiodes[1]);
-  Serial.print(" ");
-  Serial.print(lux_value);
-  Serial.print(" ");
-  Serial.println(highGain);
+  if (SERIAL_DEBUG) {
+    Serial.print("LUX ");
+    Serial.print(photoDiodes[0]);
+    Serial.print(" ");
+    Serial.print(photoDiodes[1]);
+    Serial.print(" ");
+    Serial.print(lux_value);
+    Serial.print(" ");
+    Serial.println(highGain);
+  }
 
   lcd.clear();
   lcd.setCursor(0,1);
@@ -228,6 +232,5 @@ void loop()
 
   delay(1000);
 }
-
 
 

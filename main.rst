@@ -254,4 +254,31 @@ betemcu 1 flash attempt using JeeNode ISP::
   sudo avrdude -p m8 -cstk500v1 -P/dev/ttyUSB0 -b19200 -U lock:w:0x3C:m
 
 
+-----
 
+
+
+My Boards
+  1. Atmega16 test
+  2. Atmega32 Dual Inline board
+     - Upload bootloader OK. 
+       Not sure about fuses.
+       Cannot get serial upload.
+
+  3. Atmega48 Cassette Board
+  4. Atmega328 Cassette Board
+
+
+ATmegaBOOT.hex                          16.000    19200  atmega8
+ATmegaBOOT_168_ng.hex                   16.000    19200
+ATmegaBOOT_168_diecimila.hex            16.000    19200  atmega168
+ATmegaBOOT_168_pro_8MHz.hex              8.000    19200
+ATmegaBOOT_168_atmega328.hex            16.000    57600
+ATmegaBOOT_168_atmega328_bt.hex         16.000    19200  
+ATmegaBOOT_168_atmega328_pro_8MHz.hex    8.000    57600
+ATmegaBOOT_168_atmega1280.hex           16.000    57600  atmega1280
+LilyPadBOOT_168.hex                      8.000    19200  
+optiboot_atmega328.hex                  16.000   115200
+optiboot_atmega328-Mini.hex             16.000   115200  
+
+  

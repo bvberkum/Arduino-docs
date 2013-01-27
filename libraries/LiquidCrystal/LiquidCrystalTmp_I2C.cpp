@@ -159,7 +159,7 @@ void LiquidCrystalTmp_I2C::setBacklightPin ( uint8_t value, t_backlighPol pol = 
 {
    _backlightPinMask = ( 1 << value );
    _polarity = pol;
-   setBacklight(BACKLIGHT_OFF);
+   noBacklight();
 }
 
 //
@@ -184,6 +184,15 @@ void LiquidCrystalTmp_I2C::setBacklight( uint8_t value )
       _i2cio.write( _backlightStsMask );
    }
 }
+
+void LiquidCrystalTmp_I2C::backlight() {
+   setBacklight(BACKLIGHT_ON);
+}
+
+void LiquidCrystalTmp_I2C::noBacklight() {
+   setBacklight(BACKLIGHT_OFF);
+}
+
 
 
 // PRIVATE METHODS
