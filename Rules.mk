@@ -15,8 +15,8 @@ MK                  += $(MK_$d)
 # TEST += $/testtarget
 
 METHODS = \
-		arduino="-c arduino -P /dev/ttyUSB$(USB) -b 57600"; \
-		arduinoisp="-cstk500v1 -P/dev/ttyUSB$(USB) -b19200"; \
+		arduino="-c arduino -P $(PORT) -b 57600"; \
+		arduinoisp="-cstk500v1 -P $(PORT) -b19200"; \
 	  usbasp="-c usbasp -P usb"
 #IMAGES := \
 #	blink=firmware/betemcu-usbasp/misc/betemcu_blink/betemcu_blink.cpp.hex\
@@ -30,7 +30,7 @@ upload: C := m328p
 upload: M := arduino
 upload: I := firmware/ArduinoISP_mega328.hex
 upload: X := -D
-upload: USB := 0
+upload: PORT := /dev/ttyUSB0
 upload:
 	avrdude \
 		$(call key,METHODS,$(M))\
@@ -42,7 +42,7 @@ download: C := m328p
 download: M := arduino
 download: I := 
 download: X := -D
-download: USB := 0
+download: PORT := /dev/ttyUSB0
 download:
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
@@ -54,7 +54,6 @@ download:
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
 
 upload-betemcu: M := usbasp
-upload-betemcu: USB := 0
 upload-betemcu:
 	sudo avrdude -p m8 -e \
 		$(call key,METHODS,$(M)) \
@@ -89,7 +88,6 @@ upload-betemcu-usbasploader:
 
 m32-DI-8Mhz-int: M := arduinoisp
 m32-DI-8Mhz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
-m32-DI-8Mhz-int: USB := 0
 m32-DI-8Mhz-int:
 	avrdude \
 		-p m32 -e \
@@ -110,22 +108,29 @@ m8:
 		-p m8 \
 		$(call key,METHODS,$(M)) 
 
+m16: M := arduinoisp
+m16: 
+	avrdude \
+		-p m16 \
+		$(call key,METHODS,$(M)) 
+
+m48: M := arduinoisp
+m48: 
+	avrdude \
+		-p m48 \
+		$(call key,METHODS,$(M)) 
+
+PORT := /dev/tty.usbserial-A900TTH0
+
 m328p: M := arduinoisp
 m328p: 
 	avrdude \
 		-p m328p \
 		$(call key,METHODS,$(M)) 
 
-m1284p: M := arduinoisp
-m1284p: 
-	avrdude \
-		-p m1284p \
-		$(call key,METHODS,$(M)) 
-
 # Internal 8Mhz/57600baud 328 target
 m328p-8Mhz: I := firmware/ATmegaBOOT_168_atmega328_pro_8MHz.hex
 m328p-8Mhz: M := arduinoisp
-m328p-8Mhz: USB := 1
 m328p-8Mhz:
 	avrdude \
 		-p m328p -e \
@@ -143,12 +148,11 @@ m328p-8Mhz:
 m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
 #m328p-16Mhz: I := firmware/optiboot_atmega328.hex
 m328p-16Mhz: M := arduinoisp
-m328p-16Mhz: USB := 1
 m328p-16Mhz:
 	avrdude \
 		-p m328p -e \
 		$(call key,METHODS,$(M)) \
-		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x05:m
+		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x07:m
 	avrdude \
 		-p m328p \
 		$(call key,METHODS,$(M)) \
@@ -171,6 +175,12 @@ m328p-16Mhz:
 #	sudo avrdude -p m8 \
 #		$(call key,METHODS,$(M)) \
 #  	-U lock:w:0x3C:m 
+
+m1284p: M := arduinoisp
+m1284p: 
+	avrdude \
+		-p m1284p \
+		$(call key,METHODS,$(M)) 
 
 #      ------------ -- 
 #
