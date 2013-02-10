@@ -1,18 +1,20 @@
-Arduino and AVR (avrdude) related.
+Arduino and AVR (avrdude) projects
+==================================
+- Edam's arduino.mk makes building easy using the Arduino source package.
+- mkdoc Rules.mk is used for the rest, uploading, docs. 
+- The files in this repository are from my Arduino/sketchbook folder,
+  which I keep at <~/Documents/Dev/Arduino>
+- I uses AVRISP mkII to upload sketches to m328p, using an USB BUB II module (w/ FTDI TF232RL chip).
+- Alternatively, the JeeNode is used as ISP using JeeLab's Flash Board to upload
+  bootloaders.
 
-- there is no toolchain than arduino, though make or equiv would be nice to
-  have.
-- this dir is used as main sketches folder for Arduino <~/Documents/Dev/Arduino>
-
-* Normally AVRISP mkII uploads sketches to m328p over an USB BUB II module (w/ FTDI TF232RL chip).
-* Alternatively, the JeeNode is used as ISP using JeeLab's Flash Board. This is
-  compatible with 
-
-- JeeNode Fuses stuff http://forum.jeelabs.net/node/848
-
+* JeeNode Fuses stuff http://forum.jeelabs.net/node/848
 
 Arduino/AVRdude
 ----------------
+What does it do. 
+Lets introduce the boards first:
+
 Arduino NG (Nuova Generazione)
   - An USB board with ATmega8, later ATmega168.
 Diecimilla "10.000"
@@ -21,14 +23,13 @@ Duemilanove "2009"
   - First an ATmega168, then ATmega328p. PDIP.
 UNO
   - USB board. Now at rev3. PDIP.
+JeeNode
+  - Comes in various editions and versions, but all targetted at 3.3v
+    peripherals. The mainline is compatible with Duemilanove, and later 
+    with Uno (OptiBoot 0.44). [#]_
 
-As usual,8, 168 and 328 are interchangeable with notes on implementation
+As usual, 8, 168 and 328 are interchangeable with notes on implementation
 details and implication for applications.
-
-Lilypad is an extremely cool line of fabric circuits build from conducting 
-fabrics and small PCB's or epoxy embedded components. Simply sew it together
-with conductive yarns. Together with velcro and or magnets might make an 
-interesting connector alternative, also for regular plastic project cases.
 
 ::
   avrdude
@@ -78,6 +79,8 @@ Uno (optiboot?)     115200
 =================== ======== ==================
 
 Also listed the device I use.
+
+.. [#] <http://jeelabs.net/projects/hardware/wiki/JeeNode>
 
 Device ID's
 _____________

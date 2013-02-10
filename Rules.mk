@@ -1,3 +1,4 @@
+# Arduino-mpe/Rules.mk
 include                $(MK_SHARE)Core/Main.dirstack.mk
 MK_$d               := $/Rules.mk
 MK                  += $(MK_$d)
@@ -23,6 +24,12 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
+ifeq ($(shell uname),"Linux")
+PORT := /dev/tty.usbserial-A900TTH0
+else
+PORT := /dev/ttyUSB0
+endif
+
 find:
 	find ./ -iname '*.hex'
 
@@ -30,7 +37,6 @@ upload: C := m328p
 upload: M := arduino
 upload: I := firmware/ArduinoISP_mega328.hex
 upload: X := -D
-upload: PORT := /dev/ttyUSB0
 upload:
 	avrdude \
 		$(call key,METHODS,$(M))\
@@ -42,7 +48,6 @@ download: C := m328p
 download: M := arduino
 download: I := 
 download: X := -D
-download: PORT := /dev/ttyUSB0
 download:
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
@@ -120,8 +125,6 @@ m48:
 		-p m48 \
 		$(call key,METHODS,$(M)) 
 
-PORT := /dev/tty.usbserial-A900TTH0
-
 m328p: M := arduinoisp
 m328p: 
 	avrdude \
@@ -181,6 +184,22 @@ m1284p:
 	avrdude \
 		-p m1284p \
 		$(call key,METHODS,$(M)) 
+
+#      ------------ -- 
+# 
+# Integrating with another makefile for easy builds
+
+ARDUINODIR := ~/Application/arduino-1.0.3
+
+# Build anything in target folder 'P'
+arduino: P := 
+arduino: B := atmega328
+arduino: 
+	p=$$(realpath .);\
+	cd $P; \
+		ARDUINODIR=$(ARDUINODIR) \
+		BOARD=$(B) \
+		make -f $$p/arduino.mk
 
 #      ------------ -- 
 #
