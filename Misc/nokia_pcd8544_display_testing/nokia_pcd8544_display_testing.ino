@@ -23,6 +23,11 @@
 // - http://www.myplace.nu/mp3/nokialcd.htm
 // - http://web.archive.org/web/20070326175321/http://www.microsyl.com/nokialcd/shematic.gif
 //
+// - http://learn.adafruit.com/nokia-5110-3310-monochrome-lcd/wiring-fewer-pins
+//   mentions CS does not need to be connected, but can go to GND.
+//   Having CS always at ground means other pins will always be active,
+//   ie. no re-use or sharing.
+
 
 #define PIN_SCE   7 
 #define PIN_RESET 6

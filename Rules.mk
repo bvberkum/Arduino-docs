@@ -33,6 +33,11 @@ endif
 find:
 	find ./ -iname '*.hex'
 
+listen: D := $(PORT)
+listen: B := 57600
+listen:
+	minicom -D $(D) -b $(B)
+
 upload: C := m328p
 upload: M := arduino
 upload: I := firmware/ArduinoISP_mega328.hex
