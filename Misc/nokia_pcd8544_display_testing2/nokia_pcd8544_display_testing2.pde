@@ -27,43 +27,45 @@ static PCD8544 lcd;
 
 
 void setup() {
-Serial.begin(57600);
-  // PCD8544-compatible displays may have a different resolution...
-  lcd.begin(84, 48);
 
-  lcd.send( LOW, 0x21 );  // LCD Extended Commands.
+    Serial.begin(57600);
+    Serial.println("nokia_pcd8544_display_testing2");
 
-  //doing nothing lcd.send( LOW, 0x81 );  // Set LCD Vop (Contrast). 
-  //lcd.send( LOW, 0xB9 );  // Set LCD Vop (Contrast). 
-  //lcd.send( LOW, 0xC2);   // default Vop (3.06 + 66 * 0.06 = 7V)
-  //lcd.send( LOW, 0xE0);   // higher Vop for ST7576,  too faint at default
+    // PCD8544-compatible displays may have a different resolution...
+    lcd.begin(84, 48);
 
-  //lcd.send( LOW, 0x04 );  // Set Temp coefficent. //0x04
-  //lcd.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
-  //lcd.send( LOW, 0x0C );  // LCD in normal mode.
+    lcd.send( LOW, 0x21 );  // LCD Extended Commands.
 
-  lcd.send( LOW, 0x20 );  // LCD Extended Commands toggle
-  
-  // Add the smiley to position "0" of the ASCII table...
-  lcd.createChar(0, glyph);
+    //doing nothing lcd.send( LOW, 0x81 );  // Set LCD Vop (Contrast). 
+    //lcd.send( LOW, 0xB9 );  // Set LCD Vop (Contrast). 
+    //lcd.send( LOW, 0xC2);   // default Vop (3.06 + 66 * 0.06 = 7V)
+    //lcd.send( LOW, 0xE0);   // higher Vop for ST7576,  too faint at default
+
+    //lcd.send( LOW, 0x04 );  // Set Temp coefficent. //0x04
+    //lcd.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
+    //lcd.send( LOW, 0x0C );  // LCD in normal mode.
+
+    lcd.send( LOW, 0x20 );  // LCD Extended Commands toggle
+
+    // Add the smiley to position "0" of the ASCII table...
+    lcd.createChar(0, glyph);
 }
 
 
 void loop() {
-Serial.println('loop');
-  // Just to show the program is alive...
-  static int counter = 0;
+    // Just to show the program is alive...
+    static int counter = 0;
 
-  // Write a piece of text on the first line...
-  lcd.setCursor(0, 0);
-  lcd.print("Hello, World!");
+    // Write a piece of text on the first line...
+    lcd.setCursor(0, 0);
+    lcd.print("Hello, World!");
 
-  // Write the counter on the second line...
-  lcd.setCursor(0, 1);
-  lcd.print(counter, DEC);
-  lcd.write(' ');
-  lcd.write(0);  // write the smiley
+    // Write the counter on the second line...
+    lcd.setCursor(0, 1);
+    lcd.print(counter, DEC);
+    lcd.write(' ');
+    lcd.write(0);  // write the smiley
 
-  delay(500);  
-  counter++;
+    delay(500);  
+    counter++;
 }

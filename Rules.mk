@@ -36,7 +36,7 @@ find:
 listen: D := $(PORT)
 listen: B := 57600
 listen:
-	minicom -D $(D) -b $(B)
+	minicom -D $(D) -b $(B) minirc.arduino
 
 upload: C := m328p
 upload: M := arduino
