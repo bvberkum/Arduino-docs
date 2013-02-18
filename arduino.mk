@@ -174,6 +174,11 @@ SOURCES := $(INOFILE) \
 LIBRARIES := $(filter $(notdir $(wildcard $(ARDUINODIR)/libraries/*)), \
 	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
 
+$(info adir $(ARDUINODIR))
+$(info libs $(notdir $(wildcard $(ARDUINODIR)/libraries/*)))
+$(info includes	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
+
+$(info LIBRARIES $(LIBRARIES))
 endif
 
 # no serial device? make a poor attempt to detect an arduino

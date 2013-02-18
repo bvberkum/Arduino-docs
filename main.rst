@@ -224,6 +224,9 @@ ArduinoISP_mega328.hex
 isp_flash_m328p.hex
   Run a JeeNode as Arduino ISP (with the flash board).
 
+vs-32.hex
+  Vectorscope image for atmega32, display adafruit image.
+  X-axis on port A, Y-axis on C.
 
 Protocols
 ----------

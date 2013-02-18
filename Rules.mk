@@ -199,7 +199,7 @@ arduino:
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
 		BOARD=$(B) \
-		make -f $$p/arduino.mk
+		make -f $$p/arduino.mk clean all
 
 #      ------------ -- 
 #

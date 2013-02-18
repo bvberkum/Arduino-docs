@@ -14,6 +14,7 @@
 // - R1-7:  1.8kOhm
 // - R8-10: 3.3kOhm
 // - D1-D4: 1N4148
+// - See pin definitions in code below for signal assignments.
 //
 // - http://telbonic.wordpress.com/2010/01/25/modified-3310-arduino-playground-code/
 // - http://playground.arduino.cc/Code/PCD8544
@@ -231,6 +232,14 @@ static const byte ASCII[][5] =
     0x78, 0x46, 0x41, 0x46, 0x78  } // 7f →
 };
 
+void LcdWrite(byte dc, byte data)
+{
+  digitalWrite(PIN_DC, dc);
+  digitalWrite(PIN_SCE, LOW);
+  shiftOut(PIN_SDIN, PIN_SCLK, MSBFIRST, data);
+  digitalWrite(PIN_SCE, HIGH);
+}
+
 void LcdCharacter(char character)
 {
   LcdWrite(LCD_D, 0x00);
@@ -275,27 +284,30 @@ void LcdString(char *characters)
   }
 }
 
-void LcdWrite(byte dc, byte data)
+void blink() 
 {
-  digitalWrite(PIN_DC, dc);
-  digitalWrite(PIN_SCE, LOW);
-  shiftOut(PIN_SDIN, PIN_SCLK, MSBFIRST, data);
-  digitalWrite(PIN_SCE, HIGH);
+  digitalWrite(A0, HIGH);
+  delay(20);
+  digitalWrite(A0, LOW);
+  delay(20);
 }
 
 void setup(void)
 {
   Serial.begin(57600);
-
+  pinMode(A0, OUTPUT);
+  blink();
 }
 
 void loop(void)
 {
   Serial.println("PC8544 - Nokia 3310/5510 display");
+  blink();
   LcdInitialise();
   LcdClear();
-  LcdString("Hello World!");
   delay(500);
+  LcdString("Hello World!");
+  delay(1500);
 }
 
 
