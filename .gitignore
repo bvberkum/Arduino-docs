@@ -10,3 +10,5 @@
 *.bz
 *.bz2
 *.rar
+#.lib
+#.dep
