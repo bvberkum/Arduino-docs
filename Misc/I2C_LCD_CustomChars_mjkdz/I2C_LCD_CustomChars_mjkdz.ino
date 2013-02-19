@@ -8,7 +8,11 @@
 //Library version:1.1
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-//#include <JeeLib.h>
+//#include <JeeLib.h> // Cannot use JeeLib ports yet while my I2C port expander
+// uses different LCD hookup.
+
+// Renamed the LiquidCrystal_I2C library version that does allow to configure
+// this to LiquidCrystalTmp_I2C.
 
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -25,7 +29,7 @@ uint8_t duck[8]  = {0x0,0xc,0x1d,0xf,0xf,0x6,0x0};
 uint8_t check[8] = {0x0,0x1,0x3,0x16,0x1c,0x8,0x0};
 uint8_t cross[8] = {0x0,0x1b,0xe,0x4,0xe,0x1b,0x0};
 uint8_t retarrow[8] = {	0x1,0x1,0x5,0x9,0x1f,0x8,0x4};
-  
+
 #define I2C_ADDR    0x20  // Define I2C Address where the PCF8574A is
 
 #define BACKLIGHT_PIN     7
@@ -79,8 +83,8 @@ void i2c_lcd_debug_displayKeyCodes(void) {
 
 void setup()
 {
-        Serial.begin(57600);
-        Serial.println("I2C_LCD_CustomChars_mjkdz");
+	Serial.begin(57600);
+	Serial.println("I2C_LCD_CustomChars_mjkdz");
 	i2c_lcd_init();
 
 	lcd.print("Hello world...");

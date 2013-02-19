@@ -12,7 +12,8 @@ MK                  += $(MK_$d)
 # DMK += $/dynamic-makefile.mk
 # DEP += $/generated-dependency
 # TRGT += $/build-target
-# CLN += $/tmpfile
+# XXX: using find here is so wastefull, there is no cache at all?
+CLN += $(shell find $/ -name .dep -or -name .lib)
 # TEST += $/testtarget
 
 METHODS = \
