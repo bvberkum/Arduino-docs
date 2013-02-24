@@ -1,12 +1,27 @@
 Arduino and AVR (avrdude) projects
 ==================================
-- Edam's arduino.mk makes building easy using the Arduino source package.
-- mkdoc Rules.mk is used for the rest, uploading, docs. 
 - The files in this repository are from my Arduino/sketchbook folder,
-  which I keep at <~/Documents/Dev/Arduino>
+  which I keep at <~/Documents/Dev/Arduino>. 
+
+Headless build
+--------------
+The sketches can be build without starting the Arduino frontend:
+
+- Edam's arduino.mk makes building easy using the Arduino source package,
+  it only needs a pointer to the current Arduino folder.
+- mkdoc Rules.mk is used for the rest, uploading, downloading, flashing bits, building docs, etc.
+- Example::
+
+    $ make arduino P=Mpe/Blink B=atmega328p
+    $ make upload I=Mpe/Blink/Blink.hex C=m328p M=arduino 
+
+  Read the source for more on the parameters.
 - I uses AVRISP mkII to upload sketches to m328p, using an USB BUB II module (w/ FTDI TF232RL chip).
 - Alternatively, the JeeNode is used as ISP using JeeLab's Flash Board to upload
   bootloaders.
+
+- **Libraries** are scanned for based on name, to inlude 'myLib.h' the file must
+  be in 
 
 * JeeNode Fuses stuff http://forum.jeelabs.net/node/848
 

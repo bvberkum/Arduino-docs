@@ -41,7 +41,8 @@ listen:
 
 upload: C := m328p
 upload: M := arduino
-upload: I := firmware/ArduinoISP_mega328.hex
+#upload: I := firmware/ArduinoISP_mega328.hex
+upload: I := firmware/isp_flash_m328p.hex
 upload: X := -D
 upload:
 	avrdude \
@@ -57,7 +58,7 @@ download: X := -D
 download:
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
-	sudo avrdude \
+	avrdude \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		-U eeprom:r:$$I-eeprom.hex:i \
@@ -171,7 +172,8 @@ m328p-16Mhz:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-# Cannot re-read protected flash without -e?
+
+# Cannot re-read protected flash without -e? check fuses
 #verify-betemcu: M := usbasp
 #verify-betemcu:
 #	sudo avrdude -p m8 \
@@ -198,14 +200,22 @@ m1284p:
 ARDUINODIR := ~/Application/arduino-1.0.3
 
 # Build anything in target folder 'P'
-arduino: P := 
+arduino: P := $/libraries/jeelib/examples/Ports/isp_flash/
 arduino: B := atmega328
+arduino: LIB := $/libraries/
 arduino: 
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
 		BOARD=$(B) \
 		make -f $$p/arduino.mk clean all
+
+arduino-boards:
+	@p=$$(realpath .);\
+	echo ARDUINODIR=$(ARDUINODIR);\
+	make -f $$p/arduino.mk boards
+
+
 
 #      ------------ -- 
 #

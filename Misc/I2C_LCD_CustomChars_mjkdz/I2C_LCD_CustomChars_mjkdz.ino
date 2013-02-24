@@ -7,7 +7,7 @@
 //Compatible with the Arduino IDE 1.0
 //Library version:1.1
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <LiquidCrystalTmp_I2C.h>
 //#include <JeeLib.h> // Cannot use JeeLib ports yet while my I2C port expander
 // uses different LCD hookup.
 

@@ -185,13 +185,13 @@ void LiquidCrystalTmp_I2C::setBacklight( uint8_t value )
    }
 }
 
-void LiquidCrystalTmp_I2C::backlight() {
-   setBacklight(BACKLIGHT_ON);
-}
-
-void LiquidCrystalTmp_I2C::noBacklight() {
-   setBacklight(BACKLIGHT_OFF);
-}
+//void LiquidCrystalTmp_I2C::backlight() {
+//   setBacklight(BACKLIGHT_ON);
+//}
+//
+//void LiquidCrystalTmp_I2C::noBacklight() {
+//   setBacklight(BACKLIGHT_OFF);
+//}
 
 
 
