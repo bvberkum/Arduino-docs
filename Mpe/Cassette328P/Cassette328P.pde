@@ -1,10 +1,31 @@
 /*
 
-- Leds (green, yellow, red) at 5, 6 and 7 (port D on the m328p)
-- Nordic nRF24L01+ 
-- I2C with LCD
-- I2C with RTC
-- TWI for DHTxx
+- Leds (green, yellow, red) at 5, 6 and 7 (PD on the m328p, 5 and 6 have PWM)
+- Nordic nRF24L01+ is at ISP plus D8 and D9 (PB0 and PB1), RF24 reset is not used?
+- LCD at hardware I2C port with address 0x20
+- RTC at I2C 0x68
+- DHT11 at A1 (PC1)
+
+Work in progress
+  - Basic peripherals working through I2C, ISP.
+  - Need to set up wireless mesh and test range.
+  - Need to rewrite using interrupts, implement serial protocols. And look out for power use.
+
+Plans
+  - Hookup a low-pass filter and play with PWM, sine generation at D10 (m328p: PB2).
+
+Research
+  - Can DHT be used in higher precision mode? this looks like 5%RH/2*C which is a bit course.
+  - Perhaps enable DEBUG/SERIAL modes internally, wonder what it does with the sketch size, no experience there.
+    Could use free ADC pin to measure level for verbosity, grey encoding would be cool witht he proper visuals.
+  - Optionally enable LCD when present, also, make control panel to go with display, using attiny85 as I2C slave.
+    Some buttons for menu. Perhaps touchscreen controller, remote reset.
+
+Free pins
+  - D3  PD3 PWM
+  - D4  PD4
+  - D10 PB2 PWM
+  - D20 A6 ADC6
 
 */
 
@@ -16,30 +37,94 @@
 //#include <JeeLib.h>
 
 
-#define LED_GREEN 5
-#define LED_YELLOW 6
-#define LED_RED 7
+/** Globals and sketch configuration  */
+// redifined?#define SERIAL      0   // set to 1 to also report readings on the serial port
+#define DEBUG       1   // set to 1 to report each loop() run and trigger on serial, and enable serial protocol
 
-/* DHTxx: Digital temperature/humidity (Adafruit library) */
+#define LED_GREEN   5
+#define LED_YELLOW  6
+#define LED_RED     7
+
+#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
+
+static byte myNodeID;     // node ID used for this unit
+static byte readCount;    // count up until next report, i.e. packet send
+
+/* Roles supported by this sketch */
+typedef enum { 
+  role_reporter = 1,  /* start enum at 1, 0 is reserved for invalid */
+  role_logger
+} Role;
+
+const char* role_friendly_name[] = { 
+  "invalid", 
+  "Reporter", 
+  "Logger"
+};
+
+Role role;// = role_logger;
+
+
+/* Data reported by this sketch */
+struct {
+//    byte light;     // light sensor: 0..255
+//    byte moved :1;  // motion detector: 0..1
+    byte humi  :7;  // humidity: 0..100
+    int temp   :10; // temperature: -500..+500 (tenths)
+//    byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
+// XXX: datetime	
+} payload;
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+/* DHTxx: Digital temperature/humidity (Adafruit) */
 #define DHTPIN A1
-#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
-//#define DHTTYPE DHT21   // DHT 21 (AM2301)
+#define DHTTYPE DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
+DHT dht(DHTPIN, DHTTYPE);
 /* DHTxx (jeelib) */
 //DHTxx dht (A1); // connected to ADC1
-
-DHT dht(DHTPIN, DHTTYPE);
 
 /* DS1307: Real Time Clock over I2C */
 #define DS1307_I2C_ADDRESS 0x68
 
-const uint64_t pipes[2] = { 0xF0F0F0F0E1LL, 0xF0F0F0F0D2LL };
-typedef enum { role_ping_out = 1, role_pong_back } role_e;
-const char* role_friendly_name[] = { "invalid", "Ping out", "Pong back"};
-
-role_e role = role_pong_back;
+/* nRF24L01+: 2.4Ghz radio  */
+const uint64_t pipes[2] = { 
+  0xF0F0F0F0E1LL, 
+  0xF0F0F0F0D2LL 
+};
 RF24 radio(9,8);
 
+static void mode_reporter(void)
+{
+  role = role_reporter;
+  radio.stopListening();
+  radio.openWritingPipe(pipes[1]);
+  radio.openReadingPipe(1, pipes[0]);
+  radio.startListening();
+}
+
+static void mode_logger(void)
+{
+  role = role_logger;
+  radio.stopListening();
+  radio.openWritingPipe(pipes[0]);
+  radio.openReadingPipe(1, pipes[1]);
+  radio.startListening();
+}
+
+
+/** Generic routines */
+
+//#if SERIAL || DEBUG
+static void serialFlush () {
+    #if ARDUINO >= 100
+        Serial.flush();
+    #endif  
+    delay(2); // make sure tx buf is empty before going back to sleep
+}
+//#endif
 
 void blink(int led, int count, int length) {
   for (int i=0;i<count;i++) {
@@ -175,23 +260,27 @@ void getDateDs1307(
 
 void rtc_init()
 {
-	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
+  byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 
-	Serial.println("WaimanTinyRTC");
-	Wire.begin();
-	getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
+//#if SERIAL || DEBUG
+  Serial.println("WaimanTinyRTC");
+//#endif
+  Wire.begin();
+  getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
-	if (second == 0 && minute == 0 && hour == 0 && month == 0 && year == 0) {
-		Serial.println("Warning: time reset");
-		second = 0;
-		minute = 31;
-		hour = 5;
-		dayOfWeek = 4;
-		dayOfMonth = 18;
-		month = 5;
-		year = 12;
-		setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year);
-	}
+  if (second == 0 && minute == 0 && hour == 0 && month == 0 && year == 0) {
+//#if SERIAL || DEBUG
+	Serial.println("Warning: time reset");
+//#endif
+	second = 0;
+	minute = 31;
+	hour = 5;
+	dayOfWeek = 4;
+	dayOfMonth = 18;
+	month = 5;
+	year = 12;
+	setDateDs1307(second, minute, hour, dayOfWeek, dayOfMonth, month, year);
+  }
 }
 
 void radio_init()
@@ -199,16 +288,47 @@ void radio_init()
   /* Setup and configure rf radio */
   radio.begin();
   radio.setRetries(15,15); /* delay, number */
-  radio.setPayloadSize(8);
+  //radio.setPayloadSize(8);
   // XXX: should I open r/w pipes here?
   /* Start radio */
+  radio.openReadingPipe(1,pipes[1]);
   radio.startListening();
-  //radio.printDetails();//DEBUG
+//#if SERIAL || DEBUG
+//  radio.printDetails();//DEBUG
+//#endif
 }
 
 void radio_run()
 {
-  if (role == role_ping_out)
+  if (role == role_logger)
+  {
+	if (radio.available()) {
+      unsigned long got_time;
+      bool done = false;
+      while (!done)
+      {
+        // Fetch the payload, and see if this was the last one.
+        done = radio.read( &got_time, sizeof(unsigned long) );
+        // Spew it
+        printf("Got payload %lu...", got_time);
+		// Delay just a little bit to let the other unit
+		// make the transition to receiver
+		delay(20);
+		
+		/** XXX: echo time during debugging */
+		// First, stop listening so we can talk
+		radio.stopListening();
+
+		// Send the final one back.
+		radio.write( &got_time, sizeof(unsigned long) );
+		printf("Sent response.\n\r");
+
+		// Now, resume listening so we catch the next packets.
+		radio.startListening();
+      }
+	}
+  }
+  if (role == role_reporter)
   {
     // First, stop listening so we can talk.
     radio.stopListening();
@@ -224,6 +344,8 @@ void radio_run()
 
     // Now, continue listening
     radio.startListening();
+
+	/* XXX: while debugging wait for echo and display time delay */
 
     // Wait here until we get a response, or timeout (250ms)
     unsigned long started_waiting_at = millis();
@@ -250,71 +372,6 @@ void radio_run()
     // Try again 1s later
     delay(1000);
   }
-
-  //
-  // Pong back role.  Receive each packet, dump it out, and send it back
-  //
-
-  if ( role == role_pong_back )
-  {
-    // if there is data ready
-    if ( radio.available() )
-    {
-      // Dump the payloads until we've gotten everything
-      unsigned long got_time;
-      bool done = false;
-      while (!done)
-      {
-        // Fetch the payload, and see if this was the last one.
-        done = radio.read( &got_time, sizeof(unsigned long) );
-
-        // Spew it
-        printf("Got payload %lu...",got_time);
-
-	// Delay just a little bit to let the other unit
-	// make the transition to receiver
-	delay(20);
-      }
-
-      // First, stop listening so we can talk
-      radio.stopListening();
-
-      // Send the final one back.
-      radio.write( &got_time, sizeof(unsigned long) );
-      printf("Sent response.\n\r");
-
-      // Now, resume listening so we catch the next packets.
-      radio.startListening();
-    }
-  }
-
-  //
-  // Change roles
-  //
-
-  if ( Serial.available() )
-  {
-    char c = toupper(Serial.read());
-    if ( c == 'T' && role == role_pong_back )
-    {
-      printf("*** CHANGING TO TRANSMIT ROLE -- PRESS 'R' TO SWITCH BACK\n\r");
-
-      // Become the primary transmitter (ping out)
-      role = role_ping_out;
-      radio.openWritingPipe(pipes[0]);
-      radio.openReadingPipe(1,pipes[1]);
-    }
-    else if ( c == 'R' && role == role_ping_out )
-    {
-      printf("*** CHANGING TO RECEIVE ROLE -- PRESS 'T' TO SWITCH BACK\n\r");
-      
-      // Become the primary receiver (pong back)
-      role = role_pong_back;
-      radio.openWritingPipe(pipes[1]);
-      radio.openReadingPipe(1,pipes[0]);
-    }
-  }
-
 }
 
 void dht_run(void)
@@ -327,23 +384,32 @@ void dht_run(void)
   // check if returns are valid, if they are NaN (not a number) then something went wrong!
   lcd.setCursor(0,0);
   if (isnan(t) || isnan(h)) {
+//#if SERIAL || DEBUG
 	Serial.println("Failed to read from DHT");
+//#endif
 	lcd.println("DHT error");
   } else {
+//#if SERIAL || DEBUG
 	Serial.print("Humidity: "); 
 	Serial.print(h);
-	Serial.println(" %");
+	Serial.println(" %RH");
 
 	Serial.print("Temperature: "); 
 	Serial.print(t);
 	Serial.println(" *C");
-
+//#endif
 	lcd.print(h);
-	lcd.print("% ");
+	lcd.print("%RH ");
 	lcd.print(t);
-	lcd.print("*C ");
+	lcd.print((char)223);
+	lcd.print("C ");
   }
 }
+// spend a little time in power down mode while the SHT11 does a measurement
+//static void dht_delay() {
+//    Sleepy::loseSomeTime(32); // must wait at least 20 ms
+//}
+
 
 void rtc_run(void)
 {
@@ -364,24 +430,60 @@ void rtc_run(void)
   lcd.print(second, DEC);
 }
 
+
+/* Main */
+
 void setup(void)
 {
+//#if SERIAL || DEBUG
   Serial.begin(57600);
-  Serial.println("Cassette328P");
+  Serial.print("\nCassette328P");
+  //myNodeID = rf24_config();
+  serialFlush();
+  //#else
+  //myNodeID = rf24_config(0); // don't report info on the serial port
+//#endif
 
   pinMode( LED_RED, OUTPUT );
   pinMode( LED_YELLOW, OUTPUT );
   pinMode( LED_GREEN, OUTPUT );
 	
+  blink(LED_RED,1,75);
+
+  radio_init();
+  mode_reporter();
   i2c_lcd_init();
   lcd.print("Cassette328P");
-  radio_init();
   rtc_init();
   dht.begin();
+
+  blink(LED_GREEN,4,75);
 }
 
 void loop(void)
 {
+  blink(LED_RED,2,75);
+
+//#if SERIAL || DEBUG
+  Serial.print('.');
+  serialFlush();
+  while ( Serial.available() > 0 ) {
+  	Serial.print(Serial.read());
+  	continue; // XXX
+
+	char c = toupper(Serial.read());
+	if ( c == 'R' && role == role_logger) {
+	  //mode_reporter();
+	} else if ( c == 'L' && role == role_reporter) {
+	  //mode_logger();
+	} else {
+	  Serial.print(c);
+	  Serial.println("?");
+	}
+  }
+  Serial.println();
+//#endif
+
   blink(LED_YELLOW,2,75);
   rtc_run();
 
@@ -394,5 +496,5 @@ void loop(void)
   blink(LED_GREEN,1,75);
   delay(500);
 }
-// vim:cin:ai:noet:sts=2 sw=2 ft=cpp
 
+// vim:cin:ai:noet:sts=2 sw=2 ft=cpp

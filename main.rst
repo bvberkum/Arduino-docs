@@ -3,6 +3,8 @@ Arduino and AVR (avrdude) projects
 - The files in this repository are from my Arduino/sketchbook folder,
   which I keep at <~/Documents/Dev/Arduino>. 
 
+
+
 Headless build
 --------------
 The sketches can be build without starting the Arduino frontend:
@@ -27,8 +29,8 @@ The sketches can be build without starting the Arduino frontend:
 
 Arduino/AVRdude
 ----------------
-What does it do. 
-Lets introduce the boards first:
+An introduction to the world of ~.
+Lets introduce the main boards. 
 
 Arduino NG (Nuova Generazione)
   - An USB board with ATmega8, later ATmega168.
@@ -45,18 +47,36 @@ JeeNode
 
 As usual, 8, 168 and 328 are interchangeable with notes on implementation
 details and implication for applications.
+The same seems to go for 16/32/644/1284, but I need to research that.
 
-::
+Now, to write software to the boards: avrdude. Involved hardware is discussed
+later. The chips have fuses and two memory areas; eeprom and flash, the syntax to 
+access::
+
   avrdude
     -U <memtype>:r|w|v:<filename>[:format]
 
-Using Arduino as ISP::
-  
-  avrdude -v -p m8 -cstk500v1 -P/dev/ttyUSB0 -b 19200 -D 
+After fuses and a bootloader has been "burned" we can use the Arduino way of
+uploading "sketches": we hook a serial device which has DTR attached to the
+reset line. After the reset the chip now accepts a new program which it writes
+after the existing bootloader which is now protected memory area, I'm not sure 
+on the protocol but that is how I understand it.
 
-Using ISP, set the fuses and bootloader. Then use the other protocols for
-program uploads. The lock bit will protect the bootloader, and load only the
-program over serial--the Arduino way.
+The initial burning knows several methods and phases. I've read new chips need
+to be HV programmed once. Generally I have been successfull using arduinoisp 
+and USBasp interfaces to burn the fuses and bootloader. I think both are 5V.
+Once the protection bits are set in the fuses, a reburn requires the ``-e`` flag 
+to erase the chip first. The makefile uses flag ``-D`` normally which prevents
+erase.
+
+Using Arduino as ISP (I use a JeeNode but avrdude works the same, although the 
+actual on-chip software and pinout may be different)::
+  
+  avrdude -v -cstk500v1 -P/dev/ttyUSB0 -b 19200
+
+Or using USBasp::
+
+  avrdude -v -c usbasp -P usb
 
 Common options::
   
@@ -67,23 +87,19 @@ Common options::
     -D
     -p atmega328p
 
-Upload ArduinoISP using standard Arduino::
-
-    -U flash:firmware/ArduinoISP_mega328.hex
-
 XXX:Upload usbasp bootloader using JeeNode ISP?::
 
     avrdude -v -p m8 -c usbasp 
       -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U lock:w:0x0F:m
       -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
 
-Using usbasp::
+XXX: Using usbasp::
   
   avrdude -C/home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf -v
-  -v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
-  -Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
+    -v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
+    -Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
 
-So, again, that means:
+So, in summary the serial settings:
 
 =================== ======== ==================
 Protocol            Baudrate Device
@@ -93,7 +109,13 @@ Arduino ISP         19200    JeeNode
 Uno (optiboot?)     115200    
 =================== ======== ==================
 
-Also listed the device I use.
+I'm using 57600, 3.3v, 16Mhz whenever I can in my homebuilds.
+
+That means being stuck on 328P chips while I guess lower values are needed
+on m8, m16, m32, m48, tiny85 are easily and cheaply available and I plan to 
+experiment with. 
+
+Remember running ATmega328P at 3.3v/16Mhz is out of specs already.
 
 .. [#] <http://jeelabs.net/projects/hardware/wiki/JeeNode>
 
@@ -117,9 +139,20 @@ USBisp m8           0x1e9307       0xCF  0xBF  -     0x3C  0x
 eBay Sanguino 1284  0x             0x    0x    0x    0x    0x  
 =================== ============== ===== ===== ===== ===== ======
 
+Boards
+------
+uC16A
+  - First prototype.
+uC32A
+  - First sanguino footprint module.
+  - XXX: Need to check if it confirms or has analog reversed.
+Cassette328P
+  - First Arduino clone board, in old tape cassette.
 
 Module support
 --------------
+Notes on individual plugs and modules. 
+
 USBisp ``mx-usbisp-v3.00``
   I'm not sure if the delivered device is supposed to do anything, I cant test
   it outside of Linux, and I'm pretty sure it's not doing anything there.
