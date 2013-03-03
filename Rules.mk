@@ -35,7 +35,8 @@ find:
 	find ./ -iname '*.hex'
 
 listen: D := $(PORT)
-listen: B := 57600
+#listen: B := 57600
+listen: B := 38400
 listen:
 	minicom -D $(D) -b $(B) minirc.arduino
 
@@ -172,7 +173,6 @@ m328p-16Mhz:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-
 # Cannot re-read protected flash without -e? check fuses
 #verify-betemcu: M := usbasp
 #verify-betemcu:
@@ -186,6 +186,12 @@ m328p-16Mhz:
 #	sudo avrdude -p m8 \
 #		$(call key,METHODS,$(M)) \
 #  	-U lock:w:0x3C:m 
+
+cassette328p: D := $/
+cassette328p: 
+	cd $D;\
+	make arduino upload P=Mpe/Cassette328P I=Mpe/Cassette328P/Cassette328P.hex
+
 
 m1284p: M := arduinoisp
 m1284p: 
@@ -203,12 +209,13 @@ ARDUINODIR := ~/Application/arduino-1.0.3
 arduino: P := $/libraries/jeelib/examples/Ports/isp_flash/
 arduino: B := atmega328
 arduino: LIB := $/libraries/
+arduino: TARGETS := clean all
 arduino: 
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
 		BOARD=$(B) \
-		make -f $$p/arduino.mk clean all
+		make -f $$p/arduino.mk $(TARGETS)
 
 arduino-boards:
 	@p=$$(realpath .);\
