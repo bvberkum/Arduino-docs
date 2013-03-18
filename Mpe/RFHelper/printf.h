@@ -37,6 +37,8 @@ void printf_begin(void)
 #endif // __PRINTF_H__
 
 
+// XXX: added as test
+
 #ifdef SUPPORT_LONGLONG
 
 void Print::println(int64_t n, uint8_t base)

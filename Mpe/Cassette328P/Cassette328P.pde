@@ -14,16 +14,10 @@ An atmega328p TQFP chip with various peripherals:
 	perhaps where needed there is time for more efficient and low-power
 	implementation.
 
-Work in progress
-  - Basic peripherals working through I2C, ISP.
-  - Need to set up wireless mesh and test range.
-  - Need to rewrite using interrupts, implement serial protocols. And look out for power use.
-
 Plans
   - Hookup a low-pass filter and play with PWM, sine generation at D10 (m328p: PB2).
 
 Research
-  - Can DHT be used in higher precision mode? this looks like 5%RH/2*C which is a bit course.
   - Perhaps enable DEBUG/SERIAL modes internally, wonder what it does with the sketch size, no experience there.
     Could use free ADC pin to measure level for verbosity, grey encoding would be cool witht he proper visuals.
   - Optionally enable LCD when present, also, make control panel to go with display, using attiny85 as I2C slave.
@@ -38,24 +32,31 @@ Free pins
 
 #include <avr/io.h>
 #include <JeeLib.h>
+#include <avr/sleep.h>
+#include <util/atomic.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <RF24.h>
 #include <DHT.h>
 #include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
+
 #include "printf.h"
 
 
 /** Globals and sketch configuration  */
 // redifined?#define SERIAL      0   // set to 1 to also report readings on the serial port
 #define DEBUG       1   // set to 1 to report each loop() run and trigger on serial, and enable serial protocol
+#define SERIAL  1   // set to 1 to also report readings on the serial port
+#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 
 #define LED_RED   5
 #define LED_YELLOW  6
 #define LED_GREEN     7
 
 #define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define MEASURE_PERIOD  5000 // how often to measure, in tenths of seconds
 
 /**
  * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
@@ -82,6 +83,11 @@ struct Config {
 
 Config config;
 
+enum { MEASURE, REPORT, TASK_END };
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+static byte reportCount;    // count up until next report, i.e. packet send
+
 /* Allow invokation of commands with up to 7 args */
 SimpleFIFO<uint8_t,8> cmdseq; //store 10 ints
 
@@ -95,7 +101,7 @@ typedef enum {
 	cmd_print_settings  = 0x40, // '@'
 	cmd_reset_settings = 0x23, // '#'
 	cmd_help = 0x3F, // '?'
-	cmd_run = 0x24, // '$'
+	cmd_report= 0x24, // '$'
 	cmd_4 = 0x25, // '%'
 	cmd_5 = 0x26, // '&'
 	cmd_6 = 0x28, // '('
@@ -106,7 +112,10 @@ typedef enum {
 int service_mode = 0;
 
 /* Support for Sleepy::loseSomeTime() */
-EMPTY_INTERRUPT(WDT_vect);
+//EMPTY_INTERRUPT(WDT_vect);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* Roles supported by this sketch */
 typedef enum { 
@@ -391,16 +400,16 @@ void rtc_init()
 {
 	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 
-	//#if SERIAL || DEBUG
+#if SERIAL || DEBUG
 	Serial.println("WaimanTinyRTC");
-	//#endif
+#endif
 	Wire.begin();
 	getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
 	if (second == 0 && minute == 0 && hour == 0 && month == 0 && year == 0) {
-		//#if SERIAL || DEBUG
+#if SERIAL || DEBUG
 		Serial.println("Warning: time reset");
-		//#endif
+#endif
 		second = 0;
 		minute = 31;
 		hour = 5;
@@ -424,14 +433,14 @@ void dht_run(void)
 		lcd.setCursor(0,0);
 	}
 	if (isnan(t) || isnan(h)) {
-		//#if SERIAL || DEBUG
+#if SERIAL || DEBUG
 		Serial.println("Failed to read from DHT");
-		//#endif
+#endif
 		if (config.display) {
 			lcd.println("DHT error");
 		}
 	} else {
-		//#if SERIAL || DEBUG
+#if SERIAL || DEBUG
 		Serial.print("Humidity: "); 
 		Serial.print(h);
 		Serial.println(" %RH");
@@ -439,7 +448,7 @@ void dht_run(void)
 		Serial.print("Temperature: "); 
 		Serial.print(t);
 		Serial.println(" *C");
-		//#endif
+#endif
 		if (config.display) {
 			lcd.print(h);
 			lcd.print("%RH ");
@@ -449,10 +458,6 @@ void dht_run(void)
 		}
 	}
 }
-// spend a little time in power down mode while the SHT11 does a measurement
-//static void dht_delay() {
-//    Sleepy::loseSomeTime(32); // must wait at least 20 ms
-//}
 
 void rtc_run(void)
 {
@@ -475,12 +480,12 @@ void rtc_run(void)
 	}
 }
 
-/* I guess this hooks into the RX ISR's. The serial buffer is 1 byte, which can
- * stay in the FIFO as long as the second byte is being received. */
 uint8_t cmd;
 
 bool rx_overflow = false;
 
+/* I guess this hooks into the RX ISR's. The serial buffer is 1 byte, which can
+ * stay in the FIFO as long as the second byte is being received. */
 void serialEvent()
 {
 	while (Serial.available()) {
@@ -498,6 +503,10 @@ void serial_init(void)
 	serialFlush();
 }
 
+/**
+ * Using this to wake up chip by hardware jumper.
+ * Need to look for an interrupt.
+ */
 int serviceMode(void) 
 {
 	pinMode(LED_RED, INPUT);
@@ -563,6 +572,91 @@ void setup_peripherals()
 	blink(LED_GREEN, 4, 100);
 }
 
+static void doMeasure() 
+{
+	byte firstTime = payload.humi == 0; // special case to init running avg
+	/* FIXME: do measure to payload */
+}    
+
+static void doReport()
+{
+	// TODO: send over radio
+	if (config.rtc) {
+		blink(LED_YELLOW, 2, 25);
+		rtc_run();
+	}
+	if (config.radio) {
+		blink(LED_YELLOW, 2, 25);
+		radio_run();
+	}
+	if (config.dht) {
+		blink(LED_YELLOW, 2, 25);
+		dht_run();
+	}
+}
+
+static void runCommand()
+{
+	blink(LED_YELLOW, 20, 1 );
+	uint8_t cmd = cmdseq.dequeue();
+	switch (cmd) {
+
+		case cmd_reset_settings:
+			saveConfig(static_config);
+			config = static_config;
+			setup_peripherals();
+			break;
+
+		case cmd_print_settings:
+//					Serial.print("rf24id=");
+//					Serial.println(config.rf24id, HEX);
+//					Serial.print("rf24routes[0]=");
+//					Serial.println(config.rf24routes[0], HEX);
+			Serial.print("display=");
+			Serial.println(config.display, BIN);
+			Serial.print("radio=");
+			Serial.println(config.radio, BIN);
+			Serial.print("dht=");
+			Serial.println(config.dht, BIN);
+			Serial.print("rtc=");
+			Serial.println(config.rtc, BIN);
+			break;
+
+		case cmd_help:
+			Serial.println("Commands:");
+			Serial.println(" 0x21 '!'  Enter service mode");
+			Serial.println(" 0x23 '#'  Reset config");
+			Serial.println(" 0x24 '$'  Do report");
+			Serial.println(" 0x40 '@'  Print config");
+			Serial.println(" 0x72 'r'  Radio info");
+			break;
+
+		case cmd_report:
+			doReport();
+			break;
+
+		case cmd_print_rf12info:
+			if (config.radio) {
+				radio.printDetails();
+			}
+			Serial.println("r ACK");
+			break;
+
+		case cmd_service_mode:
+			//service_mode = millis();
+			break;
+
+		default:
+			Serial.print("0x");
+			Serial.print(cmd, HEX);
+			Serial.println("?");
+			blink(LED_YELLOW, 5, 25 );
+	}
+	cmdseq.flush();
+	Serial.println(".");
+	blink(LED_GREEN, 2, 75 );
+}
+
 /* Main */
 
 void setup(void)
@@ -578,6 +672,7 @@ void setup(void)
 	digitalWrite( LED_YELLOW, HIGH );
 
 	serial_init();
+	delay(250);
 
 	/* Read config from memory, or initialize with defaults */
 	if (!loadConfig(config)) 
@@ -587,8 +682,13 @@ void setup(void)
 	}
 
 	digitalWrite( LED_RED, LOW );
+
 	setup_peripherals();
+
 	digitalWrite( LED_YELLOW, LOW );
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 void loop(void)
@@ -597,90 +697,47 @@ void loop(void)
 		blink(LED_RED, 1, 75 );
 		rx_overflow = false;
 	}
-	/* Determine if there are any commands to run */
 	if (cmdseq.count() > 0) {
-		while (cmdseq.count() > 0) {
-			blink(LED_YELLOW, 20, 1 );
-			uint8_t cmd = cmdseq.dequeue();
-			switch (cmd) {
-				case cmd_reset_settings:
-					saveConfig(static_config);
-					config = static_config;
-					setup_peripherals();
-					break;
-				case cmd_print_settings:
-					Serial.print("display=");
-					Serial.println(config.display, BIN);
-					Serial.print("radio=");
-					Serial.println(config.radio, BIN);
-					Serial.print("dht=");
-					Serial.println(config.dht, BIN);
-					Serial.print("rtc=");
-					Serial.println(config.rtc, BIN);
-					break;
-				case cmd_help:
-					Serial.println("Commands:");
-					Serial.println(" 0x21 '!'  Enter service mode");
-					Serial.println(" 0x23 '#'  Reset config");
-					Serial.println(" 0x24 '$'  Give report");
-					Serial.println(" 0x40 '@'  Print config");
-					Serial.println(" 0x72 'r'  Radio info");
-					break;
-				case cmd_run:
-					if (config.rtc) {
-						blink(LED_YELLOW, 2, 25);
-						rtc_run();
-					}
-					if (config.radio) {
-						blink(LED_YELLOW, 2, 25);
-						radio_run();
-					}
-					if (config.dht) {
-						blink(LED_YELLOW, 2, 25);
-						dht_run();
-					}
-					break;
-				case cmd_print_rf12info:
-					if (config.radio) {
-						radio.printDetails();
-					}
-					cmdseq.flush();
-					Serial.println("r ACK");
-					break;
-				case cmd_service_mode:
-					//service_mode = millis();
-					cmdseq.flush();
-					break;
-				default:
-					Serial.print("0x");
-					Serial.print(cmd, HEX);
-					Serial.println("?");
-					blink(LED_YELLOW, 5, 25 );
-					cmdseq.flush();
-			}
-		}
-		Serial.println(".");
-		blink(LED_GREEN, 2, 75 );
+		runCommand();
 	}
-
-	return;
 	/* Do nothing but count uptime while LED_RED is bypassed to HIGH */
-	if (serviceMode()) {
-		if (service_mode == NULL) {
-			Serial.println("servicemode");
-		}
-		service_mode = millis();
-		if (service_mode % 100) {
-			blink(LED_YELLOW, 1, 150);
-		}
-		delay(20);
-		return;
-	} else {
-		service_mode = NULL;
-	}
-
-	blink(LED_GREEN, 3, 50);
+	//if (serviceMode()) {
+	//	if (service_mode == NULL) {
+	//		Serial.println("servicemode");
+	//	}
+	//	service_mode = millis();
+	//	if (service_mode % 100) {
+	//		blink(LED_YELLOW, 1, 150);
+	//	}
+	//	delay(20);
+	//	return;
+	//} else {
+	//	service_mode = NULL;
+	//}
+//	switch (scheduler.pollWaiting()) {
+//
+//		case MEASURE:
+//			Serial.println("Start measure");
+//			// reschedule these measurements periodically
+//			scheduler.timer(MEASURE, MEASURE_PERIOD);
+//			doMeasure();
+//			// every so often, a report needs to be sent out
+//			if (++reportCount >= REPORT_EVERY) {
+//					reportCount = 0;
+//					scheduler.timer(REPORT, 0);
+//			}
+//			break;
+//
+//		case REPORT:
+//			Serial.println("Start report");
+doReport();
+//			break;
+//
+//	}
+	//blink(LED_GREEN, 3, 50);
+#if DEBUG	
 	Serial.println("sleep");
+#endif
 	serialFlush();
 	/* Go low power and wake up after given miliseconds */
 	/* Returns 1 or 0 on interrupt, but most interrupts will be down. */
