@@ -49,10 +49,10 @@ static const byte DEGREES_CHAR = 1;
 static const byte degrees_glyph[] = { 0x00, 0x07, 0x05, 0x07, 0x00 };
 
 // A bitmap graphic (10x2) of a thermometer...
-//static const byte THERMO_WIDTH = 10;
-//static const byte THERMO_HEIGHT = 2;
-//static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x02, 0x05, 0x02,
-//	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
+static const byte THERMO_WIDTH = 10;
+static const byte THERMO_HEIGHT = 2;
+static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x02, 0x05, 0x02,
+	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
 
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 static DHT dht(sensorPin, DHT11);
@@ -84,7 +84,7 @@ void loop() {
 
 	// Draw the thermometer bitmap at the bottom left corner...
 	//lcd.setCursor(0, LCD_HEIGHT/8 - THERMO_HEIGHT);
-	//lcd.drawBitmap(thermometer, THERMO_WIDTH, THERMO_HEIGHT);
+	lcd.drawBitmap(thermometer, THERMO_WIDTH, THERMO_HEIGHT);
 
 	// Wrap the chart's current position...
 	if (xChart >= LCD_WIDTH) {
