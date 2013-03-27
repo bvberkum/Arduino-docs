@@ -4,20 +4,21 @@
  * http://www.kerrywong.com
  */
 
-#define __AVR_ATmega328P__
+// XXX: #need __AVR_ATmega328P__ ?
+// XXX: got it to compile with latest Arduino (1.0.3)
 
 #include <avr/interrupt.h>
 #include <binary.h>
 #include <HardwareSerial.h>
 #include <pins_arduino.h>
-#include <WConstants.h>
-#include <wiring.h>
+//#include <WConstants.h>
+//#include <wiring.h>
 #include <wiring_private.h>
 #include <math.h>
-#include <WProgram.h>
-#include <EEPROM/EEPROM.h>
-#include <LiquidCrystal/LiquidCrystal.h>
-#include <FreqCounter/FreqCounter.h>
+//#include <WProgram.h>
+//#include <EEPROM/EEPROM.h>
+#include <LiquidCrystal.h>
+#include <FreqCounter.h>
 
 enum MeterMode {
     L,
