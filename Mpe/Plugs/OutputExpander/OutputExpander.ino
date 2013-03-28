@@ -1,31 +1,55 @@
+/**
+
+*/
+#include <PCD8544.h>
+#include <FreqCounter.h>
+#include <JeeLib.h>
+#include <avr/sleep.h>
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+static const byte LCD_WIDTH = 84;
+static const byte LCD_HEIGHT = 48;
+
+static PCD8544 lcd(3, 4, 9, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
+
 //Pin connected to ST_CP of 74HC595
 int latchPin = 8;
 //Pin connected to SH_CP of 74HC595
 int clockPin = 12;
-////Pin connected to DS of 74HC595
+//Pin connected to DS of 74HC595
 int dataPin = 11;
+// Testing on 5 pins (MSB, so starting at 
+int maxPins = 5;
 
-void setup() {
-  //set pins to output so you can control the shift register
-  pinMode(latchPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);
+void setOne(int q)
+{
+	digitalWrite(latchPin, LOW);
+	shiftOut(dataPin, clockPin, MSBFIRST, 1 << q);
+	digitalWrite(latchPin, HIGH);
+}
+
+void setup() 
+{
+    Serial.begin( 57600 );
+    lcd.begin(LCD_WIDTH, LCD_HEIGHT);
+    lcd.setCursor(0, 0);
+    lcd.print("OutputExpander");
+    //set pins to output so you can control the shift register
+    pinMode(latchPin, OUTPUT);
+    pinMode(clockPin, OUTPUT);
+    pinMode(dataPin, OUTPUT);
 }
 
 void loop() {
-  // count from 0 to 255 and display the number 
-  // on the LEDs
-  for (int numberToDisplay = 0; numberToDisplay < 256; numberToDisplay++) {
-    // take the latchPin low so 
-    // the LEDs don't change while you're sending in bits:
-    digitalWrite(latchPin, LOW);
-    // shift out the bits:
-    shiftOut(dataPin, clockPin, MSBFIRST, numberToDisplay);  
-
-    //take the latch pin high so the LEDs will light up:
-    digitalWrite(latchPin, HIGH);
-    // pause before next value:
-    delay(500);
-  }
+	for (int pinNumber = 0; pinNumber < maxPins; pinNumber++) {
+		setOne(pinNumber);
+		lcd.setCursor(0, 1);
+		lcd.print(pinNumber);
+		Serial.println(pinNumber);
+		//Sleepy::loseSomeTime(300);
+		delay(200);
+	}
 }
 

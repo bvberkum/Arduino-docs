@@ -26,33 +26,64 @@ int cntr = 0;
 
 static PCD8544 lcd(3, 4, 9, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
+//Pin connected to ST_CP of 74HC595
+int latchPin = 8;
+//Pin connected to SH_CP of 74HC595
+int clockPin = 12;
+//Pin connected to DS of 74HC595
+int dataPin = 11;
+// Testing on 3 pins
+int maxPins = 3;
+int pinNumber = 0;
+
+void setOne(int q)
+{
+	digitalWrite(latchPin, LOW);
+	shiftOut(dataPin, clockPin, MSBFIRST, 1 << q);
+	digitalWrite(latchPin, HIGH);
+}
 
 void setup()
 {
 	Serial.begin( 57600 );
 
-	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
+    pinMode(latchPin, OUTPUT);
+    pinMode(clockPin, OUTPUT);
+    pinMode(dataPin, OUTPUT);
 
-	lcd.setCursor(0, 0);
-	lcd.print("FrequencyMeter");
+	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
 }
 
 void loop()
 {
+	lcd.clear();
 	Serial.println(".");
 
-	FreqCounter::f_comp = 106;
-	FreqCounter::f_comp = 10;
-	FreqCounter::start(1000);
+	lcd.setCursor(0, 0);
+	lcd.print("FrequencyMeter");
+
+	setOne(pinNumber++);
+
+	lcd.setCursor(0, 2);
+	lcd.print(pinNumber, 1);
+
+	delay(100);
+
+//	FreqCounter::f_comp = 106;
+	FreqCounter::f_comp = 100;
+	FreqCounter::start(100);
 	while (FreqCounter::f_ready == 0)
 		frequency = FreqCounter::f_freq;
 	
-	lcd.clear();
 	lcd.setCursor(0, 1);
 	lcd.print(frequency, 1);
-	lcd.print(" cycles");
+//	lcd.print(" cycles");
 
-//	Sleepy::loseSomeTime(500);
+	if (pinNumber == maxPins) {
+		pinNumber = 0;
+	}
+
+	Sleepy::loseSomeTime(200);
 //	byte minutes = 5; 
 //	while (minutes-- > 0)
 //		Sleepy::loseSomeTime(60000);
