@@ -1,4 +1,5 @@
 #include <SPI.h>
+#include "nRF24L01.h"
 #include <RF24.h>
 
 #include "printf.h"
@@ -6,6 +7,17 @@
 
 #define DEBUG       1
 #define SERIAL      1
+
+/** Generic routines */
+
+#if SERIAL 
+static void serialFlush () {
+#if ARDUINO >= 100
+  Serial.flush();
+#endif  
+  delay(2); // make sure tx buf is empty before going back to sleep
+}
+#endif
 
 /* Roles supported by this sketch */
 typedef enum { 
@@ -26,7 +38,7 @@ const uint64_t pipes[2] = {
   0xF0F0F0F0E1LL, /* local id */
   0xF0F0F0F0D2LL /* node id */
 };
-RF24 radio(9,8);
+RF24 radio(12, 13); /* CE, CS */
 
 void radio_init()
 {
@@ -39,6 +51,7 @@ void radio_init()
   radio.startListening();
 #if SERIAL && DEBUG
   radio.printDetails();
+  serialFlush();
 #endif
 }
 
@@ -65,17 +78,6 @@ void radio_run()
 }
 
 
-/** Generic routines */
-
-#if SERIAL 
-static void serialFlush () {
-#if ARDUINO >= 100
-  Serial.flush();
-#endif  
-  delay(2); // make sure tx buf is empty before going back to sleep
-}
-#endif
-
 /* Main */
 
 void setup(void)
@@ -84,6 +86,7 @@ void setup(void)
   Serial.begin(57600);
 #endif
 #if SERIAL && DEBUG
+  printf_begin();
   Serial.print("\nRF24Logger");
   serialFlush();
 #endif
@@ -93,7 +96,7 @@ void setup(void)
 
 void loop(void)
 {
-#if DEBUG 
+#if SERIAL && DEBUG
   Serial.println('.');
 #endif
   radio_run();

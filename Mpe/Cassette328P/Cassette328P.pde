@@ -157,7 +157,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
 
-RF24 radio(9,8);
+RF24 radio(12,13); /* CE, CS */
 
 void radio_init()
 {

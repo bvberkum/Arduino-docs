@@ -17,6 +17,7 @@ CLN += $(shell find $/ -name .dep -or -name .lib)
 # TEST += $/testtarget
 
 METHODS = \
+		arduino_="-c arduino -P $(PORT) -b 19200"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
 		arduinoisp="-cstk500v1 -P $(PORT) -b19200"; \
 	  usbasp="-c usbasp -P usb"
@@ -35,8 +36,8 @@ find:
 	find ./ -iname '*.hex'
 
 listen: D := $(PORT)
-#listen: B := 57600
-listen: B := 38400
+listen: B := 57600
+#listen: B := 38400
 listen:
 	minicom -D $(D) -b $(B) minirc.arduino
 
@@ -115,6 +116,26 @@ m32-DI-8Mhz-int:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
+# from /home/berend/Application/arduino-0021/hardware/arduino/boards.txt
+#m8-16Mhz: M := usbasp
+m8-16Mhz: M := arduinoisp
+#m8-16Mhz: I := firmware/ATmegaBOOT.hex
+# from 1.0.3
+m8-16Mhz: I := firmware/ATmegaBOOT-prod-firmware-2009-11-07.hex
+m8-16Mhz:
+	avrdude \
+		-p m8 -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xDF:m -U hfuse:w:0xCA:m
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m8 \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
+
 m8: M := arduinoisp
 m8: 
 	avrdude \
@@ -158,7 +179,7 @@ m328p-8Mhz:
 
 m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
 #m328p-16Mhz: I := firmware/optiboot_atmega328.hex
-m328p-16Mhz: M := arduinoisp
+m328p-16Mhz: M := usbasp
 m328p-16Mhz:
 	avrdude \
 		-p m328p -e \

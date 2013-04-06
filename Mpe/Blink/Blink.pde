@@ -1,5 +1,5 @@
-int start = 5;
-int pins = 3;
+int start = 13;
+int pins = 2;
 
 void blink(int led, int count, int length) {
   for (int i=0;i<count;i++) {
