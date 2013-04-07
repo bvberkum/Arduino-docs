@@ -224,7 +224,7 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-ARDUINODIR := ~/Application/arduino-1.0.3
+ARDUINODIR := /home/berend/Application/arduino-1.0.3
 
 # Build anything in target folder 'P'
 arduino: P := $/libraries/jeelib/examples/Ports/isp_flash/
