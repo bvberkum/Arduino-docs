@@ -1,15 +1,15 @@
-[submodule "libraries/TouchScreen"]
-	path = libraries/TouchScreen
-	url = git://github.com/practicalarduino/TouchScreen.git
-[submodule "TouchscreenCoordinates"]
-	path = TouchscreenCoordinates
-	url = git://github.com/practicalarduino/TouchscreenCoordinates.git
-[submodule "TouchControlPanel"]
-	path = TouchControlPanel
-	url = git://github.com/practicalarduino/TouchControlPanel.git
-[submodule "TouchControlPanelDisplay"]
-	path = TouchControlPanelDisplay
-	url = git://github.com/practicalarduino/TouchControlPanelDisplay.git
+#[submodule "libraries/TouchScreen"]
+#	path = libraries/TouchScreen
+#	url = git://github.com/practicalarduino/TouchScreen.git
+#[submodule "TouchscreenCoordinates"]
+#	path = TouchscreenCoordinates
+#	url = git://github.com/practicalarduino/TouchscreenCoordinates.git
+#[submodule "TouchControlPanel"]
+#	path = TouchControlPanel
+#	url = git://github.com/practicalarduino/TouchControlPanel.git
+#[submodule "TouchControlPanelDisplay"]
+#	path = TouchControlPanelDisplay
+#	url = git://github.com/practicalarduino/TouchControlPanelDisplay.git
 #[submodule "Ps2Keyboard"]
 #	path = libraries/Ps2Keyboard
 #	url = git://github.com/practicalarduino/Ps2Keyboard.git
