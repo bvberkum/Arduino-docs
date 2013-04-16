@@ -11,8 +11,8 @@
 	path = TouchControlPanelDisplay
 	url = git://github.com/practicalarduino/TouchControlPanelDisplay.git
 [submodule "Ps2Keyboard"]
-	path = Ps2Keyboard
+	path = libraries/Ps2Keyboard
 	url = git://github.com/practicalarduino/Ps2Keyboard.git
 [submodule "VirtualUsbKeyboard"]
-	path = VirtualUsbKeyboard
+	path = Misc/VirtualUsbKeyboard
 	url = git://github.com/practicalarduino/VirtualUsbKeyboard.git
