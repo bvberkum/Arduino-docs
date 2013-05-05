@@ -19,7 +19,8 @@ CLN += $(shell find $/ -name .dep -or -name .lib)
 METHODS = \
 		arduino_="-c arduino -P $(PORT) -b 19200"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
-		arduinoisp="-cstk500v1 -P $(PORT) -b19200"; \
+		parisp="-c avr-par-isp-mpe -b 19200"; \
+		arduinoisp="-cstk500v1 -P $(PORT) -b 19200"; \
 	  usbasp="-c usbasp -P usb"
 #IMAGES := \
 #	blink=firmware/betemcu-usbasp/misc/betemcu_blink/betemcu_blink.cpp.hex\
@@ -43,8 +44,8 @@ listen:
 
 upload: C := m328p
 upload: M := arduino
-#upload: I := firmware/ArduinoISP_mega328.hex
-upload: I := firmware/isp_flash_m328p.hex
+upload: I := firmware/ArduinoISP_mega328.hex
+#upload: I := firmware/isp_flash_m328p.hex
 upload: X := -D
 upload:
 	avrdude \
@@ -52,6 +53,20 @@ upload:
 		-p $(C) \
 		-U flash:w:$(I) \
 		$(X)
+
+jeenodeisp: C := m328p
+jeenodeisp: M := arduino
+jeenodeisp: I := firmware/isp_flash_m328p.hex
+jeenodeisp: X := -D
+jeenodeisp: upload
+
+uctest: C := m328p
+uctest: M := arduinoisp_
+uctest:
+	avrdude \
+		-p $(C) \
+		$(call key,METHODS,$(M)) 
+
 
 download: C := m328p
 download: M := arduino
