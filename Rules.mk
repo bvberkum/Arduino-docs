@@ -115,22 +115,6 @@ upload-betemcu-usbasploader:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-m32-DI-8Mhz-int: M := arduinoisp
-m32-DI-8Mhz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
-m32-DI-8Mhz-int:
-	avrdude \
-		-p m32 -e \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x3F:m -U lfuse:w:0xD4:m -U hfuse:w:0x99:m
-	avrdude \
-		-p m32 \
-		$(call key,METHODS,$(M)) \
-		-D -U flash:w:$(I)
-	avrdude \
-		-p m32 \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x0F:m
-
 # from /home/berend/Application/arduino-0021/hardware/arduino/boards.txt
 #m8-16Mhz: M := usbasp
 m8-16Mhz: M := arduinoisp
@@ -162,6 +146,39 @@ m16:
 	avrdude \
 		-p m16 \
 		$(call key,METHODS,$(M)) 
+
+m32-DI-8Mhz-int: M := arduinoisp
+m32-DI-8Mhz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
+m32-DI-8Mhz-int:
+	avrdude \
+		-p m32 -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xD4:m -U hfuse:w:0x99:m
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
+
+# 16Mhz ext, 5V, delay bootloader
+m32: M := arduinoisp
+m32: I := firmware/ATmegaBOOT_168_diecimila.hex
+m32:
+	avrdude \
+		-p m32 -e \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x3F:m -U lfuse:w:0xD4:m -U hfuse:w:0x99:m
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-D -U flash:w:$(I)
+	avrdude \
+		-p m32 \
+		$(call key,METHODS,$(M)) \
+		-U lock:w:0x0F:m
 
 m48: M := arduinoisp
 m48: 

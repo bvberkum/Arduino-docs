@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 """
-SERTest is a simple example using the SerialPort transport and the NMEA 0183
-and Rockwell Zodiac SER protocols to display fix data as it is received from
-the device.
 """
 import sys
 if sys.platform == 'win32':
@@ -15,6 +12,17 @@ from twisted.protocols.basic import LineReceiver
 import serial
 
 
+
+sketches = {
+		'ROOM': 0
+	}
+nodes = {}
+
+def path(node_id, sensor_id):
+	path = os.path.join('/tmp/martador', node_id)
+	if not os.path.exists(path):
+		os.makedirs(path)
+	return os.path.join('/tmp/martador', node_id, sensor_id)
 
 class SER(LineReceiver):
 
