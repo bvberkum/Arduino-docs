@@ -20,7 +20,8 @@ METHODS = \
 		arduino_="-c arduino -P $(PORT) -b 19200"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
 		parisp="-c avr-par-isp-mpe -b 19200"; \
-		arduinoisp="-cstk500v1 -P $(PORT) -b 19200"; \
+		arduinoisp="-cstk500v1 -P $(PORT) -b 9600"; \
+		arduinoisp_="-cstk500v1 -P $(PORT) -b 9600"; \
 	  usbasp="-c usbasp -P usb"
 #IMAGES := \
 #	blink=firmware/betemcu-usbasp/misc/betemcu_blink/betemcu_blink.cpp.hex\
@@ -44,7 +45,7 @@ listen:
 
 upload: C := m328p
 upload: M := arduino
-upload: I := firmware/ArduinoISP_mega328.hex
+#upload: I := firmware/ArduinoISP_mega328.hex
 #upload: I := firmware/isp_flash_m328p.hex
 upload: X := -D
 upload:
@@ -53,20 +54,6 @@ upload:
 		-p $(C) \
 		-U flash:w:$(I) \
 		$(X)
-
-jeenodeisp: C := m328p
-jeenodeisp: M := arduino
-jeenodeisp: I := firmware/isp_flash_m328p.hex
-jeenodeisp: X := -D
-jeenodeisp: upload
-
-uctest: C := m328p
-uctest: M := arduinoisp_
-uctest:
-	avrdude \
-		-p $(C) \
-		$(call key,METHODS,$(M)) 
-
 
 download: C := m328p
 download: M := arduino
@@ -82,18 +69,95 @@ download:
 		-U flash:r:$$I.hex:i \
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
 
-upload-betemcu: M := usbasp
-upload-betemcu:
-	sudo avrdude -p m8 -e \
-		$(call key,METHODS,$(M)) \
-  	-U lock:w:0x3F:m -U hfuse:w:0xD9:m -U lfuse:w:0xFF:m
-	sudo avrdude -p m8 \
-		-D \
-		$(call key,METHODS,$(M)) \
-  	-U flash:w:firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
-	sudo avrdude -p m8 \
-		$(call key,METHODS,$(M)) \
-  	-U lock:w:0x3C:m
+uctest: C := m328p
+uctest: M := arduinoisp_
+uctest:
+	avrdude \
+		-p $(C) \
+		$(call key,METHODS,$(M)) 
+
+#flash: C := m8
+#flash: M := usbasp
+#flash: I := 
+## Low-, high- and extended fuse
+#flash: LF := 
+#flash: HF := 
+#flash: EF := 
+## Lock/unlock bits
+#flash: LB := 
+#flash: UB := 
+## Debug
+#flash: D := echo
+flash:
+	@\
+	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 2; } ) && ( \
+		[ -n "$(EF)" ] && { \
+			$(D) sudo avrdude \
+				-p $(C) -e \
+				$(call key,METHODS,$(M)) \
+				-U lock:w:$(UB):m \
+				-U hfuse:w:$(HF):m \
+				-U lfuse:w:$(LF):m \
+				-U efuse:w:$(EF):m \
+				;\
+		} || { \
+			$(D) sudo avrdude -p $(C) -e \
+				$(call key,METHODS,$(M)) \
+				-U lock:w:$(UB):m \
+				-U hfuse:w:$(HF):m \
+				-U lfuse:w:$(LF):m \
+				;\
+		};\
+		[ -n "$(I)" ] && { \
+			$(D) sudo avrdude -p $(C) -D \
+				$(call key,METHODS,$(M)) \
+				-U flash:w:$(I) \
+				;\
+		};\
+		echo $(D) sudo avrdude \
+			-p $(C) -e \
+			$(call key,METHODS,$(M)) \
+			-U lock:w:$(LB):m \
+			;\
+	)
+
+### Preset common flash 
+
+fusebit-doctor-m328: C := m328p
+fusebit-doctor-m328: M := usbasp
+fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.09_m328p.hex
+#fusebit-doctor-m328: LF := 0x62
+#fusebit-doctor-m328: HF := 0xD9
+fusebit-doctor-m328: LF := 0x62
+fusebit-doctor-m328: HF := 0xD1
+fusebit-doctor-m328: EF := 0x07
+fusebit-doctor-m328: LB := 0x3F
+fusebit-doctor-m328: UB := 0x3F
+fusebit-doctor-m328: flash
+#fusebit-doctor-m328: D := 
+
+
+fusebit-doctor-m8: C := m8
+fusebit-doctor-m8: M := usbasp
+fusebit-doctor-m8: I := atmega_fusebit_doctor_2.09_m8.hex
+fusebit-doctor-m8: LF := 0xE1
+fusebit-doctor-m8: HF := 0xD1
+fusebit-doctor-m8: EF :=
+fusebit-doctor-m8: LB := 0x3C
+fusebit-doctor-m8: UB := 0x3F
+fusebit-doctor-m8: D := 
+fusebit-doctor-m8: flash
+
+
+flash-betemcu: C := m8
+flash-betemcu: M := usbasp
+flash-betemcu: I := firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
+flash-betemcu: LF := 0xFF
+flash-betemcu: HF := 0xD9
+flash-betemcu: EF := 
+flash-betemcu: LB := 0x3C
+flash-betemcu: UB := 0x3F
+flash-betemcu: flash
 
 upload-betemcu-usbasploader: M := usbasp
 upload-betemcu-usbasploader: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
@@ -275,6 +339,27 @@ arduino-boards:
 	echo ARDUINODIR=$(ARDUINODIR);\
 	make -f $$p/arduino.mk boards
 
+
+### Common preset uploads
+
+jeenodeisp: C := m328p
+jeenodeisp: M := arduino
+jeenodeisp: I := firmware/isp_flash_m328p.hex
+jeenodeisp: X := -D
+jeenodeisp: upload
+
+#jeenode-isp-repair: P = $/libraries/jeelib/examples/Ports/isp_repair2/
+#jeenode-isp-repair: arduino
+#
+#jeenode-isp-repair-post: DIR := $/
+#jeenode-isp-repair-post:
+#	cp $(DIR)libraries/jeelib/examples/Ports/isp_repair2/isp_repair2.hex firmware/isp_repair_m328p.hex
+
+jeenodeisp-repair: C := m328p
+jeenodeisp-repair: M := arduino
+jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
+#jeenodeisp-repair: X := -D
+jeenodeisp-repair: upload
 
 
 #      ------------ -- 

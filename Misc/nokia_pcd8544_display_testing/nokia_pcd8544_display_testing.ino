@@ -273,16 +273,28 @@ void LcdInitialise(void)
 	digitalWrite(PIN_RESET, LOW);
 	digitalWrite(PIN_RESET, HIGH);
 	LcdWrite(LCD_C, 0x21 );  // LCD Extended Commands.
-	LcdWrite(LCD_C, 0xB1 );  // Set LCD Vop (Contrast). 
-	LcdWrite(LCD_C, 0x04 );  // Set Temp coefficent. //0x04
-	LcdWrite(LCD_C, 0x14 );  // LCD bias mode 1:48. //0x13
+	LcdWrite(LCD_C, 0xB0 );  // Set LCD Vop (Contrast) 0x80-0xff
+	LcdWrite(LCD_C, 0x04 );  // Set Temp coefficent. //0x4-0x7
+	LcdWrite(LCD_C, 0x15 );  // LCD bias mode 1:48. //0x10-0x17
 	LcdWrite(LCD_C, 0x0C );  // LCD in normal mode.
-	LcdWrite(LCD_C, 0x20 );
-	LcdWrite(LCD_C, 0x0C );
+	LcdWrite(LCD_C, 0x20 ); // back to basic commands
+	LcdWrite(LCD_C, 0x0C ); // normal mode
+	//LcdWrite(LCD_C, 0xd ); // invert mode
 }
 
 void LcdString(char *characters)
 {
+	if ( strlen( characters ) > 0 ) {
+	   char* first = &characters[ 0 ];
+	   char* last = &characters[ strlen( characters ) - 1 ];
+	   while( first < last ) {
+		   char tmp = *first;
+		   *first = *last;
+		   *last = tmp;
+		  ++first;
+		  --last;
+	   }
+	}
 	while (*characters)
 	{
 		LcdCharacter(*characters++);
@@ -312,7 +324,8 @@ void loop(void)
 	LcdInitialise();
 	LcdClear();
 	delay(500);
-	LcdString("Hello World!");
+	char* msg = "Hello world!";
+	LcdString(msg);
 	delay(1500);
 }
 

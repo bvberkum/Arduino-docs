@@ -117,9 +117,9 @@ void loop()
 
 	delay(10);
 
-	FreqCounter::f_comp = 106;
+	FreqCounter::f_comp = 10;
 //	FreqCounter::f_comp = 1;
-	FreqCounter::start(1000);
+	FreqCounter::start(100);
 	while (FreqCounter::f_ready == 0)
 		new_frequency = FreqCounter::f_freq;
 
