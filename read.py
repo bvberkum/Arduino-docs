@@ -14,7 +14,8 @@ import serial
 
 
 sketches = {
-		'ROOM': 0
+		'ROOM': 0,
+		'MOIST': 0
 	}
 nodes = {}
 
@@ -100,8 +101,8 @@ if __name__ == '__main__':
     serial.Serial(port=None, baudrate=38400, bytesize=8, parity='N', stopbits=1,
             timeout=None, xonxoff=0, rtscts=0, writeTimeout=None, dsrdtr=None)
 
-    log.msg('Attempting to open %s at %dbps' % (o.opts['port'], o.opts['baudrate']))
-    s = SerialPort(SER(), o.opts['port'], reactor, baudrate=int(o.opts['baudrate']))
+    log.msg('Attempting to open %s at %dbps' % (o.opts['port'], baudrate))
+    s = SerialPort(SER(), o.opts['port'], reactor, baudrate=baudrate)
     log.msg("Running")
     reactor.run()
 
