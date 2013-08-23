@@ -1,10 +1,10 @@
 
 /* The pin connected to the 100 ohm side */
-#define voltageFlipPin1 7
+#define voltageFlipPin1 9
 /* The pin connected to the 50k-100k (measuring) side. */
-#define voltageFlipPin2 4
+#define voltageFlipPin2 10
 /* The analog pin for measuring */
-#define sensorPin 0
+#define sensorPin 5
 
 
 int flipTimer = 1000;
@@ -49,14 +49,14 @@ int readProbe() {
   setSensorPolarity(-1);
   delay(flipTimer);
   int val1 = analogRead(sensorPin);
-  Serial.print("v1: ");Serial.print(val1);
+  Serial.print("v1: ");Serial.println(val1);
 
   setSensorPolarity(1);
   delay(flipTimer);
   int val2 = 1023 - analogRead(sensorPin);
-  Serial.print(", v2: ");Serial.println(val2);
+  Serial.print("v2: ");Serial.println(val2);
   
-  //setSensorPolarity(0);
+  setSensorPolarity(0);
 
   return ( val1 + val2 ) / 2;
 }
@@ -98,6 +98,6 @@ void loop() {
   takeReading();
   takeReading();
   
-  delay(5000);        // delay in between reads for stability            
+  delay(500);
 }
 

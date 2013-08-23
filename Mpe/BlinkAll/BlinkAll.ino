@@ -1,5 +1,5 @@
-int first_led = 5;
-int last_led = 7;
+int first_led = 15;
+int last_led = 19;
 
 void blink(int led, int count, int length) {
   for (int i=0; i<count; i++) {
