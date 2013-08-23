@@ -13,7 +13,8 @@ import serial
 
 
 sketches = {
-		'ROOM': 0
+		'ROOM': 0,
+		'MOIST': 0
 	}
 nodes = {}
 

@@ -1,5 +1,12 @@
 /*
 - Starting based on GasDetector.
+
+- Working toward MoistureBug for PipeConnectors
+- Perhaps demux, switching later
+
+- First version: flipping probes on jack A and B, connected to JP3, 4.
+- Planning JP1 and 2 to be shift register control
+
 */
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
@@ -13,9 +20,20 @@
 
 #define SERIAL  1   // set to 1 to enable serial interface
 
-#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
-#define REPORT_EVERY    1   // report every N measurement cycles
+#define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
+#define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+
+
+/* The pin connected to the 100 ohm side */
+#define voltageFlipPinA 9
+/* The pin connected to the 50k-100k (measuring) side. */
+#define voltageFlipPinAMeasure 10
+/* The analog pin for measuring */
+#define sensorPinA 2
+//#define sensorPinAB 3
+
+int flipTimer = 1000;
 
 
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -41,7 +59,7 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
-	byte probe1 :7;  // moisture detector: 0..100
+	int probe1 :10;  // moisture detector: 0..100
 	byte probe2 :7;  // moisture detector: 0..100
 	int ctemp  :10;  // atmega temperature: -500..+500 (tenths)
 } payload;
@@ -106,9 +124,46 @@ double internalTemp(void)
 static void doConfig() {
 }
 
+void setSensorPolarity(int flip)
+{
+  if (flip == -1) {
+    digitalWrite(voltageFlipPinA, HIGH);
+    digitalWrite(voltageFlipPinAMeasure, LOW);
+  } 
+  else if (flip == 1) {
+    digitalWrite(voltageFlipPinA, LOW);
+    digitalWrite(voltageFlipPinAMeasure, HIGH);  
+  } 
+  else {
+    digitalWrite(voltageFlipPinA, LOW);
+    digitalWrite(voltageFlipPinAMeasure, LOW);
+  }
+}
+
+int readProbe() {
+
+  setSensorPolarity(-1);
+  delay(flipTimer);
+  int val1 = analogRead(sensorPinA);
+//  Serial.print("v1: ");Serial.println(val1);
+
+  setSensorPolarity(1);
+  delay(flipTimer);
+  int val2 = 1023 - analogRead(sensorPinA);
+//  Serial.print("v2: ");Serial.println(val2);
+  
+  setSensorPolarity(0);
+
+  return ( val1 + val2 ) / 2;
+}
+
 // readout all the sensors and other values
 static void doMeasure() {
 	byte firstTime = payload.probe1 == 0; // special case to init running avg
+
+	int p1 = readProbe();
+//	Serial.println(p1);
+	payload.probe1 = p1;
 
 	serialFlush();
 
@@ -123,6 +178,10 @@ static void doReport() {
 	Serial.print(node_id);
 	Serial.print(" ");
 	Serial.print((int) payload.ctemp);
+	Serial.print(" ");
+	Serial.print((int) payload.probe1);
+	Serial.print(" ");
+	Serial.print((int) payload.probe2);
 	Serial.println();
 	serialFlush();
 #endif
@@ -150,7 +209,7 @@ void setup()
 #if SERIAL || DEBUG
 	Serial.begin(57600);
 	//Serial.begin(38400);
-	Serial.println("MoistureBug");
+//	Serial.println("MoistureBug");
 	serialFlush();
 #endif
 
@@ -168,10 +227,13 @@ void setup()
 //#endif
 //		doConfig();
 //	}
+  pinMode(voltageFlipPinA, OUTPUT);
+  pinMode(voltageFlipPinAMeasure, OUTPUT);
+  pinMode(sensorPinA, INPUT);
 
 	Serial.println("REG MOIST attemp mp-1 mp-2");
 	serialFlush();
-	node_id = "ROOM-1";
+	node_id = "MOIST-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
@@ -191,12 +253,12 @@ void loop(){
 
 		case DISCOVERY:
 			// report a new node or reinitialize node with central link node
-			for ( int x=0; x<ds_count; x++) {
-				Serial.print("SEN ");
-				Serial.print(node_id);
-				// fixme: put probe config here?
-				Serial.println("");
-			}
+			// fixme: put probe config here?
+			//for ( int x=0; x<ds_count; x++) {
+			//	Serial.print("SEN ");
+			//	Serial.print(node_id);
+			//	Serial.println("");
+			//}
 			serialFlush();
 			break;
 
