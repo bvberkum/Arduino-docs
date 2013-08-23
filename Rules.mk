@@ -20,6 +20,7 @@ METHODS = \
 		arduino_="-c arduino -P $(PORT) -b 19200"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
 		parisp="-c avr-par-isp-mpe -b 19200"; \
+		parisp_="-c bsd -b 19200"; \
 		arduinoisp="-cstk500v1 -P $(PORT) -b 9600"; \
 		arduinoisp_="-cstk500v1 -P $(PORT) -b 19200"; \
 		arduinoisp__="-cstk500v1 -P $(PORT) -b 57600"; \
