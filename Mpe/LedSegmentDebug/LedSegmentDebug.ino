@@ -12,11 +12,11 @@ int counter = 0;
 void setup() {
   initdebug();
   Serial.begin(56700);
-  Serial.println("[LedSegmentDebug v1]");/*
-  pinMode(A2, OUTPUT);
-  pinMode(A3, OUTPUT);
-  pinMode(A4, OUTPUT);
-  pinMode(A5, OUTPUT);*/
+  Serial.println("[LedSegmentDebug v1]");
+//  pinMode(A2, OUTPUT);
+//  pinMode(A3, OUTPUT);
+//  pinMode(A4, OUTPUT);
+//  pinMode(A5, OUTPUT);
 }
 
 bool dot = false;

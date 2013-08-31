@@ -24,6 +24,7 @@ def path(node_id, sensor_id):
 		os.makedirs(path)
 	return os.path.join('/tmp/martador', node_id, sensor_id)
 
+
 class SER(LineReceiver):
 
 	def processData(self, *args):

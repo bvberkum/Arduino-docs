@@ -1,12 +1,11 @@
 /*
-	- Starting based on GasDetector.
-
-	- Working toward MoistureBug for PipeConnectors
-	- Perhaps demux, switching later
-	- Display for probe calibration
+	- Starting based on MoistureNode, should merge back into there.
 
 	- First version: flipping probes on jack A and B, connected to JP3, 4.
 	- Planning JP1 and 2 to be shift register control
+
+	- Need to adapt wiring for eBay node. 
+		Testing radio.
 
 Hardware
 	MoistureBug w/ PipeBoard
@@ -38,18 +37,10 @@ Hardware
 
 #define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          3   // smoothing factor used for running averages
+#define SMOOTH          5   // smoothing factor used for running averages
 
 
-/* The pin connected to the 100 ohm side */
-#define voltageFlipPinA 9
-/* The pin connected to the 50k-100k (measuring) side. */
-#define voltageFlipPinAMeasure 10
-/* The analog pin for measuring */
-#define sensorPinA 2
-//#define sensorPinAB 3
 
-int flipTimer = 1000;
 
 
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -66,7 +57,7 @@ uint8_t ds_addr[ds_count][8] = {
 //	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
 //	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
 //	{ 0x28, 0x8, 0x76, 0xF4, 0x3, 0x0, 0x0, 0xD5 },
-	{ 0x28, 0x82, 0x27, 0xDD, 0x3, 0x0, 0x0, 0x4B },
+//	{ 0x28, 0x82, 0x27, 0xDD, 0x3, 0x0, 0x0, 0x4B },
 };
 #if DEBUG_DS
 volatile int ds_value[ds_count];
@@ -88,16 +79,17 @@ Scheduler scheduler (schedbuf, TASK_END);
 // Other variables used in various places in the code:
 
 static byte reportCount;    // count up until next report, i.e. packet send
-//static byte myNodeID;       // node ID used for this unit
+static byte myNodeID;       // node ID used for this unit
 
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
-	int probe1 :10;  // moisture detector: 0..100?
-	int probe2 :10; 
-	int temp1  :10;  // temperature: -500..+500 (tenths)
-	int temp2  :10;  // temperature: -500..+500 (tenths)
+//	int probe1 :10;  // moisture detector: 0..100?
+//	int probe2 :10; 
+//	int temp1  :10;  // temperature: -500..+500 (tenths)
+//	int temp2  :10;  // temperature: -500..+500 (tenths)
 	int ctemp  :10;  // atmega temperature: -500..+500 (tenths)
+	byte lobat :1;   // supply voltage dropped under 3.1V: 0..1
 } payload;
 
 // has to be defined because we're using the watchdog for low-power waiting
@@ -323,37 +315,17 @@ static void printDS18B20s(void) {
 static void doConfig() {
 }
 
-void setSensorPolarity(int flip)
-{
-  if (flip == -1) {
-    digitalWrite(voltageFlipPinA, HIGH);
-    digitalWrite(voltageFlipPinAMeasure, LOW);
-  } 
-  else if (flip == 1) {
-    digitalWrite(voltageFlipPinA, LOW);
-    digitalWrite(voltageFlipPinAMeasure, HIGH);  
-  } 
-  else {
-    digitalWrite(voltageFlipPinA, LOW);
-    digitalWrite(voltageFlipPinAMeasure, LOW);
-  }
-}
-
-int readProbe() {
-
-  setSensorPolarity(-1);
-  delay(flipTimer);
-  int val1 = analogRead(sensorPinA);
-//  Serial.print("v1: ");Serial.println(val1);
-
-  setSensorPolarity(1);
-  delay(flipTimer);
-  int val2 = 1023 - analogRead(sensorPinA);
-//  Serial.print("v2: ");Serial.println(val2);
-  
-  setSensorPolarity(0);
-
-  return ( val1 + val2 ) / 2;
+static byte waitForAck() {
+    MilliTimer ackTimer;
+    while (!ackTimer.poll(ACK_TIME)) {
+        if (rf12_recvDone() && rf12_crc == 0 &&
+                // see http://talk.jeelabs.net/topic/811#post-4712
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | myNodeID))
+            return 1;
+        set_sleep_mode(SLEEP_MODE_IDLE);
+        sleep_mode();
+    }
+    return 0;
 }
 
 // readout all the sensors and other values
@@ -373,32 +345,40 @@ static void doMeasure() {
 	int ctemp = internalTemp();
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 
-	int p1 = readProbe();
-	payload.probe1 = smoothedAverage(payload.probe1, p1, firstTime); 
+	payload.lobat = rf12_lowbat();
 
-	int t1 = readDS18B20(ds_addr[0]);
-	if (t1 > 0 && t1 < 8500) {
-		payload.temp1 = t1 / 10; // convert to tenths instead of .05
-	}
+//	int p1 = readProbe();
+//	payload.probe1 = smoothedAverage(payload.probe1, p1, firstTime); 
+
+//	int t1 = readDS18B20(ds_addr[0]);
+//	if (t1 > 0 && t1 < 8500) {
+//		payload.temp1 = t1 / 10; // convert to tenths instead of .05
+//	}
 
 	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport() {
+	rf12_sleep(RF12_WAKEUP);
+	rf12_sendNow(0, &payload, sizeof payload);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	rf12_sleep(RF12_SLEEP);
 	/* no working radio */
 #if SERIAL
 	Serial.print(node_id);
-	Serial.print(" ");
+	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
-	Serial.print(" ");
-	Serial.print((int) payload.probe1);
-	Serial.print(" ");
-	Serial.print((int) payload.probe2);
-	Serial.print(" ");
-	Serial.print((int) payload.temp1);
-	Serial.print(" ");
-	Serial.print((int) payload.temp2);
+	Serial.print(' ');
+//	Serial.print((int) payload.probe1);
+//	Serial.print(' ');
+//	Serial.print((int) payload.probe2);
+//	Serial.print(' ');
+//	Serial.print((int) payload.temp1);
+//	Serial.print(' ');
+//	Serial.print((int) payload.temp2);
+//	Serial.print(' ');
+	Serial.print((int) payload.lobat);
 	Serial.println();
 	serialFlush();
 #endif
@@ -425,10 +405,13 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	//Serial.begin(38400);
-//	Serial.println("MoistureBug");
+	Serial.println("ThreeWayMeter");
 	serialFlush();
 #endif
+	myNodeID = 24;
+	rf12_initialize(myNodeID, RF12_868MHZ, 5);
+    
+    rf12_sleep(RF12_SLEEP); // power down
 
 	/* warn out of bound if _EEPROMEX_DEBUG */
   //EEPROM.setMemPool(memBase, memCeiling);
@@ -444,13 +427,10 @@ void setup()
 //#endif
 //		doConfig();
 //	}
-  pinMode(voltageFlipPinA, OUTPUT);
-  pinMode(voltageFlipPinAMeasure, OUTPUT);
-  pinMode(sensorPinA, INPUT);
 
-	Serial.println("REG MOIST attemp mp-1 mp-2 ds-1 ds-2");
+	Serial.println("REG TWM attemp lobat");
 	serialFlush();
-	node_id = "MOIST-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
+	node_id = "TWM-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
@@ -502,5 +482,6 @@ void loop(){
 			break;
 	}
 }
+
 
 
