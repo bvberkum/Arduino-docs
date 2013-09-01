@@ -20,14 +20,31 @@ Hardware
 		(A7) probe right (aluminium)
 		(A8) metercoil
 
+JeeLib RF12 
+	- Header byte is CTL, DST, ACK bits and 5bit node ID.
+	- Node ID 0 and 31 is special. 30 unique IDs left per group.
+
+	CTL, DST, ACK bits
+		- 001 broadcast with ack-request
+		- 010 direct msg
+		- 011 direct with ack-request
+		- 100 control/ack broadcast?
+		- 101 control broadcast with ack-request (unused)
+		- 110 ack response
+		- 111 control for node with ack-request
+
+	
+
 */
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
-#include <JeeLib.h>
 #include <avr/sleep.h>
+#include <util/crc16.h>
+#include <avr/eeprom.h>
+//include <EEPROM.h>
+//include EEPROMEx.h
+#include <JeeLib.h>
 #include <OneWire.h>
-#include <EEPROM.h>
-// include EEPROMEx.h
 
 #define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
 #define DEBUG_DS   0
@@ -35,20 +52,115 @@ Hardware
 
 #define SERIAL  1   // set to 1 to enable serial interface
 
-#define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 
+#define ACK_TIME        10  // number of milliseconds to wait for an ack
 
+#define RADIO_SYNC_MODE 2
 
+#define COLLECT 0x20 // collect mode, i.e. pass incoming without sending acks
 
+const char helpText1[] PROGMEM = 
+  "\n"
+  "Available commands:" "\n"
+  "  <nn> i     - set node ID (standard node ids are 1..30)" "\n"
+  "  <n> b      - set MHz band (4 = 433, 8 = 868, 9 = 915)" "\n"
+  "  <nnn> g    - set network group (RFM12 only allows 212, 0 = any)" "\n"
+  "  <n> c      - set collect mode (advanced, normally 0)" "\n"
+  "  t          - broadcast max-size test packet, request ack" "\n"
+  "  ...,<nn> a - send data packet to node <nn>, request ack" "\n"
+  "  ...,<nn> s - send data packet to node <nn>, no ack" "\n"
+  "  <n> l      - turn activity LED on PB1 on or off" "\n"
+  "  <n> q      - set quiet mode (1 = don't report bad packets)" "\n"
+  "  <n> x      - set reporting format (0 = decimal, 1 = hex)" "\n"
+  "  123 z      - total power down, needs a reset to start up again" "\n"
+;
 
+// EEPROMEx 
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
+/* RF12 config (from RF12demo) */
 
+typedef struct {
+  byte nodeId;
+  byte group;
+  char msg[RF12_EEPROM_SIZE-4];
+  word crc;
+} RF12Config;
+
+static RF12Config config;
+
+static byte quiet;
+static byte useHex;
+
+
+static void showNibble (byte nibble) {
+  char c = '0' + (nibble & 0x0F);
+  if (c > '9')
+    c += 7;
+  Serial.print(c);
+}
+
+static void showByte (byte value) {
+  if (useHex) {
+    showNibble(value >> 4);
+    showNibble(value);
+  } else
+    Serial.print((int) value);
+}
+
+static void addCh (char* msg, char c) {
+  byte n = strlen(msg);
+  msg[n] = c;
+}
+
+static void addInt (char* msg, word v) {
+  if (v >= 10)
+    addInt(msg, v / 10);
+  addCh(msg, '0' + v % 10);
+}
+
+static void saveConfig () {
+  // set up a nice config string to be shown on startup
+  memset(config.msg, 0, sizeof config.msg);
+  strcpy(config.msg, " ");
+  
+  byte id = config.nodeId & 0x1F;
+  addCh(config.msg, '@' + id);
+  strcat(config.msg, " i");
+  addInt(config.msg, id);
+  if (config.nodeId & COLLECT)
+    addCh(config.msg, '*');
+  
+  strcat(config.msg, " g");
+  addInt(config.msg, config.group);
+  
+  strcat(config.msg, " @ ");
+  static word bands[4] = { 315, 433, 868, 915 };
+  word band = config.nodeId >> 6;
+  addInt(config.msg, bands[band]);
+  strcat(config.msg, " MHz ");
+  
+  config.crc = ~0;
+  for (byte i = 0; i < sizeof config - 2; ++i)
+    config.crc = _crc16_update(config.crc, ((byte*) &config)[i]);
+
+  // save to EEPROM
+  for (byte i = 0; i < sizeof config; ++i) {
+    byte b = ((byte*) &config)[i];
+    eeprom_write_byte(RF12_EEPROM_ADDR + i, b);
+  }
+  
+  if (!rf12_config())
+    Serial.println("config save failed");
+}
+
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 OneWire ds(4);
 
 const int ds_count = 1;
@@ -65,13 +177,13 @@ volatile int ds_value[ds_count];
 
 enum { DS_OK, DS_ERR_CRC };
 
-
+/* Custom */
 String node_id = "";
 String inputString = "";         // a string to hold incoming data
 
 // The scheduler makes it easy to perform various tasks at various times:
 
-enum { DISCOVERY, MEASURE, REPORT, TASK_END };
+enum { ANNOUNCE, MEASURE, REPORT, TASK_END };
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -91,6 +203,7 @@ struct {
 	int ctemp  :10;  // atmega temperature: -500..+500 (tenths)
 	byte lobat :1;   // supply voltage dropped under 3.1V: 0..1
 } payload;
+
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
@@ -118,6 +231,7 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
 }
 
+/* ATmega328 internal temperature */
 double internalTemp(void)
 {
 	unsigned int wADC;
@@ -149,6 +263,9 @@ double internalTemp(void)
 	return (t);
 }
 
+/* 
+   Dallas DS18B20 thermometer 
+ */
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -384,6 +501,23 @@ static void doReport() {
 #endif
 }
 
+static void showString (PGM_P s) {
+  for (;;) {
+    char c = pgm_read_byte(s++);
+    if (c == 0)
+      break;
+    if (c == '\n')
+      Serial.print('\r');
+    Serial.print(c);
+  }
+}
+
+static void showHelp () {
+  showString(helpText1);
+  Serial.println("Current configuration:");
+  rf12_config();
+}
+
 void serialEvent() {
 	while (Serial.available()) {
 		// get the new byte:
@@ -407,19 +541,23 @@ void setup()
 	Serial.begin(57600);
 	Serial.println("ThreeWayMeter");
 	serialFlush();
+	byte rf12_show = 0;
+#else
+	byte rf12_show = 0;
 #endif
-	myNodeID = 24;
-	rf12_initialize(myNodeID, RF12_868MHZ, 5);
-    
+
+	if (rf12_config(rf12_show)) {
+		config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+		config.group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+	} else {
+		config.nodeId = 0x81; // 868 MHz, node 1
+		config.group = 0xD4;  // 212 - default group
+		saveConfig();
+	}
+
     rf12_sleep(RF12_SLEEP); // power down
 
-	/* warn out of bound if _EEPROMEX_DEBUG */
-  //EEPROM.setMemPool(memBase, memCeiling);
-  /* warn if _EEPROMEX_DEBUG */
-  //EEPROM.setMaxAllowedWrites(maxAllowedWrites);
-
 	/* read first config setting from memory, if empty start first-run init */
-
 //	uint8_t nid = EEPROM.read(0);
 //	if (nid == 0x0) {
 //#if DEBUG
@@ -431,8 +569,9 @@ void setup()
 	Serial.println("REG TWM attemp lobat");
 	serialFlush();
 	node_id = "TWM-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
+
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(ANNOUNCE, 0);    // start the measurement loop going
 }
 
 void loop(){
@@ -446,14 +585,15 @@ void loop(){
 	Serial.print('.');
 	serialFlush();
 #endif
-	//while (node_id == "" || inputString != "") { // xxx get better way to wait for entire id
-	//}
-	// XXX: get node id or perhaps get sketch type number from central node
-	//scheduler.timer(DISCOVERY, 0);    // start by completing node discovery
+		
+	byte test = 0x3f;
 
 	switch (scheduler.pollWaiting()) {
 
-		case DISCOVERY:
+		case ANNOUNCE:
+			rf12_sendNow(
+				(config.nodeId & RF12_HDR_MASK) ^ RF12_HDR_ACK ^ RF12_HDR_CTL,
+				&test, sizeof test);
 			// report a new node or reinitialize node with central link node
 			// fixme: put probe config here?
 			//for ( int x=0; x<ds_count; x++) {
