@@ -5,15 +5,15 @@
 #include <util/delay.h>
 
 
-#define SER_DDR  	DDRD		// SER/Data in - pin 14
+#define SER_DDR  	DDRD		// SER/Data in - D5 - PDIP pin11
 #define SER_PORT 	PORTD
 #define SER_NR 		PORTD5//JP2D/D5/PD5
 
-#define CLK_DDR		DDRD		// SCK/Data Clock - pin 11
+#define CLK_DDR		DDRD		// SCK/Data Clock - D6 - PDIP pin 12
 #define CLK_PORT	PORTD
-#define CLK_NR		PORTD4//JP1D//PD4
+#define CLK_NR		PORTD6
 
-#define LE_DDR		DDRD		// RCK/Latch Enable - pin 12
+#define LE_DDR		DDRD		// RCK/Latch Enable - D7 - PDIP pin 13
 #define LE_PORT		PORTD
 #define LE_NR		PORTD7//JP4D//PD7
 

@@ -322,11 +322,12 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-ARDUINODIR := /home/berend/Application/arduino-1.0.3
+#ARDUINODIR := /home/berend/Application/arduino-1.0.3
+ARDUINODIR := /usr/share/arduino/
 
 # Build anything in target folder 'P'
-arduino: P := $/libraries/jeelib/examples/Ports/isp_flash/
-arduino: B := atmega328
+#arduino: P :=
+#arduino: B := 
 arduino: LIB := $/libraries/
 arduino: TARGETS := clean all
 arduino: 
@@ -336,19 +337,25 @@ arduino:
 		BOARD=$(B) \
 		make -f $$p/arduino.mk $(TARGETS)
 
+#jeenode: C := m328p
+jeenode: B := atmega328
+jeenode: M := arduino
+jeenode: arduino
+
+isp_flash: P := $/libraries/jeelib/examples/Ports/isp_flash/
+isp_flash: B := atmega328
+isp_flash: arduino
+
 arduino-boards:
 	@p=$$(realpath .);\
 	echo ARDUINODIR=$(ARDUINODIR);\
 	make -f $$p/arduino.mk boards
 
-
 ### Common preset uploads
 
-jeenodeisp: C := m328p
-jeenodeisp: M := arduino
 jeenodeisp: I := firmware/isp_flash_m328p.hex
 jeenodeisp: X := -D
-jeenodeisp: upload
+jeenodeisp: jeenode
 
 #jeenode-isp-repair: P = $/libraries/jeelib/examples/Ports/isp_repair2/
 #jeenode-isp-repair: arduino
@@ -363,6 +370,25 @@ jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
 #jeenodeisp-repair: X := -D
 jeenodeisp-repair: upload
 
+blinkall: C := m328p
+blinkall: P := Mpe/BlinkAll
+blinkall: I := Mpe/BlinkAll/BlinkAll.hex
+blinkall: jeenode upload
+
+3way: C := m328p
+3way: P := Mpe/eBay-ThreeWayMeter/
+3way: I := Mpe/eBay-ThreeWayMeter/Prototype.hex
+3way: jeenode upload
+
+radiolink: C := m328p
+radiolink: P := Mpe/RadioLink/
+radiolink: I := Mpe/RadioLink/RadioLink.hex
+radiolink: jeenode upload
+
+carriercase: C := m328p
+carriercase: P := Mpe/CarrierCase/
+carriercase: I := Mpe/CarrierCase/CarrierCase.hex
+carriercase: jeenode upload
 
 #      ------------ -- 
 #

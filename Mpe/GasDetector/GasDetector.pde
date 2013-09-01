@@ -1,66 +1,27 @@
 /*
-	- Starting based on GasDetector.
-
-	- Working toward MoistureBug for PipeConnectors
-	- Perhaps demux, switching later
-	- Display for probe calibration
-
-	- First version: flipping probes on jack A and B, connected to JP3, 4.
-	- Planning JP1 and 2 to be shift register control
-
-Hardware
-	MoistureBug w/ PipeBoard
-		stereo sleeve A - DIO JP3 (D6)
-		stereo ring B - AIO JP3 (A2)
-		stereo ring A - AIO JP4 (A3)
-		stereo sleeve B - DIO JP4 (D7)
-	eBay
-		SDA (A4) probe left (steel?)
-		SCL (A5) tip left (iron?)
-		(A6) tip right (iron?)
-		(A7) probe right (aluminium)
-		(A8) metercoil
-
+  Lots to do, must hook up PWM power first
+  
+  For now, working on RF24 using LDR and SHT11, see RoomNodeRF24
 */
+#define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
 #include <JeeLib.h>
 #include <avr/sleep.h>
+#include <CS_MQ7.h>
 #include <OneWire.h>
 #include <EEPROM.h>
 // include EEPROMEx.h
 
 #define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
-#define DEBUG_DS   0
-#define FIND_DS    0
 
 #define SERIAL  1   // set to 1 to enable serial interface
+#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
+#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 
-#define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
-#define REPORT_EVERY    5   // report every N measurement cycles
+#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
+#define REPORT_EVERY    1   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-
-
-/* The pin connected to the 100 ohm side */
-#define voltageFlipPinA 9
-/* The pin connected to the 50k-100k (measuring) side. */
-#define voltageFlipPinAMeasure 10
-/* The analog pin for measuring */
-#define sensorPinA 2
-//#define sensorPinAB 3
-
-int flipTimer = 1000;
-
-
-/* The pin connected to the 100 ohm side */
-#define voltageFlipPinA 9
-/* The pin connected to the 50k-100k (measuring) side. */
-#define voltageFlipPinAMeasure 10
-/* The analog pin for measuring */
-#define sensorPinA 2
-//#define sensorPinAB 3
-
-int flipTimer = 1000;
 
 
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -68,26 +29,28 @@ should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
-
-OneWire ds(4);
-
-const int ds_count = 1;
-uint8_t ds_addr[ds_count][8] = {
-//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
-//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
-//	{ 0x28, 0x8, 0x76, 0xF4, 0x3, 0x0, 0x0, 0xD5 },
-	{ 0x28, 0x82, 0x27, 0xDD, 0x3, 0x0, 0x0, 0x4B },
-};
-#if DEBUG_DS
-volatile int ds_value[ds_count];
-#endif
-
-enum { DS_OK, DS_ERR_CRC };
-
+// DS18S20 temperature bus
+OneWire ds(A5);  // on pin 10
 
 String node_id = "";
 String inputString = "";         // a string to hold incoming data
+
+const int ds_count = 3;
+uint8_t ds_addr[ds_count][8] = {
+	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
+	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
+	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
+};
+volatile int ds_value[ds_count];
+
+// MQ series gas sensors
+//CS_MQ7  MQ7(12, 13);  // 12 = digital Pin connected to "tog" from sensor board
+// 13 = digital Pin connected to LED Power Indicator
+
+//int CoSensorOutput = 3; //analog Pin connected to "out" from sensor board
+//int MthSensorOutput = 2; //analog Pin connected to "out" from sensor board
+//int CoData = 0;         //analog CO sensor data
+//int MthData = 0;         //analog Methane sensor data
 
 // The scheduler makes it easy to perform various tasks at various times:
 
@@ -104,12 +67,21 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
-	int probe1 :10;  // moisture detector: 0..100?
-	int probe2 :10; 
-	int temp1  :10;  // temperature: -500..+500 (tenths)
-	int temp2  :10;  // temperature: -500..+500 (tenths)
-	int ctemp  :10;  // atmega temperature: -500..+500 (tenths)
+	byte light;     // light sensor: 0..255
+	byte moved :1;  // motion detector: 0..1
+	byte rhum  :7;  // rhumdity: 0..100
+	int temp   :10; // temperature: -500..+500 (tenths)
+	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
+	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
 } payload;
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if DHT_PIN
+DHTxx dht (DHT_PIN);
+#endif
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
@@ -135,6 +107,11 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	if (firstTime)
 		return next;
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+// spend a little time in power down mode while the SHT11 does a measurement
+static void lpDelay () {
+	Sleepy::loseSomeTime(32); // must wait at least 20 ms
 }
 
 double internalTemp(void)
@@ -167,6 +144,8 @@ double internalTemp(void)
 	// The returned temperature is in degrees Celcius.
 	return (t);
 }
+
+enum { DS_OK, DS_ERR_CRC };
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
@@ -236,10 +215,8 @@ static int readDS18B20(uint8_t addr[8]) {
 	int result = ds_readdata(addr, data);	
 	
 	if (result != 0) {
-#if DEBUG || DEBUG_DS
 		Serial.println("CRC error in ds_readdata");
-#endif
-		return 32767;
+		return 0;
 	}
 
 	int Tc_100 = ds_conv_temp_c(data, SignBit);
@@ -258,14 +235,14 @@ static void printDS18B20s(void) {
 	int SignBit;
 
 	if ( !ds.search(addr)) {
-#if DEBUG || DEBUG_DS
+#if DEBUG
 		Serial.println("No more addresses.");
 #endif
 		ds.reset_search();
 		return;
 	}
 
-#if DEBUG || DEBUG_DS
+#if DEBUG
 	Serial.print("Address=");
 	for( i = 0; i < 8; i++) {
 		Serial.print(i);
@@ -276,13 +253,13 @@ static void printDS18B20s(void) {
 #endif
 
 	if ( OneWire::crc8( addr, 7) != addr[7]) {
-#if DEBUG || DEBUG_DS
-		Serial.println("CRC for address is not valid!");
+#if DEBUG
+		Serial.println("CRC is not valid!");
 #endif
 		return;
 	}
 
-#if DEBUG || DEBUG_DS
+#if DEBUG
 	if ( addr[0] == 0x10) {
 		Serial.println("Device is a DS18S20 family device.");
 	}
@@ -299,9 +276,7 @@ static void printDS18B20s(void) {
 	int result = ds_readdata(addr, data);	
 	
 	if (result != 0) {
-#if DEBUG || DEBUG_DS
 		Serial.println("CRC error in ds_readdata");
-#endif
 		return;
 	}
 
@@ -312,7 +287,7 @@ static void printDS18B20s(void) {
 	Fract = Tc_100 % 100;
 
 	// XXX: add value to payload
-#if DEBUG || DEBUG_DS
+#if DEBUG
 	if (SignBit) // If its negative
 	{
 		Serial.print("-");
@@ -334,65 +309,50 @@ static void printDS18B20s(void) {
 static void doConfig() {
 }
 
-void setSensorPolarity(int flip)
-{
-  if (flip == -1) {
-    digitalWrite(voltageFlipPinA, HIGH);
-    digitalWrite(voltageFlipPinAMeasure, LOW);
-  } 
-  else if (flip == 1) {
-    digitalWrite(voltageFlipPinA, LOW);
-    digitalWrite(voltageFlipPinAMeasure, HIGH);  
-  } 
-  else {
-    digitalWrite(voltageFlipPinA, LOW);
-    digitalWrite(voltageFlipPinAMeasure, LOW);
-  }
-}
-
-int readProbe() {
-
-  setSensorPolarity(-1);
-  delay(flipTimer);
-  int val1 = analogRead(sensorPinA);
-//  Serial.print("v1: ");Serial.println(val1);
-
-  setSensorPolarity(1);
-  delay(flipTimer);
-  int val2 = 1023 - analogRead(sensorPinA);
-//  Serial.print("v2: ");Serial.println(val2);
-  
-  setSensorPolarity(0);
-
-  return ( val1 + val2 ) / 2;
-}
-
 // readout all the sensors and other values
 static void doMeasure() {
-#if DEBUG_DS
+	byte firstTime = payload.rhum == 0; // special case to init running avg
+
+	// xxx
+	//printDS18B20s();
 	for ( int i = 0; i < ds_count; i++) {
 		ds_value[i] = readDS18B20(ds_addr[i]);
-		Serial.print("Debug DS: ");
+#if DEBUG
 		Serial.print(i);
 		Serial.print('=');
 		Serial.println(ds_value[i]);
+#endif
 	}
+	serialFlush();
+
+	payload.ctemp = internalTemp();
+
+//	MQ7.CoPwrCycler();  
+//
+//	/* your code here and below! */
+//	if(MQ7.CurrentState() == LOW){   //we are at 1.4v, read sensor data!
+//		CoData = analogRead(CoSensorOutput);
+//		Serial.println(CoData);
+//	}
+//	else{                            //sensor is at 5v, heating time
+//		Serial.println("sensor heating!");
+//	}      
+//	delay(500);
+
+#if LDR_PORT
+	ldr.digiWrite2(1);  // enable AIO pull-up
+	byte light = ~ ldr.anaRead() >> 2;
+	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	payload.light = light;//smoothedAverage(payload.light, light, firstTime);
 #endif
 
-	byte firstTime = payload.ctemp == 0; // special case to init running avg
-
-	int ctemp = internalTemp();
-	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
-
-	int p1 = readProbe();
-	payload.probe1 = smoothedAverage(payload.probe1, p1, firstTime); 
-
-	int t1 = readDS18B20(ds_addr[0]);
-	if (t1 > 0 && t1 < 8500) {
-		payload.temp1 = t1 / 10; // convert to tenths instead of .05
+#if DHT_PIN
+	int t, h;
+	if (dht.reading(t, h)) {
+		payload.rhum = smoothedAverage(payload.rhum, h, firstTime);
+		payload.temp = smoothedAverage(payload.temp, t, firstTime);
 	}
-
-	serialFlush();
+#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -401,15 +361,25 @@ static void doReport() {
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(" ");
+	Serial.print((int) payload.light);
+	Serial.print(' ');
+	//        Serial.print((int) payload.moved);
+	//        Serial.print(' ');
+	Serial.print((int) payload.rhum);
+	Serial.print(' ');
+	Serial.print((int) payload.temp);
+	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
-	Serial.print(" ");
-	Serial.print((int) payload.probe1);
-	Serial.print(" ");
-	Serial.print((int) payload.probe2);
-	Serial.print(" ");
-	Serial.print((int) payload.temp1);
-	Serial.print(" ");
-	Serial.print((int) payload.temp2);
+	Serial.print(' ');
+	Serial.print((int) ds_value[0]);
+	Serial.print(' ');
+	Serial.print((int) ds_value[1]);
+	Serial.print(' ');
+	Serial.print((int) ds_value[2]);
+	Serial.print(' ');
+	//        Serial.print(' ');
+	//        Serial.print((int) payload.lobat);
+	Serial.println();
 	serialFlush();
 #endif
 }
@@ -436,9 +406,27 @@ void setup()
 #if SERIAL || DEBUG
 	Serial.begin(57600);
 	//Serial.begin(38400);
-//	Serial.println("MoistureBug");
+	Serial.println("AirQuality+GasDetector MQ4/MQ7");
 	serialFlush();
 #endif
+
+//	pinMode(CoSensorOutput, INPUT);
+//	pinMode(MthSensorOutput, INPUT);
+	
+//	pinMode(A5, INPUT);
+
+	// Set up PWM, the compare registers work with output compare pins 2A and
+	// 2B (OC2A and OC2B), which are Arduino pins 11 and 3 resp.		
+	//	pinMode(3, OUTPUT);
+	//	pinMode(11, OUTPUT);
+
+	// Set some bits... - Timer/Counter Control Register 2A
+	//	TCCR2A = (1<<COM2A1) | (1<<COM2B1) | (1<<WGM21) | (1<<WGM20);
+	//	// Set 64 prescaler - Timer/Counter Control Register 2B
+	//	TCCR2B = (1<<CS22); // 16 MHz / 64 / 256 = 976.5625Hz
+	//	// Set Output Compare Registers, which determine the duty cycle
+	//	OCR2A = 180;
+	//	OCR2B = 50;
 
 	/* warn out of bound if _EEPROMEX_DEBUG */
   //EEPROM.setMemPool(memBase, memCeiling);
@@ -454,23 +442,15 @@ void setup()
 //#endif
 //		doConfig();
 //	}
-  pinMode(voltageFlipPinA, OUTPUT);
-  pinMode(voltageFlipPinAMeasure, OUTPUT);
-  pinMode(sensorPinA, INPUT);
 
-	Serial.println("REG MOIST attemp mp-1 mp-2 ds-1 ds-2");
+	Serial.println("REG ROOM ldr dht11-rhum dht11-temp attemp ds-1 ds-2 ds-3");
 	serialFlush();
-	node_id = "MOIST-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
+	node_id = "ROOM-1";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 void loop(){
-
-#if FIND_DS
-	printDS18B20s();
-	return;
-#endif
 
 #if DEBUG
 	Serial.print('.');
@@ -485,12 +465,17 @@ void loop(){
 
 		case DISCOVERY:
 			// report a new node or reinitialize node with central link node
-			// fixme: put probe config here?
-			//for ( int x=0; x<ds_count; x++) {
-			//	Serial.print("SEN ");
-			//	Serial.print(node_id);
-			//	Serial.println("");
-			//}
+			for ( int x=0; x<ds_count; x++) {
+				Serial.print("SEN ");
+				Serial.print(node_id);
+				Serial.print(" ds-");
+				Serial.print(x);
+				for ( int y= 0; y<9; y++) {           // we need 9 bytes
+					Serial.print(" ");
+					Serial.print(ds_addr[x][y], HEX);
+				}
+				Serial.println("");
+			}
 			serialFlush();
 			break;
 
@@ -512,5 +497,4 @@ void loop(){
 			break;
 	}
 }
-
 

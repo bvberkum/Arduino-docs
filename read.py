@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 """
-Message
-	VERB or STATUS
-Registration
+
+Registry:
+    nodes
+        <node-id>
+            i -> <value>
+
+Registry:
+    sketches
+        <sketch-id> -> count
+
 """
 import os, sys, time
 if sys.platform == 'win32':
