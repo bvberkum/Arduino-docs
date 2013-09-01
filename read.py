@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """
+Message
+	VERB or STATUS
+Registration
 """
 import os, sys, time
 if sys.platform == 'win32':
@@ -19,12 +22,16 @@ sketches = {
 nodes = {}
 
 def path(node_id, sensor_id):
+	"""
+	Return a temporary path to share data with Munin.
+	Each value has its own path, based on node ID and sensor ID.
+	"""
 	path = os.path.join('/tmp/martador', node_id)
 	if not os.path.exists(path):
 		os.makedirs(path)
 	return os.path.join('/tmp/martador', node_id, sensor_id)
 
-class SER(LineReceiver):
+class Martador(LineReceiver):
 
 	def processData(self, *args):
 		data = list(args)
@@ -67,23 +74,8 @@ class SER(LineReceiver):
 			logging.error('Unable to parse data %s' % line)
 			return
 
-#class SERFixLogger:
-#	def handle_fix(self, *args):
-#	  """
-#	  handle_fix gets called whenever either rockwell.Zodiac or nmea.NMEAReceiver
-#	  receives and decodes fix data.  Generally, SER receivers will report a
-#	  fix at 1hz. Implementing only this method is sufficient for most purposes
-#	  unless tracking of ground speed, course, utc date, or detailed satellite
-#	  information is necessary.
-#
-#	  For example, plotting a map from MapQuest or a similar service only
-#	  requires longitude and latitude.
-#	  """
-#	  log.msg('fix:\n' + 
-#	  '\n'.join(map(lambda n: '  %s = %s' % tuple(n), zip(('utc', 'lon', 'lat', 'fix', 'sat', 'hdp', 'alt', 'geo', 'dgp'), map(repr, args)))))
 
-
-class SEROptions(usage.Options):
+class MartadorOptions(usage.Options):
 	optFlags = [
 	]
 	optParameters = [
@@ -99,7 +91,7 @@ if __name__ == '__main__':
 	from twisted.internet.serialport import SerialPort
 
 
-	o = SEROptions()
+	o = MartadorOptions()
 	try:
 		o.parseOptions()
 	except usage.UsageError, errortext:
@@ -119,8 +111,8 @@ if __name__ == '__main__':
 			timeout=None, xonxoff=0, rtscts=0, writeTimeout=None, dsrdtr=None)
 
 	log.msg('Attempting to open %s at %dbps' % (o.opts['port'], baudrate))
-	s = SerialPort(SER(), o.opts['port'], reactor, baudrate=baudrate)
+	s = SerialPort(Martador(), o.opts['port'], reactor, baudrate=baudrate)
 	log.msg("Running")
 	reactor.run()
 
-
+# vim:noet:
