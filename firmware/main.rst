@@ -1,3 +1,8 @@
+`ATmega8L <ATmega8L.hex>`_
+  :url: http://www.hackmeister.dk/wp-content/uploads/2011/01/ATmega8L.zip
+  :via: http://www.hackmeister.dk/2011/01/new-bootloader-file-for-atmega8l/
+
+  THOMAS FLUMMER - Januari 16, 2011
 
 `betemcu.cn MiniProg USBasp <betemcu-usbasp>`_
   2012-11-18
