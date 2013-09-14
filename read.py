@@ -1,17 +1,9 @@
 #!/usr/bin/env python
 """
+read - Serial line reader for JeeNode/Arduino.
 
-
-
-Registry:
-    nodes
-        <sketch-id>
-            i -> <value>
-
-Registry:
-    sketches
-        <sketch-id> -> count
-
+Keeps data in /tmp/ directory.
+Deprecated by readhex which reads from JeeNode with rf12demo or Mpe/RadioLink.
 """
 import os, sys, time
 if sys.platform == 'win32':

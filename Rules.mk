@@ -45,6 +45,9 @@ listen: B := 57600
 listen:
 	minicom -D $(D) -b $(B) minirc.arduino
 
+radio:
+	python readhex.py
+
 upload: C := m328p
 upload: M := arduino
 #upload: I := firmware/ArduinoISP_mega328.hex
@@ -322,8 +325,8 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-ARDUINODIR := /home/berend/Application/arduino-1.0.3
-#ARDUINODIR := /usr/share/arduino/
+#ARDUINODIR := /home/berend/Application/arduino-1.0.3
+ARDUINODIR := /usr/share/arduino/
 
 # Build anything in target folder 'P'
 #arduino: P :=

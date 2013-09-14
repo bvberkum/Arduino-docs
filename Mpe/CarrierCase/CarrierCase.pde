@@ -19,7 +19,7 @@
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
@@ -27,18 +27,6 @@
 
 #define RADIO_SYNC_MODE 2
 
-
-EmBencode encoder;
-char *embencBuff;
-int embencBuffLen = 0;
-
-void EmBencode::PushChar (char ch) {
-	embencBuffLen += 1;
-	embencBuff = malloc(embencBuffLen*sizeof(char));
-	embencBuff[embencBuffLen] = ch;
-}
-
-enum { ANNOUNCE_MSG, REPORT_MSG,  };
 
 /* Atmega EEPROM */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -367,17 +355,6 @@ static void doMeasure() {
 #endif
 
 	payload.lobat = rf12_lowbat();
-
-	/*
-	for ( int i = 0; i < ds_count; i++) {
-		ds_value[i] = readDS18B20(ds_addr[i]);
-#if DEBUG
-		Serial.print(i);
-		Serial.print('=');
-		Serial.println(ds_value[i]);
-#endif
-	}
-	*/
 
 	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
 
