@@ -28,6 +28,18 @@
 #define RADIO_SYNC_MODE 2
 
 
+EmBencode encoder;
+char *embencBuff;
+int embencBuffLen = 0;
+
+void EmBencode::PushChar (char ch) {
+//	embencBuffLen += 1;
+//	embencBuff = malloc(embencBuffLen*sizeof(char));
+//	embencBuff[embencBuffLen] = ch;
+}
+
+enum { ANNOUNCE_MSG, REPORT_MSG,  };
+
 /* Atmega EEPROM */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
@@ -230,8 +242,9 @@ static int readDS18B20(uint8_t addr[8]) {
 		return Tc_100;
 	}
 }
+/*
 
-static void findDS() {
+static byte* findDS(bool do_read=false) {
 	byte i;
 	byte data[8];
 	byte addr[8];
@@ -276,8 +289,8 @@ static void findDS() {
 	}
 #endif
 
-	ds_count += 1;
-	ds_addr[ds_count] = addr;
+//	ds_count += 1;
+//	ds_addr[ds_count] = addr;
 
 	if (!do_read)
 		return;
@@ -285,14 +298,16 @@ static void findDS() {
 	int result = ds_readdata(addr, data);	
 
 	if (do_read)
-		return result;
+		return;// result;
 	
 	if (result != 0) {
 		Serial.println("CRC error in ds_readdata");
 		return;
 	}
 }
+*/
 
+/*
 void printDS18B20(bool do_read=false) {
 	int Tc_100 = ds_conv_temp_c(data, SignBit);
 
@@ -319,6 +334,7 @@ void printDS18B20(bool do_read=false) {
 	serialFlush();
 #endif
 }
+*/
 
 static void doConfig() {
 }
@@ -471,34 +487,34 @@ void loop(){
 	switch (scheduler.pollWaiting()) {
 
 		case DISCOVERY:
-			while (findDS()) {
+//			while (findDS()) {
 #if DEBUG
-				printDS18B20(ds_addr[ds_count]);
+//				printDS18B20(ds_addr[ds_count]);
 #endif
-			}
+//			}
 			break;
 
 		case ANNOUNCE:
 
 			encodePayloadConfig();
 
-			rf12_sleep(RF12_WAKEUP);
-			rf12_sendNow(0, &payload_config, sizeof payload_config);
-			rf12_sendWait(RADIO_SYNC_MODE);
-			rf12_sleep(RF12_SLEEP);
-
+//			rf12_sleep(RF12_WAKEUP);
+//			rf12_sendNow(0, &payload_config, sizeof payload_config);
+//			rf12_sendWait(RADIO_SYNC_MODE);
+//			rf12_sleep(RF12_SLEEP);
+//
 			// report a new node or reinitialize node with central link node
-			for ( int x=0; x<ds_count; x++) {
-				Serial.print("SEN ");
-				Serial.print(node_id);
-				Serial.print(" ds-");
-				Serial.print(x);
-				for ( int y= 0; y<9; y++) {           // we need 9 bytes
-					Serial.print(" ");
-					Serial.print(ds_addr[x][y], HEX);
-				}
-				Serial.println("");
-			}
+//			for ( int x=0; x<ds_count; x++) {
+//				Serial.print("SEN ");
+//				Serial.print(node_id);
+//				Serial.print(" ds-");
+//				Serial.print(x);
+//				for ( int y= 0; y<9; y++) {           // we need 9 bytes
+//					Serial.print(" ");
+//					Serial.print(ds_addr[x][y], HEX);
+//				}
+//				Serial.println("");
+//			}
 			serialFlush();
 			break;
 
