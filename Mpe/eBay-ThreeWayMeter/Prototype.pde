@@ -30,7 +30,7 @@ JeeLib RF12
 		- 011 direct with ack-request
 		- 100 control/ack broadcast?
 		- 101 control broadcast with ack-request (unused)
-		- 110 ack response
+		- 110 ack response (stored in eeprom nodeId too)
 		- 111 control for node with ack-request
 
 	
@@ -46,7 +46,7 @@ JeeLib RF12
 #include <JeeLib.h>
 #include <OneWire.h>
 
-#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
+#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 #define DEBUG_DS   0
 #define FIND_DS    0
 
@@ -55,6 +55,9 @@ JeeLib RF12
 #define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+
+#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT     5   // maximum number of times to retry
 
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 
@@ -78,11 +81,10 @@ const char helpText1[] PROGMEM =
   "  123 z      - total power down, needs a reset to start up again" "\n"
 ;
 
-// EEPROMEx 
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
-should have at least 100,000 writes */
-const int memBase          = 0;
-//const int memCeiling       = EEPROMSizeATmega328;
+/**/
+typedef struct {
+	char *ds_value;
+} NodeConfig;
 
 /* RF12 config (from RF12demo) */
 
@@ -93,11 +95,10 @@ typedef struct {
   word crc;
 } RF12Config;
 
-static RF12Config config;
+static RF12Config rf12_config;
 
 static byte quiet;
 static byte useHex;
-
 
 static void showNibble (byte nibble) {
   char c = '0' + (nibble & 0x0F);
@@ -125,30 +126,30 @@ static void addInt (char* msg, word v) {
   addCh(msg, '0' + v % 10);
 }
 
-static void saveConfig () {
+static void saveRF12Config () {
   // set up a nice config string to be shown on startup
-  memset(config.msg, 0, sizeof config.msg);
-  strcpy(config.msg, " ");
+  memset(rf12_config.msg, 0, sizeof rf12_config.msg);
+  strcpy(rf12_config.msg, " ");
   
-  byte id = config.nodeId & 0x1F;
-  addCh(config.msg, '@' + id);
-  strcat(config.msg, " i");
-  addInt(config.msg, id);
-  if (config.nodeId & COLLECT)
-    addCh(config.msg, '*');
+  byte id = rf12_config.nodeId & 0x1F;
+  addCh(rf12_config.msg, '@' + id);
+  strcat(rf12_config.msg, " i");
+  addInt(rf12_config.msg, id);
+  if (rf12_config.nodeId & COLLECT)
+    addCh(rf12_config.msg, '*');
   
-  strcat(config.msg, " g");
-  addInt(config.msg, config.group);
+  strcat(rf12_config.msg, " g");
+  addInt(rf12_config.msg, rf12_config.group);
   
-  strcat(config.msg, " @ ");
+  strcat(rf12_config.msg, " @ ");
   static word bands[4] = { 315, 433, 868, 915 };
-  word band = config.nodeId >> 6;
-  addInt(config.msg, bands[band]);
-  strcat(config.msg, " MHz ");
+  word band = rf12_config.nodeId >> 6;
+  addInt(rf12_config.msg, bands[band]);
+  strcat(rf12_config.msg, " MHz ");
   
-  config.crc = ~0;
+  rf12_config.crc = ~0;
   for (byte i = 0; i < sizeof config - 2; ++i)
-    config.crc = _crc16_update(config.crc, ((byte*) &config)[i]);
+    rf12_config.crc = _crc16_update(rf12_config.crc, ((byte*) &config)[i]);
 
   // save to EEPROM
   for (byte i = 0; i < sizeof config; ++i) {
@@ -167,9 +168,9 @@ const int ds_count = 1;
 uint8_t ds_addr[ds_count][8] = {
 //	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
 //	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
-//	{ 0x28, 0x8, 0x76, 0xF4, 0x3, 0x0, 0x0, 0xD5 },
-//	{ 0x28, 0x82, 0x27, 0xDD, 0x3, 0x0, 0x0, 0x4B },
+//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
+//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
+//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
 };
 #if DEBUG_DS
 volatile int ds_value[ds_count];
@@ -191,7 +192,6 @@ Scheduler scheduler (schedbuf, TASK_END);
 // Other variables used in various places in the code:
 
 static byte reportCount;    // count up until next report, i.e. packet send
-static byte myNodeID;       // node ID used for this unit
 
 // This defines the structure of the packets which get sent out by wireless:
 
@@ -437,8 +437,9 @@ static byte waitForAck() {
     while (!ackTimer.poll(ACK_TIME)) {
         if (rf12_recvDone() && rf12_crc == 0 &&
                 // see http://talk.jeelabs.net/topic/811#post-4712
-                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | myNodeID))
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_config.nodeId))
             return 1;
+    	serialFlush();
         set_sleep_mode(SLEEP_MODE_IDLE);
         sleep_mode();
     }
@@ -501,6 +502,39 @@ static void doReport() {
 #endif
 }
 
+static void doAnnounce() {
+	byte test = 0x3f;
+
+	Serial.println("Making announce. ");
+	serialFlush();
+
+	rf12_sendNow(
+		(rf12_config.nodeId & RF12_HDR_MASK) | RF12_HDR_ACK,
+		&test, 
+		sizeof test);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	byte acked = waitForAck();
+	rf12_sleep(RF12_SLEEP);
+
+	if (acked) {
+		Serial.println("3ACK");
+		scheduler.timer(MEASURE, 0);
+	} else {
+		Serial.println("3NACK");
+		scheduler.timer(ANNOUNCE, 100);
+	}
+	serialFlush();
+
+	// report a new node or reinitialize node with central link node
+	// fixme: put probe config here?
+	//for ( int x=0; x<ds_count; x++) {
+	//	Serial.print("SEN ");
+	//	Serial.print(node_id);
+	//	Serial.println("");
+	//}
+	serialFlush();
+}
+
 static void showString (PGM_P s) {
   for (;;) {
     char c = pgm_read_byte(s++);
@@ -541,19 +575,20 @@ void setup()
 	Serial.begin(57600);
 	Serial.println("ThreeWayMeter");
 	serialFlush();
-	byte rf12_show = 0;
+	byte rf12_show = 1;
 #else
 	byte rf12_show = 0;
 #endif
 
-	if (rf12_config(rf12_show)) {
-		config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
-		config.group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
-	} else {
-		config.nodeId = 0x81; // 868 MHz, node 1
-		config.group = 0xD4;  // 212 - default group
-		saveConfig();
-	}
+//	if (rf12_config(rf12_show)) {
+//		rf12_config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+//		rf12_config.group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+//	} else {
+		rf12_config.nodeId = 0x83; // 868 MHz, node 2
+		rf12_config.group = 0x5;  // 212 - default group
+		saveRF12Config();
+		rf12_config(rf12_show);
+//	}
 
     rf12_sleep(RF12_SLEEP); // power down
 
@@ -566,12 +601,14 @@ void setup()
 //		doConfig();
 //	}
 
+	
+
 	Serial.println("REG TWM attemp lobat");
 	serialFlush();
 	node_id = "TWM-1"; // xxx: hardcoded b/c handshake is not reliable?? must be some Py Twisted buffer thing I don't get
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(ANNOUNCE, 0);    // start the measurement loop going
+	scheduler.timer(ANNOUNCE, 0);
 }
 
 void loop(){
@@ -586,22 +623,10 @@ void loop(){
 	serialFlush();
 #endif
 		
-	byte test = 0x3f;
-
 	switch (scheduler.pollWaiting()) {
 
 		case ANNOUNCE:
-			rf12_sendNow(
-				(config.nodeId & RF12_HDR_MASK) ^ RF12_HDR_ACK ^ RF12_HDR_CTL,
-				&test, sizeof test);
-			// report a new node or reinitialize node with central link node
-			// fixme: put probe config here?
-			//for ( int x=0; x<ds_count; x++) {
-			//	Serial.print("SEN ");
-			//	Serial.print(node_id);
-			//	Serial.println("");
-			//}
-			serialFlush();
+			doAnnounce();
 			break;
 
 		case MEASURE:

@@ -9,6 +9,7 @@
 #include <DHT.h>
 #include <EEPROM.h>
 // include EEPROMEx.h
+#include "EmBencode.h"
 
 #define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
 
@@ -27,13 +28,25 @@
 #define RADIO_SYNC_MODE 2
 
 
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
+EmBencode encoder;
+char *embencBuff;
+int embencBuffLen = 0;
 
+void EmBencode::PushChar (char ch) {
+	embencBuffLen += 1;
+	embencBuff = malloc(embencBuffLen*sizeof(char));
+	embencBuff[embencBuffLen] = ch;
+}
+
+enum { ANNOUNCE_MSG, REPORT_MSG,  };
+
+/* Atmega EEPROM */
+const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
-// DS18S20 temperature bus
+/* Dallas bus for DS18S20 temperature */
 OneWire ds(A5);  // on pin 10
 
 String node_id = "";
@@ -51,7 +64,7 @@ volatile int ds_value[ds_count];
 
 // The scheduler makes it easy to perform various tasks at various times:
 
-enum { DISCOVERY, MEASURE, REPORT, TASK_END };
+enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -230,7 +243,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	}
 }
 
-static void printDS18B20s(void) {
+static void findDS() {
 	byte i;
 	byte data[8];
 	byte addr[8];
@@ -275,13 +288,24 @@ static void printDS18B20s(void) {
 	}
 #endif
 
+	ds_count += 1;
+	ds_addr[ds_count] = addr;
+
+	if (!do_read)
+		return;
+
 	int result = ds_readdata(addr, data);	
+
+	if (do_read)
+		return result;
 	
 	if (result != 0) {
 		Serial.println("CRC error in ds_readdata");
 		return;
 	}
+}
 
+void printDS18B20(bool do_read=false) {
 	int Tc_100 = ds_conv_temp_c(data, SignBit);
 
 	int Whole, Fract;
@@ -309,6 +333,12 @@ static void printDS18B20s(void) {
 }
 
 static void doConfig() {
+}
+
+/**
+ l
+ */
+static void encodePayloadConfig() {
 }
 
 static byte waitForAck() {
@@ -339,8 +369,6 @@ static void doMeasure() {
 	payload.lobat = rf12_lowbat();
 
 	/*
-	// xxx
-	//printDS18B20s();
 	for ( int i = 0; i < ds_count; i++) {
 		ds_value[i] = readDS18B20(ds_addr[i]);
 #if DEBUG
@@ -466,6 +494,22 @@ void loop(){
 	switch (scheduler.pollWaiting()) {
 
 		case DISCOVERY:
+			while (findDS()) {
+#if DEBUG
+				printDS18B20(ds_addr[ds_count]);
+#endif
+			}
+			break;
+
+		case ANNOUNCE:
+
+			encodePayloadConfig();
+
+			rf12_sleep(RF12_WAKEUP);
+			rf12_sendNow(0, &payload_config, sizeof payload_config);
+			rf12_sendWait(RADIO_SYNC_MODE);
+			rf12_sleep(RF12_SLEEP);
+
 			// report a new node or reinitialize node with central link node
 			for ( int x=0; x<ds_count; x++) {
 				Serial.print("SEN ");
@@ -484,9 +528,7 @@ void loop(){
 		case MEASURE:
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
-
 			doMeasure();
-
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;

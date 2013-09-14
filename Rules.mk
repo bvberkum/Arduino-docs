@@ -322,8 +322,8 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-#ARDUINODIR := /home/berend/Application/arduino-1.0.3
-ARDUINODIR := /usr/share/arduino/
+ARDUINODIR := /home/berend/Application/arduino-1.0.3
+#ARDUINODIR := /usr/share/arduino/
 
 # Build anything in target folder 'P'
 #arduino: P :=
@@ -369,6 +369,11 @@ jeenodeisp-repair: M := arduino
 jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
 #jeenodeisp-repair: X := -D
 jeenodeisp-repair: upload
+
+blink: C := m328p
+blink: P := Mpe/Blink
+blink: I := Mpe/Blink/Blink.hex
+blink: jeenode upload
 
 blinkall: C := m328p
 blinkall: P := Mpe/BlinkAll

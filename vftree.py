@@ -2,6 +2,21 @@
 # -*- coding: utf-8 -*-  
 """
 - Copy/paste work in progress. Looks like I'll need proper read.py first.
+
+/
+    nodes
+        <sketch-id>.ini
+            <sensor-id>: config
+        <sketch-id>/
+            <sensor-id>: config
+    values
+        <sketch-id>
+            <sensor-id> -> value
+
+    logs
+        <sketch-id>
+            <sensor-id>
+
 """
 import errno  
 import fuse  
@@ -16,6 +31,7 @@ class MyFS(fuse.Fuse):
         fuse.Fuse.__init__(self, *args, **kw)  
 
     def getattr(self, path):
+        open("/tmp/mypyfuse", "rw+").write(path)
         st = fuse.Stat()  
         st.st_mode = stat.S_IFDIR | 0755  
         st.st_nlink = 2  

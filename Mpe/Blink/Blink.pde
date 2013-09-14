@@ -17,8 +17,10 @@
  *         (ICP1)  D8 PB0 | 14   15 | PB1 D9  (OC1A)
  *                        +---------+
  */
-//int pin = A3;
 int pin = 7;
+int count = 1;
+int length = 1000;
+int loop_delay = 0;
 
 void blink(int led, int count, int length) {
   for (int i=0;i<count;i++) {
@@ -39,8 +41,7 @@ void setup()
 
 void loop() 
 {
-  blink(pin,2,75);
-  delay(100);
-  delay(1000);
+  blink(pin, count, length);
+  delay(loop_delay);
 }
 
