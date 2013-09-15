@@ -68,10 +68,17 @@ class Martador(LineReceiver):
 		print args
 
 	def lineReceived(self, line):
-		print line
-		return
+		data = line.split(' ')
+		lkey = data .pop(0)
+		if lkey == '?':
+			pass
+		elif lkey == 'OKX':
+			pass
+		elif lkey == 'OK':
+			pass
+		else:
+			logging.error('Unrecognized line %r' % line)
 		try:
-			data = line.split()
 			self.processData(*data)
 		except ValueError:
 			logging.error('Unable to parse data %s' % line)

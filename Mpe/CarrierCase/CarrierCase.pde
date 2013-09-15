@@ -20,7 +20,7 @@
 #define SERIAL  1   // set to 1 to enable serial interface
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define ATMEGA_TEMP_REPORT 1
+#define ATMEGA_TEMP 1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -88,12 +88,16 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
-	byte light :8;     // light sensor: 0..255
+#if LDR_PORT
+	byte light  :8;     // light sensor: 0..255
+#endif
 //	byte moved :1;  // motion detector: 0..1
-	int rhum   :10;  // rhumdity: 0..100
-	int temp   :10; // temperature: -500..+500 (tenths)
-#if ATMEGA_TEMP_REPORT
-	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
+#if DHT_PIN
+	byte rhum   :7;  // rhumdity: 0..100
+	int temp    :10; // temperature: -500..+500 (tenths)
+#endif
+#if ATMEGA_TEMP
+	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
 #endif
 #if MEMREPORT
 	int memfree;
@@ -410,20 +414,33 @@ static byte waitForAck() {
 }
 
 // readout all the sensors and other values
-static void doMeasure() {
-	byte firstTime = payload.rhum == 0; // special case to init running avg
+static void doMeasure() 
+{
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+
+	payload.lobat = rf12_lowbat();
 
 #if DHT_PIN
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
-	int rh = h * 10;
-	payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
-	payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+	if (isnan(h)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
-
-	payload.lobat = rf12_lowbat();
-
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+	} else {
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+	}
+	if (isnan(t)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 temperature"));
+#endif
+	} else {
+		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+	}
+#endif
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -432,9 +449,9 @@ static void doMeasure() {
 	payload.light = smoothedAverage(payload.light, light, firstTime);
 #endif
 
+#if MEMREPORT
 	payload.memfree = freeRam();
-
-	serialFlush();
+#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -443,8 +460,6 @@ static void doReport() {
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	rf12_sleep(RF12_SLEEP);
-
-	/* no working radio */
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(" ");
@@ -460,7 +475,7 @@ static void doReport() {
 	Serial.print((int) payload.temp);
 	Serial.print(' ');
 #endif
-#if ATMEGA_TEMP_REPORT
+#if ATMEGA_TEMP
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
 #endif
@@ -501,7 +516,7 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	Serial.println(F("CarrierCase"));
+	Serial.println(F("\nCarrierCase"));
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
 	serialFlush();
@@ -541,7 +556,7 @@ void setup()
 #if DHT_PIN
 	Serial.print(F(" dht11-rhum dht11-temp"));
 #endif
-#if ATMEGA_TEMP_REPORT
+#if ATMEGA_TEMP
 	Serial.print(F(" attemp"));
 #endif
 #if MEMREPORT
@@ -554,8 +569,8 @@ void setup()
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
-void loop(){
-
+void loop(void)
+{
 #if DEBUG
 	Serial.print('.');
 	serialFlush();

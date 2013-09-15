@@ -36,9 +36,9 @@ Free pins
 #include <util/atomic.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <RF24.h>
+//include <RF24.h>
 #include <DHT.h>
-#include <LiquidCrystalTmp_I2C.h>
+//include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
 
 #include "printf.h"
@@ -54,9 +54,20 @@ Free pins
 #define LED_YELLOW  6
 #define LED_GREEN     7
 
-#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
 #define REPORT_EVERY    5   // report every N measurement cycles
-#define MEASURE_PERIOD  5000 // how often to measure, in tenths of seconds
+#define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
+
+#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT     5   // maximum number of times to retry
+#define ACK_TIME        10  // number of milliseconds to wait for an ack
+
+#define RADIO_SYNC_MODE 2
+
+//#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
+#define DHT_PIN     A1   // defined if DHTxx data is connected to a DIO pin
+//#define RTC
+//#define LCD
 
 /**
  * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
@@ -83,7 +94,9 @@ struct Config {
 
 Config config;
 
-enum { MEASURE, REPORT, TASK_END };
+static byte myNodeID;       // node ID used for this unit
+
+enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 static byte reportCount;    // count up until next report, i.e. packet send
@@ -133,30 +146,43 @@ Role role;// = role_logger;
 
 /* Data reported by this sketch */
 struct {
-//    byte light;     // light sensor: 0..255
+#if LDR_PORT
+	byte light;     // light sensor: 0..255
+#endif
 //    byte moved :1;  // motion detector: 0..1
-    byte humi  :7;  // humidity: 0..100
-    int temp   :10; // temperature: -500..+500 (tenths)
-//    byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
-// XXX: datetime	
+#if DHT_PIN
+	byte rhum    :7;  // humidity: 0..100
+	int temp     :10; // temperature: -500..+500 (tenths)
+#endif
+	int ctemp    :10; // temperature: -500..+500 (tenths)
+#if MEMREPORT
+	int memfree;
+#endif
+	byte lobat    :1;  // supply voltage dropped under 3.1V: 0..1
+#if RTC
+// XXX: datetime?
+#endif
 } payload;
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
 
+#if DHT_PIN
 /* DHTxx: Digital temperature/humidity (Adafruit) */
-#define DHTPIN A1
-#define DHTTYPE DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
-DHT dht(DHTPIN, DHTTYPE);
+#define DHTTYPE   DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
+DHT dht;//(DHTPIN, DHTTYPE);
 /* DHTxx (jeelib) */
 //DHTxx dht (A1); // connected to ADC1
+#endif
 
+#if RTC
 /* DS1307: Real Time Clock over I2C */
 #define DS1307_I2C_ADDRESS 0x68
+#endif
 
+#if RF24
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
-
 RF24 radio(12,13); /* CE, CS */
 
 void radio_init()
@@ -254,6 +280,13 @@ void radio_run()
 	}
 }
 
+void saveRF24Config(Config &c) {
+	for (unsigned int t=0; t<sizeof(c); t++)
+	{
+		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+	}
+}
+#endif
 
 /** Generic routines */
 
@@ -281,6 +314,7 @@ void blink(int led, int count, int length) {
 #define printByte(args)  print(args,BYTE);
 #endif
 
+#if LCD
 //uint8_t bell[8]  = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
 
 /* I2C LCD 1602 parameters */
@@ -320,6 +354,7 @@ void i2c_lcd_start()
 	lcd.on();
 	lcd.home();
 }
+#endif
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -333,6 +368,7 @@ byte bcdToDec(byte val)
 	return ( (val/16*10) + (val%16) );
 }
 
+#if RTC
 // Stops the DS1307, but it has the side effect of setting seconds to 0
 // Probably only want to use this for testing
 /*void stopDs1307()
@@ -421,49 +457,12 @@ void rtc_init()
 	}
 }
 
-void dht_run(void)
-{
-	// Reading temperature or humidity takes about 250 milliseconds!
-	// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-	float h = dht.readHumidity();
-	float t = dht.readTemperature();
-
-	// check if returns are valid, if they are NaN (not a number) then something went wrong!
-	if (config.display) {
-		lcd.setCursor(0,0);
-	}
-	if (isnan(t) || isnan(h)) {
-#if SERIAL || DEBUG
-		Serial.println("Failed to read from DHT");
-#endif
-		if (config.display) {
-			lcd.println("DHT error");
-		}
-	} else {
-#if SERIAL || DEBUG
-		Serial.print("Humidity: "); 
-		Serial.print(h);
-		Serial.println(" %RH");
-
-		Serial.print("Temperature: "); 
-		Serial.print(t);
-		Serial.println(" *C");
-#endif
-		if (config.display) {
-			lcd.print(h);
-			lcd.print("%RH ");
-			lcd.print(t);
-			lcd.print((char)223);
-			lcd.print("C ");
-		}
-	}
-}
-
 void rtc_run(void)
 {
 	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 	getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
+#if LCD
 	if (config.display) {
 		lcd.setCursor(0, 1);
 		lcd.print(year, DEC);
@@ -478,7 +477,9 @@ void rtc_run(void)
 		lcd.print(":");
 		lcd.print(second, DEC);
 	}
+#endif
 }
+#endif
 
 uint8_t cmd;
 
@@ -494,13 +495,6 @@ void serialEvent()
 			rx_overflow = true;
 		}
 	}
-}
-
-void serial_init(void)
-{
-	Serial.begin(38400);
-	Serial.println("\nCassette328P");
-	serialFlush();
 }
 
 /**
@@ -540,61 +534,152 @@ bool loadConfig(Config &c)
 	}
 }
 
-void saveConfig(Config &c) {
-	for (unsigned int t=0; t<sizeof(c); t++)
-	{
-		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
-	}
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
+}
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
 void setup_peripherals()
 {
-	//  mode_reporter();
-	if (config.rtc) {
-		rtc_init();
-	}
-
-	if (config.radio) {
-		radio_init();
-	}
-
+#if RTC
+	rtc_init();
+#endif
+#if RF12
+	radio_init();
+#endif
+#if LCD
 	i2c_lcd_init();
-	if (config.display) {
-		i2c_lcd_start();
-		lcd.print("Cassette328P");
-	}
-
-	if (config.dht) {
-		dht = DHT(A1, DHT11);
-		dht.begin();
-	}
-
+	i2c_lcd_start();
+	lcd.print(F("Cassette328P"));
+#endif
+#if DHT_PIN
+	dht = DHT(DHT_PIN, DHT11);
+ 	dht.begin();
+#endif
 	blink(LED_GREEN, 4, 100);
 }
 
 static void doMeasure() 
 {
-	byte firstTime = payload.humi == 0; // special case to init running avg
-	/* FIXME: do measure to payload */
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+
+	payload.lobat = rf12_lowbat();
+
+#if DHT_PIN
+	float h = dht.readHumidity();
+	float t = dht.readTemperature();
+	if (isnan(h)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 humidity"));
+#endif
+	} else {
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+	}
+	if (isnan(t)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 temperature"));
+#endif
+	} else {
+		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+	}
+#endif
+
+#if LDR_PORT
+	ldr.digiWrite2(1);  // enable AIO pull-up
+	byte light = ~ ldr.anaRead() >> 2;
+	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	payload.light = smoothedAverage(payload.light, light, firstTime);
+#endif
+
+#if MEMREPORT
+	payload.memfree = freeRam();
+#endif
 }    
 
 static void doReport()
 {
-	// TODO: send over radio
-	if (config.rtc) {
-		blink(LED_YELLOW, 2, 25);
-		rtc_run();
-	}
-	if (config.radio) {
-		blink(LED_YELLOW, 2, 25);
-		radio_run();
-	}
-	if (config.dht) {
-		blink(LED_YELLOW, 2, 25);
-		dht_run();
-	}
+	rf12_sleep(RF12_WAKEUP);
+	rf12_sendNow(0, &payload, sizeof payload);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	rf12_sleep(RF12_SLEEP);
+#if RTC
+	blink(LED_YELLOW, 2, 25);
+	rtc_run();
+#endif
+#if RF24
+	blink(LED_YELLOW, 2, 25);
+	radio_run();
+#endif
+#if SERIAL
+	Serial.print(myNodeID);
+	Serial.print(" ");
+#if LDR_PORT
+	Serial.print((int) payload.light);
+	Serial.print(' ');
+#endif
+//  Serial.print((int) payload.moved);
+//  Serial.print(' ');
+#if DHT_PIN
+	Serial.print((int) payload.rhum);
+	Serial.print(' ');
+	Serial.print((int) payload.temp);
+	Serial.print(' ');
+#endif
+	Serial.print((int) payload.ctemp);
+	Serial.print(' ');
+#if MEMREPORT
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+	Serial.print((int) payload.lobat);
+	Serial.println();
+	serialFlush();
+#endif
 }
 
+/*
 static void runCommand()
 {
 	blink(LED_YELLOW, 20, 1 );
@@ -602,7 +687,7 @@ static void runCommand()
 	switch (cmd) {
 
 		case cmd_reset_settings:
-			saveConfig(static_config);
+			saveRF24Config(static_config);
 			config = static_config;
 			setup_peripherals();
 			break;
@@ -656,7 +741,7 @@ static void runCommand()
 	Serial.println(".");
 	blink(LED_GREEN, 2, 75 );
 }
-
+*/
 /* Main */
 
 void setup(void)
@@ -664,22 +749,32 @@ void setup(void)
 	pinMode( LED_GREEN, OUTPUT );
 	pinMode( LED_YELLOW, OUTPUT );
 	pinMode( LED_RED, OUTPUT );
-//	pinMode( LED_RED, INPUT );
-//	digitalWrite( LED_GREEN, LOW);
 
 	//blink(LED_YELLOW, 1, 100);
 	digitalWrite( LED_RED, HIGH );
 	digitalWrite( LED_YELLOW, HIGH );
 
-	serial_init();
-	delay(250);
+#if SERIAL || DEBUG
+	Serial.begin(57600);
+	Serial.println(F("\nCassette328p"));
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+	serialFlush();
+	byte rf12_show = 1;
+#else
+	byte rf12_show = 0;
+#endif
+	myNodeID = 4;
+	rf12_initialize(myNodeID, RF12_868MHZ, 5);
+    
+	rf12_sleep(RF12_SLEEP); // power down
 
 	/* Read config from memory, or initialize with defaults */
-	if (!loadConfig(config)) 
-	{
-		saveConfig(static_config);
-		config = static_config;
-	}
+//	if (!loadConfig(config)) 
+//	{
+//		saveRF24Config(static_config);
+//		config = static_config;
+//	}
 
 	digitalWrite( LED_RED, LOW );
 
@@ -693,13 +788,17 @@ void setup(void)
 
 void loop(void)
 {
+#if DEBUG
+	Serial.print('.');
+	serialFlush();
+#endif
 	if (rx_overflow) {
 		blink(LED_RED, 1, 75 );
 		rx_overflow = false;
 	}
-	if (cmdseq.count() > 0) {
-		runCommand();
-	}
+	//if (cmdseq.count() > 0) {
+	//	runCommand();
+	//}
 	/* Do nothing but count uptime while LED_RED is bypassed to HIGH */
 	//if (serviceMode()) {
 	//	if (service_mode == NULL) {
@@ -714,34 +813,28 @@ void loop(void)
 	//} else {
 	//	service_mode = NULL;
 	//}
-//	switch (scheduler.pollWaiting()) {
-//
-//		case MEASURE:
-//			Serial.println("Start measure");
-//			// reschedule these measurements periodically
-//			scheduler.timer(MEASURE, MEASURE_PERIOD);
-//			doMeasure();
-//			// every so often, a report needs to be sent out
-//			if (++reportCount >= REPORT_EVERY) {
-//					reportCount = 0;
-//					scheduler.timer(REPORT, 0);
-//			}
-//			break;
-//
-//		case REPORT:
-//			Serial.println("Start report");
-doReport();
-//			break;
-//
-//	}
-	//blink(LED_GREEN, 3, 50);
-#if DEBUG	
-	Serial.println("sleep");
-#endif
-	serialFlush();
-	/* Go low power and wake up after given miliseconds */
-	/* Returns 1 or 0 on interrupt, but most interrupts will be down. */
-	Sleepy::loseSomeTime(30000); /* 30 seconds low power mode */
-}
+	switch (scheduler.pollWaiting()) {
 
-// vim:cin:ai:noet:sts=2 sw=2 ft=cpp
+		case DISCOVERY:
+			break;
+
+		case ANNOUNCE:
+			break;
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+					reportCount = 0;
+					scheduler.timer(REPORT, 0);
+			}
+			break;
+
+		case REPORT:
+			doReport();
+			break;
+
+	}
+}

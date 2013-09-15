@@ -309,11 +309,6 @@ m328p-16Mhz:
 #		$(call key,METHODS,$(M)) \
 #  	-U lock:w:0x3C:m 
 
-cassette328p: D := $/
-cassette328p: 
-	cd $D;\
-	make arduino upload P=Mpe/Cassette328P I=Mpe/Cassette328P/Cassette328P.hex
-
 
 m1284p: M := arduinoisp
 m1284p: 
@@ -397,6 +392,12 @@ carriercase: C := m328p
 carriercase: P := Mpe/CarrierCase/
 carriercase: I := Mpe/CarrierCase/CarrierCase.hex
 carriercase: jeenode upload
+
+cassette328p: C := m328p
+cassette328p: P := Mpe/Cassette328P/
+cassette328p: I := Mpe/Cassette328P/Cassette328P.hex
+cassette328p: jeenode upload
+
 
 #      ------------ -- 
 #
