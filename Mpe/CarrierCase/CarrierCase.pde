@@ -2,9 +2,13 @@
 */
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
+#define MEMREPORT 1
+
+#include <stdlib.h>
+#include <avr/sleep.h>
+#include <avr/pgmspace.h>
 
 #include <JeeLib.h>
-#include <avr/sleep.h>
 #include <OneWire.h>
 #include <DHT.h>
 #include <EEPROM.h>
@@ -15,11 +19,12 @@
 
 #define SERIAL  1   // set to 1 to enable serial interface
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
-//#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
+#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
+#define ATMEGA_TEMP_REPORT 1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
 
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
@@ -29,13 +34,19 @@
 
 
 EmBencode encoder;
-char *embencBuff;
+uint8_t* embencBuff;
 int embencBuffLen = 0;
 
-void EmBencode::PushChar (char ch) {
+void EmBencode::PushChar(char ch) {
+	Serial.write(ch);
 //	embencBuffLen += 1;
-//	embencBuff = malloc(embencBuffLen*sizeof(char));
-//	embencBuff[embencBuffLen] = ch;
+//	uint8_t* np = (uint8_t *) realloc( embencBuff, sizeof(uint8_t) * embencBuffLen);
+//	if( np != NULL ) { 
+//		embencBuff = np; 
+//		embencBuff[embencBuffLen] = ch;
+//	} else {
+//		Serial.println(F("Out of Memory"));
+//	}
 }
 
 enum { ANNOUNCE_MSG, REPORT_MSG,  };
@@ -81,7 +92,12 @@ struct {
 //	byte moved :1;  // motion detector: 0..1
 	int rhum   :10;  // rhumdity: 0..100
 	int temp   :10; // temperature: -500..+500 (tenths)
+#if ATMEGA_TEMP_REPORT
 	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
+#endif
+#if MEMREPORT
+	int memfree;
+#endif
 	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
 } payload;
 
@@ -160,6 +176,41 @@ double internalTemp(void)
 	return (t);
 }
 
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+static void sendSomeData () {
+  EmBencode encoder;
+  // send a simple string
+  encoder.push("abcde");
+  // send a number of bytes, could be binary
+  encoder.push("123", 3);
+  // send an integer
+  encoder.push(12345);
+  // send a list with an int, a nested list, and an int
+  encoder.startList();
+    encoder.push(987);
+    encoder.startList();
+      encoder.push(654);
+    encoder.endList();
+    encoder.push(321);
+  encoder.endList();
+  // send a large integer
+  encoder.push(999999999);
+  // send a dictionary with two entries
+  encoder.startDict();
+    encoder.push("one");
+    encoder.push(11);
+    encoder.push("two");
+    encoder.push(22);
+  encoder.endDict();
+  // send one last string
+  encoder.push("bye!");
+}
+
 enum { DS_OK, DS_ERR_CRC };
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
@@ -180,7 +231,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0xBE);         // Read Scratchpad
 
 #if DEBUG
-	Serial.print("Data=");
+	F("Data=");
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
@@ -197,7 +248,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
 #if DEBUG
-	Serial.print(" CRC=");
+	F(" CRC=");
 	Serial.print( crc8, HEX);
 	Serial.println();
 #endif
@@ -230,7 +281,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	int result = ds_readdata(addr, data);	
 	
 	if (result != 0) {
-		Serial.println("CRC error in ds_readdata");
+		F("CRC error in ds_readdata");
 		return 0;
 	}
 
@@ -381,6 +432,8 @@ static void doMeasure() {
 	payload.light = smoothedAverage(payload.light, light, firstTime);
 #endif
 
+	payload.memfree = freeRam();
+
 	serialFlush();
 }
 
@@ -395,23 +448,32 @@ static void doReport() {
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(" ");
+#if LDR_PORT
 	Serial.print((int) payload.light);
 	Serial.print(' ');
-	//        Serial.print((int) payload.moved);
-	//        Serial.print(' ');
+#endif
+//  Serial.print((int) payload.moved);
+//  Serial.print(' ');
+#if DHT_PIN
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
 	Serial.print(' ');
+#endif
+#if ATMEGA_TEMP_REPORT
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
+#endif
 //	Serial.print((int) ds_value[0]);
 //	Serial.print(' ');
 //	Serial.print((int) ds_value[1]);
 //	Serial.print(' ');
 //	Serial.print((int) ds_value[2]);
 //	Serial.print(' ');
-//	Serial.print(' ');
+#if MEMREPORT
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
 	Serial.print((int) payload.lobat);
 	Serial.println();
 	serialFlush();
@@ -439,13 +501,19 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	Serial.println("CarrierCase");
+	Serial.println(F("CarrierCase"));
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
 	serialFlush();
+	byte rf12_show = 1;
+#else
+	byte rf12_show = 0;
 #endif
 	myNodeID = 23;
 	rf12_initialize(myNodeID, RF12_868MHZ, 5);
+	//rf12_config(rf12_show);
     
-    rf12_sleep(RF12_SLEEP); // power down
+	rf12_sleep(RF12_SLEEP); // power down
 
 	/* warn out of bound if _EEPROMEX_DEBUG */
   //EEPROM.setMemPool(memBase, memCeiling);
@@ -466,7 +534,20 @@ void setup()
  	dht.begin();
 #endif
 
-	Serial.println("REG ROOM ldr dht11-rhum dht11-temp attemp ds-1 ds-2 ds-3");
+	Serial.print(F("REG ROOM"));
+#if LDR_PORT
+	Serial.print(F(" ldr"));
+#endif
+#if DHT_PIN
+	Serial.print(F(" dht11-rhum dht11-temp"));
+#endif
+#if ATMEGA_TEMP_REPORT
+	Serial.print(F(" attemp"));
+#endif
+#if MEMREPORT
+	Serial.print(F(" memfree"));
+#endif
+	Serial.println(F(" lobat"));
 	serialFlush();
 	node_id = "ROOM-5-23";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
