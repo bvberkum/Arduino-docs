@@ -1,8 +1,8 @@
 /*
+CarrierCase
 */
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
-#define MEMREPORT 1
 
 #include <stdlib.h>
 #include <avr/sleep.h>
@@ -17,10 +17,12 @@
 
 #define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
 
+#define MEMREPORT 1
+#define ATMEGA_TEMP 1
+
 #define SERIAL  1   // set to 1 to enable serial interface
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define ATMEGA_TEMP 1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -93,16 +95,16 @@ struct {
 #endif
 //	byte moved :1;  // motion detector: 0..1
 #if DHT_PIN
-	byte rhum   :7;  // rhumdity: 0..100
-	int temp    :10; // temperature: -500..+500 (tenths)
+	int rhum   :7;   // rhumdity: 0..100 (4 or 5% resolution?)
+	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
 #if ATMEGA_TEMP
 	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
 #endif
 #if MEMREPORT
-	int memfree;
+	int memfree :16;
 #endif
-	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
+	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
 } payload;
 
 #if LDR_PORT
@@ -430,15 +432,14 @@ static void doMeasure()
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		int rh = h * 10;
-		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+		payload.rhum = smoothedAverage(payload.rhum, (int)h, firstTime);
 	}
 	if (isnan(t)) {
 #if SERIAL | DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
-		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
 	}
 #endif
 
@@ -452,6 +453,8 @@ static void doMeasure()
 #if MEMREPORT
 	payload.memfree = freeRam();
 #endif
+
+	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port

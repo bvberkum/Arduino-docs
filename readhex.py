@@ -1,85 +1,87 @@
 """
+readhex?
 
-"""
-"""
-import bitstring
+Working
+- This talks to a RadioLink JeeNode over a RS232/USB adapter.
 
-# Payload bitfields: LDR, DHT11 rhum, DHT11 temp, ATmega temp, lowbat
-payload_len = 8 + 10 + 10 + 10  + 1
-print 'Packet length', payload_len
+ToDo
+- receive announce w/ config
+- serve vfs
+- write/maintain log
+- Would be nice to have local flash (card) based log, backup battery 
+  and serial commands for dumping.
 
-payloads = (
-		"0 24 193 163 1", # 0 280 240 26 0
-		"0 22 205 163 1", # 0 278 243 26 0
-	)
-print payloads
-
-payloads_bin = [
-		[ 
-			bin(int(b))[2:] for b in p.split(' ') 
-		] for p in payloads
-	]
-for i, p in enumerate(payloads_bin):
-	# First padd all bytes, according to exact payload_len
-	for x, p in enumerate(payloads_bin[i]):
-		padd = 8
-		remaining = payload_len - ( x * 8 )
-		if remaining < 8:
-			padd = remaining
-		payloads_bin[i][x] = payloads_bin[i][x].rjust(padd, '0')
-	# reverse this sequence
-	payloads_bin[i].reverse()
-print payloads_bin 
-
-
-for b in payloads_bin:
-	bits = ''.join(b)
-	a = bitstring.ConstBitStream(bin='0b'+bits)
-	# Now read payload in reverse
-	print  \
-		a.read("bool"), \
-		a.read("int:10"),\
-		a.read("int:10"),\
-		a.read("int:10"),\
-		a.read("int:8")
 """
 
 import os, sys, time
 if sys.platform == 'win32':
 	from twisted.internet import win32eventreactor
 	win32eventreactor.install()
+import struct
+import logging
 
 from twisted.python import log, usage
 from twisted.internet import reactor
 from twisted.protocols.basic import LineReceiver
 import serial
 
+from tmp import decode_avr_struct
 
-sketches = {
-		'ROOM': 0,
-		'MOIST': 0
-	}
-nodes = {}
+
+sketches = { }
+values = { }
+nodes = {
+		'23': [
+			('light', 8, int),
+			('rhum', 7, int),
+			('temp', 10, int),
+			('ctemp', 10, int),
+			('memfree', 16, int),
+			('lobat', 1, bool),
+			]
+		}
 
 
 class Martador(LineReceiver):
 
-	def processData(self, *args):
-		print args
+	def processReport(self, node_id, *payload):
+		print payload, len(payload)
+		report = []
+		fmt = nodes[node_id]
+		try:
+			report = decode_avr_struct(payload, fmt)
+		except Exception, e:
+			print "processReport error:", e
+			return
+		for i, f in enumerate(fmt):
+			if node_id not in values:
+				values[node_id] = {}
+			values[node_id][f[0]] = report[i]
+			print node_id, f[0], report[i]
 
 	def lineReceived(self, line):
-		data = line.split(' ')
-		lkey = data .pop(0)
+		if line == ' A i1 g5 @ 868 MHz ':
+			print line
+			self.sendLine("1q")
+			return
+		elif line.startswith('>'):
+			print line
+			return
+		node_id = None
+		data = line.strip().split(' ')
+		lkey = data.pop(0)
 		if lkey == '?':
-			pass
+			return
 		elif lkey == 'OKX':
-			pass
+			return
 		elif lkey == 'OK':
-			pass
+			node_id = data.pop(0)
+			print 'From: ', node_id
 		else:
 			logging.error('Unrecognized line %r' % line)
+			return;
 		try:
-			self.processData(*data)
+			self.processReport(node_id, *data)
 		except ValueError:
 			logging.error('Unable to parse data %s' % line)
 			return
