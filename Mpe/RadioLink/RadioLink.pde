@@ -1,5 +1,8 @@
 /**
+RadioLink
   - Based on RF12demo
+ToDo
+  - Want to use some flash based logger here.
  */
 #include <JeeLib.h>
 #include <util/crc16.h>

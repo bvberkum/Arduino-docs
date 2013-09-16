@@ -1,5 +1,9 @@
 /*
 CarrierCase
+- Generally based on roomNode, probably can be made compatible with other environmental sensor nodes.
+
+ToDo
+  - Announce payload config
 */
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
@@ -112,7 +116,6 @@ Port ldr (LDR_PORT);
 #endif
 
 #if DHT_PIN
-
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
 #define DHTTYPE DHT11   // DHT 11 
@@ -519,14 +522,17 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	Serial.println(F("\nCarrierCase"));
+	Serial.println(F("\n[CarrierCase]"));
+#if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
-	serialFlush();
 	byte rf12_show = 1;
 #else
 	byte rf12_show = 0;
 #endif
+	serialFlush();
+#endif
+
 	myNodeID = 23;
 	rf12_initialize(myNodeID, RF12_868MHZ, 5);
 	//rf12_config(rf12_show);
@@ -552,21 +558,43 @@ void setup()
  	dht.begin();
 #endif
 
+#if SERIAL
 	Serial.print(F("REG ROOM"));
+#endif
+
+	EmBencode payload_spec;
+	payload_spec.startList()
 #if LDR_PORT
+	payload_spec.startList()
+	// name, may be unique but can be part number and as specific or generic as possible
+	payload_spec.push("ldr2250"); 
+	// bits in payload
+	payload_spec.push(8);
+	// decoder params
+	payload_spec.push("int(0-255)");
+	payload_spec.endList()
 	Serial.print(F(" ldr"));
 #endif
+#endif
 #if DHT_PIN
+#if SERIAL
 	Serial.print(F(" dht11-rhum dht11-temp"));
 #endif
+#endif
 #if ATMEGA_TEMP
+#if SERIAL
 	Serial.print(F(" attemp"));
 #endif
+#endif
 #if MEMREPORT
+#if SERIAL
 	Serial.print(F(" memfree"));
 #endif
+#endif
+#if SERIAL
 	Serial.println(F(" lobat"));
 	serialFlush();
+#endif
 	node_id = "ROOM-5-23";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going

@@ -1,3 +1,22 @@
+"""
+
+martador.linkread (TODO)
+    - parse, possibly interactive with RadioLink sketch.
+    - only emit valid values, validate against known types.
+    - timestamp and emit messages through ZMQ.
+
+martador.logger (TODO)
+    - Write messages to plain text log.
+
+martador.vftree (TODO)
+    - A filesystem representing the WSN, using ZMQ for IPC to linkread process.
+    - Possibly to configure and service remote nodes. 
+
+martador.rrd (TODO)
+    - Write to Munin files directly, possibly later to update from off-line logs.
+
+"""
+
 import bitstring
 
 

@@ -41,6 +41,20 @@ class MyFS(fuse.Fuse):
         fuse.Fuse.__init__(self, *args, **kw)  
 
     def getattr(self, path):
+        """
+        - st_mode (protection bits)
+        - st_ino (inode number)
+        - st_dev (device)
+        - st_nlink (number of hard links)
+        - st_uid (user ID of owner)
+        - st_gid (group ID of owner)
+        - st_size (size of file, in bytes)
+        - st_atime (time of most recent access)
+        - st_mtime (time of most recent content modification)
+        - st_ctime (platform dependent; time of most recent metadata change on Unix,
+                    or the time of creation on Windows).
+        """
+
         st = fuse.Stat()  
         st.st_mode = stat.S_IFDIR | 0755  
         st.st_nlink = 2  
@@ -97,6 +111,10 @@ class MyFS(fuse.Fuse):
             return content[offset:offset+size]  
         else:  
             return ''
+
+    # XXX: which to implement, http://sourceforge.net/apps/mediawiki/fuse/?title=FUSE_Python_tutorial is oldish or not?
+    def chown(self):
+        return -errno.ENOSYS
 
 
 if __name__ == '__main__':  
