@@ -321,7 +321,13 @@ m1284p:
 # Integrating with another makefile for easy builds
 
 #ARDUINODIR := /home/berend/Application/arduino-1.0.3
-ARDUINODIR := /usr/share/arduino/
+#ARDUINODIR := /usr/share/arduino/
+#ARDUINODIR := $(shell realpath ./arduino-1.0.5)
+ARDUINODIR := $(shell realpath ./arduino-1.0.1)
+$(info ARDUINODIR=$(ARDUINODIR))
+AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
+AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin
+$(info AVRTOOLSPATH=$(AVRTOOLSPATH))
 
 # Build anything in target folder 'P'
 #arduino: P :=
@@ -332,8 +338,17 @@ arduino:
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
+		AVRTOOLSPATH="$(AVRTOOLSPATH)" \
 		BOARD=$(B) \
 		make -f $$p/arduino.mk $(TARGETS)
+
+ardnlib:
+	cd $(ARDUINODIR)/libraries/;\
+	ln -s /src/jeelabs/jeelib JeeLib; \
+	ln -s /src/jeelabs/embencode EmBencode; \
+	ln -s /src/jeelabs/ethercard EtherCard; \
+	ln -s /srv/project-mpe/Arduino-mpe/libraries/DHT; \
+	ln -s /srv/project-mpe/Arduino-mpe/libraries/OneWire
 
 #jeenode: C := m328p
 jeenode: B := atmega328
@@ -397,6 +412,11 @@ cassette328p: C := m328p
 cassette328p: P := Mpe/Cassette328P/
 cassette328p: I := Mpe/Cassette328P/Cassette328P.hex
 cassette328p: jeenode upload
+
+hanrun: C := m328p
+hanrun: P := Misc/HanrunENC28J60/
+hanrun: I := Misc/HanrunENC28J60/HanrunENC28J60.hex
+hanrun: jeenode upload
 
 
 #      ------------ -- 

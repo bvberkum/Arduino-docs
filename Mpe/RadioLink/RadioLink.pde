@@ -366,29 +366,28 @@ void loop() {
 				Serial.print(' ');
 			showByte(rf12_data[i]);
 		}
-
+		Serial.println();
 		if (rf12_crc == 0) {
 			activityLed(1);
-
+			Serial.print((int) rf12_len);
+			Serial.println(F(" bytes received"));
 			if (RF12_WANTS_ACK) {
-				Serial.println(" wants ack");
 			}
 			if (RF12_WANTS_ACK && (config.nodeId & COLLECT) == 0) {
 				// should ack
-				Serial.println(" -> ack");
+				Serial.println(F(" -> ack"));
 				rf12_sendStart(RF12_ACK_REPLY, 0, 0);
 				/*
 				*/
 			}
 			activityLed(0);
 		}
-		Serial.println();
 	}
 
 	if (cmd && rf12_canSend()) {
 		activityLed(1);
 
-		Serial.print(" -> ");
+		Serial.print(F(" -> "));
 		Serial.print((int) sendLen);
 		Serial.println(" b");
 		byte header = cmd == 'a' ? RF12_HDR_ACK : 0;

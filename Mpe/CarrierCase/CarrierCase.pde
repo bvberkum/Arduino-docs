@@ -39,23 +39,26 @@ ToDo
 #define RADIO_SYNC_MODE 2
 
 
-EmBencode encoder;
 uint8_t* embencBuff;
 int embencBuffLen = 0;
 
-void EmBencode::PushChar(char ch) {
-	Serial.write(ch);
-//	embencBuffLen += 1;
-//	uint8_t* np = (uint8_t *) realloc( embencBuff, sizeof(uint8_t) * embencBuffLen);
-//	if( np != NULL ) { 
-//		embencBuff = np; 
-//		embencBuff[embencBuffLen] = ch;
-//	} else {
-//		Serial.println(F("Out of Memory"));
-//	}
+void embenc_push(char ch) {
+	embencBuffLen += 1;
+	uint8_t* np = (uint8_t *) realloc( embencBuff, sizeof(uint8_t) * embencBuffLen);
+	if( np != NULL ) { 
+		embencBuff = np; 
+		embencBuff[embencBuffLen] = ch;
+	} else {
+		Serial.println(F("Out of Memory"));
+	}
 }
 
-enum { ANNOUNCE_MSG, REPORT_MSG,  };
+void EmBencode::PushChar(char ch) {
+	Serial.write(ch);
+	embenc_push(ch);
+}
+
+enum { ANNOUNCE_MSG, REPORT_MSG };
 
 /* Atmega EEPROM */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -67,7 +70,6 @@ const int memBase          = 0;
 OneWire ds(A5);  // on pin 10
 
 String node_id = "";
-static byte myNodeID;       // node ID used for this unit
 String inputString = "";         // a string to hold incoming data
 
 const int ds_count = 3;
@@ -89,11 +91,12 @@ Scheduler scheduler (schedbuf, TASK_END);
 // Other variables used in various places in the code:
 
 static byte reportCount;    // count up until next report, i.e. packet send
-//static byte myNodeID;       // node ID used for this unit
+static byte rf12_id;       // node ID used for this unit
 
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
+	int msgtype :8; // XXX: incorporated, but not the right place..
 #if LDR_PORT
 	byte light  :8;     // light sensor: 0..255
 #endif
@@ -103,7 +106,7 @@ struct {
 	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
 #if ATMEGA_TEMP
-	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
+	int attemp   :10; // atmega temperature: -500..+500 (tenths)
 #endif
 #if MEMREPORT
 	int memfree :16;
@@ -121,6 +124,7 @@ Port ldr (LDR_PORT);
 #define DHTTYPE DHT11   // DHT 11 
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
+
 #endif
 
 // has to be defined because we're using the watchdog for low-power waiting
@@ -140,6 +144,24 @@ void blink(int led, int count, int length) {
     digitalWrite (led, LOW);
     delay(length);
   }
+}
+
+static void showNibble (byte nibble) {
+	char c = '0' + (nibble & 0x0F);
+	if (c > '9')
+		c += 7;
+	Serial.print(c);
+}
+
+bool useHex = 0;
+
+static void showByte (byte value) {
+	if (useHex) {
+		showNibble(value >> 4);
+		showNibble(value);
+	} else {
+		Serial.print((int) value);
+	}
 }
 
 // utility code to perform simple smoothing as a running average
@@ -240,7 +262,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0xBE);         // Read Scratchpad
 
 #if DEBUG
-	F("Data=");
+	Serial.print(F("Data="));
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
@@ -257,7 +279,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
 #if DEBUG
-	F(" CRC=");
+	Serial.print(F(" CRC="));
 	Serial.print( crc8, HEX);
 	Serial.println();
 #endif
@@ -290,7 +312,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	int result = ds_readdata(addr, data);	
 	
 	if (result != 0) {
-		F("CRC error in ds_readdata");
+		Serial.println(F("CRC error in ds_readdata"));
 		return 0;
 	}
 
@@ -402,15 +424,12 @@ static void doConfig() {
 /**
  l
  */
-static void encodePayloadConfig() {
-}
-
-static byte waitForAck() {
+static bool waitForAck() {
     MilliTimer ackTimer;
     while (!ackTimer.poll(ACK_TIME)) {
         if (rf12_recvDone() && rf12_crc == 0 &&
                 // see http://talk.jeelabs.net/topic/811#post-4712
-                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | myNodeID))
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
             return 1;
         set_sleep_mode(SLEEP_MODE_IDLE);
         sleep_mode();
@@ -418,12 +437,124 @@ static byte waitForAck() {
     return 0;
 }
 
+static bool doAnnounce() {
+#if SERIAL
+//	Serial.print(F("REG ROOM"));
+#endif
+
+	embenc_push(ANNOUNCE_MSG);
+
+	EmBencode payload_spec;
+
+	payload_spec.startList();
+#if LDR_PORT
+	payload_spec.startList();
+	// name, may be unique but can be part number and as specific or generic as possible
+	payload_spec.push("ldr2250"); 
+	// bits in payload
+	payload_spec.push(8);
+	// decoder params, optional?
+	payload_spec.push("int(0-255)");
+	payload_spec.endList();
+#if SERIAL
+//	Serial.print(F(" ldr"));
+#endif
+#endif
+#if DHT_PIN
+	payload_spec.startList();
+	payload_spec.push("dht11-rhum");
+	payload_spec.push(7);
+	payload_spec.endList();
+#if SERIAL
+//	Serial.print(F(" dht11-rhum dht11-temp"));
+#endif
+#endif
+#if ATMEGA_TEMP
+	payload_spec.startList();
+	payload_spec.push("attemp");
+	payload_spec.push(10);
+	payload_spec.endList();
+#if SERIAL
+//	Serial.print(F(" attemp"));
+#endif
+#endif
+#if MEMREPORT
+	payload_spec.startList();
+	payload_spec.push("memfree");
+	payload_spec.push(16);
+	payload_spec.endList();
+#if SERIAL
+//	Serial.print(F(" memfree"));
+#endif
+#endif
+	payload_spec.startList();
+	payload_spec.push("lobat");
+	payload_spec.endList();
+#if SERIAL
+//	Serial.println(F(" lobat"));
+	serialFlush();
+#endif
+	payload_spec.endList();
+
+	Serial.println();
+	for (int i=0; i<embencBuffLen; i++) {
+		//showByte(embencBuff[i]);
+		if (i > 0) Serial.print(' ');
+		Serial.print((int)embencBuff[i]);
+	}
+	Serial.println();
+	Serial.print(F("Sending"));
+	Serial.print((int)embencBuffLen);
+	Serial.println(F("bytes"));
+	serialFlush();
+
+	if (embencBuffLen > 66) {
+	// FIXME: need to send in chunks
+	}
+
+	rf12_sleep(RF12_WAKEUP);
+	rf12_sendNow(
+		(rf12_id & RF12_HDR_MASK) | RF12_HDR_ACK,
+		&embencBuff, 
+		sizeof embencBuff);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	bool acked = waitForAck();
+
+	embencBuff = (uint8_t *) realloc(embencBuff, 0); // free??
+	embencBuffLen = 0;
+
+	if (acked) {
+		Serial.println("ACK");
+	} else {
+		Serial.println("NACK");
+	}
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+	serialFlush();
+
+	rf12_sleep(RF12_SLEEP);
+	return acked;
+
+			// report a new node or reinitialize node with central link node
+//			for ( int x=0; x<ds_count; x++) {
+//				Serial.print("SEN ");
+//				Serial.print(node_id);
+//				Serial.print(" ds-");
+//				Serial.print(x);
+//				for ( int y= 0; y<9; y++) {           // we need 9 bytes
+//					Serial.print(" ");
+//					Serial.print(ds_addr[x][y], HEX);
+//				}
+//				Serial.println("");
+//			}
+}
+
 // readout all the sensors and other values
 static void doMeasure() 
 {
-	byte firstTime = payload.ctemp == 0; // special case to init running avg
+	byte firstTime = payload.attemp == 0; // special case to init running avg
 
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+	payload.attemp = smoothedAverage(payload.attemp, internalTemp(), firstTime);
 
 	payload.lobat = rf12_lowbat();
 
@@ -444,14 +575,14 @@ static void doMeasure()
 	} else {
 		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
 	}
-#endif
+#endif //DHT
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
-#endif
+#endif //LDR
 
 #if MEMREPORT
 	payload.memfree = freeRam();
@@ -482,7 +613,7 @@ static void doReport() {
 	Serial.print(' ');
 #endif
 #if ATMEGA_TEMP
-	Serial.print((int) payload.ctemp);
+	Serial.print((int) payload.attemp);
 	Serial.print(' ');
 #endif
 //	Serial.print((int) ds_value[0]);
@@ -498,7 +629,7 @@ static void doReport() {
 	Serial.print((int) payload.lobat);
 	Serial.println();
 	serialFlush();
-#endif
+#endif//SERIAL
 }
 
 void serialEvent() {
@@ -533,8 +664,12 @@ void setup()
 	serialFlush();
 #endif
 
-	myNodeID = 23;
-	rf12_initialize(myNodeID, RF12_868MHZ, 5);
+	// Reported on serial?
+	node_id = "CarrierCase.0-2-RF12-5-23";
+	//<sketch>.0-<count>-RF12....
+
+	rf12_id = 23;
+	rf12_initialize(rf12_id, RF12_868MHZ, 5);
 	//rf12_config(rf12_show);
     
 	rf12_sleep(RF12_SLEEP); // power down
@@ -558,46 +693,8 @@ void setup()
  	dht.begin();
 #endif
 
-#if SERIAL
-	Serial.print(F("REG ROOM"));
-#endif
-
-	EmBencode payload_spec;
-	payload_spec.startList()
-#if LDR_PORT
-	payload_spec.startList()
-	// name, may be unique but can be part number and as specific or generic as possible
-	payload_spec.push("ldr2250"); 
-	// bits in payload
-	payload_spec.push(8);
-	// decoder params
-	payload_spec.push("int(0-255)");
-	payload_spec.endList()
-	Serial.print(F(" ldr"));
-#endif
-#endif
-#if DHT_PIN
-#if SERIAL
-	Serial.print(F(" dht11-rhum dht11-temp"));
-#endif
-#endif
-#if ATMEGA_TEMP
-#if SERIAL
-	Serial.print(F(" attemp"));
-#endif
-#endif
-#if MEMREPORT
-#if SERIAL
-	Serial.print(F(" memfree"));
-#endif
-#endif
-#if SERIAL
-	Serial.println(F(" lobat"));
-	serialFlush();
-#endif
-	node_id = "ROOM-5-23";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(ANNOUNCE, 0);
 }
 
 void loop(void)
@@ -606,43 +703,15 @@ void loop(void)
 	Serial.print('.');
 	serialFlush();
 #endif
-	//while (node_id == "" || inputString != "") { // xxx get better way to wait for entire id
-	//}
-	// XXX: get node id or perhaps get sketch type number from central node
-	//scheduler.timer(DISCOVERY, 0);    // start by completing node discovery
 
 	switch (scheduler.pollWaiting()) {
 
-		case DISCOVERY:
-//			while (findDS()) {
-#if DEBUG
-//				printDS18B20(ds_addr[ds_count]);
-#endif
-//			}
-			break;
-
 		case ANNOUNCE:
-
-			encodePayloadConfig();
-
-//			rf12_sleep(RF12_WAKEUP);
-//			rf12_sendNow(0, &payload_config, sizeof payload_config);
-//			rf12_sendWait(RADIO_SYNC_MODE);
-//			rf12_sleep(RF12_SLEEP);
-//
-			// report a new node or reinitialize node with central link node
-//			for ( int x=0; x<ds_count; x++) {
-//				Serial.print("SEN ");
-//				Serial.print(node_id);
-//				Serial.print(" ds-");
-//				Serial.print(x);
-//				for ( int y= 0; y<9; y++) {           // we need 9 bytes
-//					Serial.print(" ");
-//					Serial.print(ds_addr[x][y], HEX);
-//				}
-//				Serial.println("");
-//			}
-			serialFlush();
+			if (doAnnounce()) {
+				scheduler.timer(MEASURE, 0);
+			} else {
+				scheduler.timer(ANNOUNCE, 100);
+			}
 			break;
 
 		case MEASURE:
@@ -657,6 +726,7 @@ void loop(void)
 			break;
 
 		case REPORT:
+			payload.msgtype = REPORT_MSG;
 			doReport();
 			break;
 	}
