@@ -418,6 +418,11 @@ hanrun: P := Misc/HanrunENC28J60/
 hanrun: I := Misc/HanrunENC28J60/HanrunENC28J60.hex
 hanrun: jeenode upload
 
+fuseboxmon: C := m328p
+fuseboxmon: P := libraries/jeelib/examples/RF12/p1scanner
+fuseboxmon: I := libraries/jeelib/examples/RF12/p1scanner/p1scanner.hex
+fuseboxmon: jeenode upload
+
 
 #      ------------ -- 
 #
