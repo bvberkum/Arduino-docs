@@ -325,8 +325,8 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-#ARDUINODIR := /home/berend/Application/arduino-1.0.3
-ARDUINODIR := /usr/share/arduino/
+ARDUINODIR := /home/berend/Application/arduino-1.0.3
+#ARDUINODIR := /usr/share/arduino/
 
 # Build anything in target folder 'P'
 #arduino: P :=
