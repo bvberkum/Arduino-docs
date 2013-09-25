@@ -13,3 +13,6 @@
 #.lib
 #.dep
 libraries/RF24_gitbub
+arduinodir
+arduino-*
+.*.sw[pon]

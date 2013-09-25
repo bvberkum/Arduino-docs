@@ -1,5 +1,8 @@
 /**
+RadioLink
   - Based on RF12demo
+ToDo
+  - Want to use some flash based logger here.
  */
 #include <JeeLib.h>
 #include <util/crc16.h>
@@ -208,7 +211,7 @@ static void showString (PGM_P s) {
 
 static void showHelp () {
 	showString(helpText1);
-	Serial.println("Current configuration:");
+	Serial.println(F("Current configuration:"));
 	rf12_config();
 }
 
@@ -318,7 +321,8 @@ static void handleInput (char c) {
 
 void setup() {
 	Serial.begin(SERIAL_BAUD);
-	Serial.print("\n[RadioLink]");
+	Serial.println();
+	Serial.print(F("[RadioLink]"));
 	activityLed(0);
 
 	if (rf12_config()) {
@@ -333,16 +337,6 @@ void setup() {
 	showHelp();
 }
 
-typedef struct {
-	//	byte light :8;     // light sensor: 0..255
-	//	byte moved :1;  // motion detector: 0..1
-	//	int rhum   :10;  // rhumdity: 0..100
-	//	int temp   :10; // temperature: -500..+500 (tenths)
-	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
-	//	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
-} Payload;
-
-Payload measurement;
 
 void loop() {
 	if (Serial.available())
@@ -351,18 +345,18 @@ void loop() {
 	if (rf12_recvDone()) {
 		byte n = rf12_len;
 		if (rf12_crc == 0)
-			Serial.print("OK");
+			Serial.print(F("OK"));
 		else {
 			if (quiet)
 				return;
-			Serial.print(" ?");
+			Serial.print(F(" ?"));
 			if (n > 20) // print at most 20 bytes if crc is wrong
 				n = 20;
 		}
 		if (useHex)
 			Serial.print('X');
 		if (config.group == 0) {
-			Serial.print(" G");
+			Serial.print(F(" G"));
 			showByte(rf12_grp);
 		}
 		Serial.print(' ');
@@ -372,42 +366,28 @@ void loop() {
 				Serial.print(' ');
 			showByte(rf12_data[i]);
 		}
-
+		Serial.println();
 		if (rf12_crc == 0) {
 			activityLed(1);
-
+			Serial.print((int) rf12_len);
+			Serial.println(F(" bytes received"));
 			if (RF12_WANTS_ACK) {
-				Serial.println(" wants ack");
 			}
 			if (RF12_WANTS_ACK && (config.nodeId & COLLECT) == 0) {
 				// should ack
-				Serial.println(" -> ack");
+				Serial.println(F(" -> ack"));
 				rf12_sendStart(RF12_ACK_REPLY, 0, 0);
 				/*
 				*/
 			}
-			/*
-				No payload decoding here, but in Python.
-
-			   measurement = *(Payload*) rf12_data;
-			   Serial.println();
-			   Serial.print((int) measurement.light);
-			   Serial.print(' ');
-			   Serial.print((int) measurement.rhum);
-			   Serial.print(' ');
-			   Serial.print((int) measurement.temp);
-			   Serial.println((int) measurement.ctemp);
-			 */
-
 			activityLed(0);
 		}
-		Serial.println();
 	}
 
 	if (cmd && rf12_canSend()) {
 		activityLed(1);
 
-		Serial.print(" -> ");
+		Serial.print(F(" -> "));
 		Serial.print((int) sendLen);
 		Serial.println(" b");
 		byte header = cmd == 'a' ? RF12_HDR_ACK : 0;
