@@ -1,5 +1,6 @@
 /**
-*                            m328
+ * DIP:
+ *                            m328
  *                        +----v----+
  *          (RST)     PC6 | 1    28 | PC5 A5  (ADC5/SCL)
  *          (TXD)  D0 PD0 | 2    27 | PC4 A4  (ADC4/SDA)
@@ -44,4 +45,25 @@ void loop()
   blink(pin, count, length);
   delay(loop_delay);
 }
+/*
+	TQFP:
+           PD2 1 0 PC6 5 4 3 2  
+           32      29        25 
+          .-------------------. 
+	PD3 1 |O                  | 24 PC1
+	PD4 2 |                   | 23 PC0
+	GND 3 |                   | 22 ADC7 (*)
+	VCC 4 |       m8          | 21 GND
+	GND 5 |                   | 20 AREF
+	VCC 6 |                   | 19 ADC6 (*)
+	PB6 7 |                   | 18 AVCC
+	PB7 8 |                   | 17 PB5
+		  '-------------------' 
+	       9       12        16 
+	       PD5 6 7 PB0 1 2 3 4  
 
+	- ports/signals same as PDIP, except:
+
+	* denotes extra ADC pins on TQFP
+
+*/
