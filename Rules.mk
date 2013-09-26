@@ -436,6 +436,20 @@ sandbox: P := Mpe/Sandbox/
 sandbox: I := Mpe/Sandbox/Sandbox.hex
 sandbox: jeenode upload
 
+mla: C := m328p
+mla: P := Misc/miniLogicAnalyzer/
+mla: I := Misc/miniLogicAnalyzer/miniLogicAnalyzer.hex
+mla: jeenode upload
+
+logicanalyzer: C := m328p
+logicanalyzer: P := Mpe/LogicAnalyzer/
+logicanalyzer: I := Mpe/LogicAnalyzer/LogicAnalyzer.hex
+logicanalyzer: jeenode upload
+
+pcd8544: C := m328p
+pcd8544: P := Misc/nokia_pcd8544_display_testing2/
+pcd8544: I := Misc/nokia_pcd8544_display_testing2/nokia_pcd8544_display_testing2.hex
+pcd8544: jeenode upload
 
 #      ------------ -- 
 #
