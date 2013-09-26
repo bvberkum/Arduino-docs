@@ -325,11 +325,12 @@ ARDUINODIR := /home/berend/Application/arduino-1.0.3
 #ARDUINODIR := /home/berend/Application/arduino-1.0.3
 #ARDUINODIR := /usr/share/arduino/
 #ARDUINODIR := $(shell realpath ./arduino-1.0.5)
-ARDUINODIR := $(shell realpath ./arduino-1.0.1)
+#ARDUINODIR := $(shell realpath ./arduino-1.0.1)
+ARDUINODIR := $(shell realpath ./arduinodir)
 $(info ARDUINODIR=$(ARDUINODIR))
-AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
-AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin
-$(info AVRTOOLSPATH=$(AVRTOOLSPATH))
+#AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
+#AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin
+#$(info AVRTOOLSPATH=$(AVRTOOLSPATH))
 
 # Build anything in target folder 'P'
 #arduino: P :=
@@ -370,7 +371,7 @@ arduino-boards:
 
 jeenodeisp: I := firmware/isp_flash_m328p.hex
 jeenodeisp: X := -D
-jeenodeisp: jeenode
+jeenodeisp: upload
 
 #jeenode-isp-repair: P = $/libraries/jeelib/examples/Ports/isp_repair2/
 #jeenode-isp-repair: arduino
@@ -424,6 +425,16 @@ fuseboxmon: C := m328p
 fuseboxmon: P := libraries/jeelib/examples/RF12/p1scanner
 fuseboxmon: I := libraries/jeelib/examples/RF12/p1scanner/p1scanner.hex
 fuseboxmon: jeenode upload
+
+gasdetector: C := m328p
+gasdetector: P := Mpe/GasDetector/
+gasdetector: I := Mpe/GasDetector/GasDetector.hex
+gasdetector: jeenode upload
+
+sandbox: C := m328p
+sandbox: P := Mpe/Sandbox/
+sandbox: I := Mpe/Sandbox/Sandbox.hex
+sandbox: jeenode upload
 
 
 #      ------------ -- 

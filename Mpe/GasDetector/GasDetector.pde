@@ -13,11 +13,14 @@
 #include <EEPROM.h>
 // include EEPROMEx.h
 
-#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
+#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 
 #define SERIAL  1   // set to 1 to enable serial interface
-#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
-#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
+//#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
+//#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
+//#define DS
+
+//#define MQ4
 
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    1   // report every N measurement cycles
@@ -29,12 +32,12 @@ should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
-// DS18S20 temperature bus
-OneWire ds(A5);  // on pin 10
-
 String node_id = "";
 String inputString = "";         // a string to hold incoming data
 
+#if DS
+// DS18S20 temperature bus
+OneWire ds(A5);  // on pin 10
 const int ds_count = 3;
 uint8_t ds_addr[ds_count][8] = {
 	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
@@ -42,19 +45,23 @@ uint8_t ds_addr[ds_count][8] = {
 	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
 };
 volatile int ds_value[ds_count];
+#endif
 
 // MQ series gas sensors
 //CS_MQ7  MQ7(12, 13);  // 12 = digital Pin connected to "tog" from sensor board
 // 13 = digital Pin connected to LED Power Indicator
 
-//int CoSensorOutput = 3; //analog Pin connected to "out" from sensor board
-//int MthSensorOutput = 2; //analog Pin connected to "out" from sensor board
-//int CoData = 0;         //analog CO sensor data
-//int MthData = 0;         //analog Methane sensor data
+int CoSensorPower = 5; // digital power feed/indicator pin
+int MthSensorPower = 6; 
+int CoSensorData = 0; // measure pin (analog) for CO sensor
+int MthSensorData = 1; 
+
+const int PREHEAT_PERIOD = 600;
+const int HEATING_PERIOD = 900; 
 
 // The scheduler makes it easy to perform various tasks at various times:
 
-enum { DISCOVERY, MEASURE, REPORT, TASK_END };
+enum { PREHEAT, HEAT, MEASURE, REPORT, TASK_END };
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -70,6 +77,8 @@ struct {
 	byte light;     // light sensor: 0..255
 	byte moved :1;  // motion detector: 0..1
 	byte rhum  :7;  // rhumdity: 0..100
+	int mq4;
+	int mq7;
 	int temp   :10; // temperature: -500..+500 (tenths)
 	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
 	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
@@ -145,6 +154,7 @@ double internalTemp(void)
 	return (t);
 }
 
+#if DS
 enum { DS_OK, DS_ERR_CRC };
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
@@ -305,6 +315,7 @@ static void printDS18B20s(void) {
 	serialFlush();
 #endif
 }
+#endif
 
 static void doConfig() {
 }
@@ -313,6 +324,7 @@ static void doConfig() {
 static void doMeasure() {
 	byte firstTime = payload.rhum == 0; // special case to init running avg
 
+#if DS
 	// xxx
 	//printDS18B20s();
 	for ( int i = 0; i < ds_count; i++) {
@@ -324,20 +336,15 @@ static void doMeasure() {
 #endif
 	}
 	serialFlush();
+#endif
 
 	payload.ctemp = internalTemp();
 
-//	MQ7.CoPwrCycler();  
-//
-//	/* your code here and below! */
-//	if(MQ7.CurrentState() == LOW){   //we are at 1.4v, read sensor data!
-//		CoData = analogRead(CoSensorOutput);
-//		Serial.println(CoData);
-//	}
-//	else{                            //sensor is at 5v, heating time
-//		Serial.println("sensor heating!");
-//	}      
-//	delay(500);
+	int mq4 = analogRead(MthSensorData);
+	payload.mq4 = smoothedAverage(payload.mq4, mq4, firstTime);
+	
+//	int mq7 = analogRead(CoSensorData);
+//	payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -371,12 +378,18 @@ static void doReport() {
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
+	Serial.print((int) payload.mq4);
+	Serial.print(' ');
+	Serial.print((int) payload.mq7);
+	Serial.print(' ');
+#if DS
 	Serial.print((int) ds_value[0]);
 	Serial.print(' ');
 	Serial.print((int) ds_value[1]);
 	Serial.print(' ');
 	Serial.print((int) ds_value[2]);
 	Serial.print(' ');
+#endif
 	//        Serial.print(' ');
 	//        Serial.print((int) payload.lobat);
 	Serial.println();
@@ -410,10 +423,12 @@ void setup()
 	serialFlush();
 #endif
 
-//	pinMode(CoSensorOutput, INPUT);
-//	pinMode(MthSensorOutput, INPUT);
+	pinMode(CoSensorData, INPUT);
+	pinMode(MthSensorData, INPUT);
+
+	pinMode(CoSensorPower, OUTPUT);
+	pinMode(MthSensorPower, OUTPUT);
 	
-//	pinMode(A5, INPUT);
 
 	// Set up PWM, the compare registers work with output compare pins 2A and
 	// 2B (OC2A and OC2B), which are Arduino pins 11 and 3 resp.		
@@ -443,11 +458,11 @@ void setup()
 //		doConfig();
 //	}
 
-	Serial.println("REG ROOM ldr dht11-rhum dht11-temp attemp ds-1 ds-2 ds-3");
+	Serial.println("REG GAS ldr dht11-rhum dht11-temp attemp mq4 mq7 ds-1 ds-2 ds-3");
 	serialFlush();
-	node_id = "ROOM-1";
+	node_id = "GAS-1";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(PREHEAT, 0);    // start the measurement loop going
 }
 
 void loop(){
@@ -456,36 +471,28 @@ void loop(){
 	Serial.print('.');
 	serialFlush();
 #endif
-	//while (node_id == "" || inputString != "") { // xxx get better way to wait for entire id
-	//}
-	// XXX: get node id or perhaps get sketch type number from central node
-	//scheduler.timer(DISCOVERY, 0);    // start by completing node discovery
 
 	switch (scheduler.pollWaiting()) {
 
-		case DISCOVERY:
-			// report a new node or reinitialize node with central link node
-			for ( int x=0; x<ds_count; x++) {
-				Serial.print("SEN ");
-				Serial.print(node_id);
-				Serial.print(" ds-");
-				Serial.print(x);
-				for ( int y= 0; y<9; y++) {           // we need 9 bytes
-					Serial.print(" ");
-					Serial.print(ds_addr[x][y], HEX);
-				}
-				Serial.println("");
-			}
+		case PREHEAT:
+			Serial.println("PREHEAT");
+			digitalWrite(CoSensorPower, HIGH);
+			scheduler.timer(HEAT, PREHEAT_PERIOD);
+			serialFlush();
+			break;
+
+		case HEAT:
+			Serial.println("HEAT");
+			analogWrite(CoSensorPower, 0x10);
+			scheduler.timer(MEASURE, HEATING_PERIOD);
 			serialFlush();
 			break;
 
 		case MEASURE:
-			// reschedule these measurements periodically
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
-
+			Serial.println("MEASURE");
+			digitalWrite(CoSensorPower, LOW);
+			scheduler.timer(PREHEAT, MEASURE_PERIOD);
 			doMeasure();
-
-			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
