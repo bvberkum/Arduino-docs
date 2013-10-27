@@ -99,9 +99,9 @@ PROGMEM prog_uchar CH[] = {
 4, 8, B0001000, B0000100, B0001000, B0000100, B0000000, // ~
 };
 
-int data = 5;
-int load = 7;
 int clock = 6;
+int load = 7;
+int data = 5;
 int maxInUse = 1;    //change this variable to set how many MAX7219's you'll use
 MaxMatrix m(data, load, clock, maxInUse);
 byte buffer[10];

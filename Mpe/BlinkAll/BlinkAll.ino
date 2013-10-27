@@ -16,9 +16,20 @@
  *         (AIN1)  D7 PD7 | 13   16 | PB2 D10 (SS/OC1B)
  *         (ICP1)  D8 PB0 | 14   15 | PB1 D9  (OC1A)
  *                        +---------+
+ *
+ * ATTiny25/45/85
+ *                                     t85
+ *                                 +----v----+
+ *         (RST/dW/ADC0) D5/A0 PB5 | 1     8 | VCC
+ *   (ADC3/XTAL1/PCINT3) D3/A3 PB3 | 2     7 | PB2 D2/A1 (ADC1/SCK/SCL/PCINT2)
+ *   (ADC2/XTAL2/PCINT4) D4/A2 PB4 | 3     6 | PB1 *D1   (MISO/PCINT1)
+ *                             GND | 4     5 | PB0 *D0   (MOSI/SDA/AREF/PCINT0)
+ *                                 +---------+
+ *
+ * - Marked '*' has PWM.
  */
-int first_led = 15;
-int last_led = 19;
+int first_led = 3;
+int last_led = 4;
 
 void blink(int led, int count, int length) {
   for (int i=0; i<count; i++) {
@@ -31,8 +42,10 @@ void blink(int led, int count, int length) {
 
 void setup() 
 {
+#if !defined(__AVR_ATtiny85__)
   Serial.begin(57600);
   Serial.println("Atmega328p Blink All");
+#endif
   // Set up the LED output pins
   for (int p=first_led; p<=last_led;p++) {
     pinMode(p, OUTPUT);
@@ -43,8 +56,10 @@ void setup()
 void loop() 
 {
   for (int p=first_led; p<=last_led;p++) {
+#if !defined(__AVR_ATtiny85__)
     Serial.print("pin ");
     Serial.println(p);
+#endif
     blink(p,10,50);
     delay(500);
   }

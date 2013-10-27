@@ -1,9 +1,60 @@
 /*
 CarrierCase
+
 - Generally based on roomNode, probably can be made compatible with other environmental sensor nodes.
+- Two moisture probes.
+- Later to have shift register and analog switchting for mre inputs, perhaps.
+  Make SDA/SCL free for I2C or other bus?
+
+Current pin assignments:
+
+Ard Atm Jee  Sign Mapping
+=== === ==== ==== ===========
+D0  PD0      TXD  SER/DEBUG  
+D1  PD1      RXD  SER/DEBUG  
+D2  PD2      INT0 JeePort IRQ
+D3  PD3      INT1 RFM12B IRQ 
+D4  PD4 DIO1      PIR        
+D5  PD5 DIO2                 
+D6  PD6 DIO3                 
+D7  PD7 DIO4      DHT11      
+D8  PB0                      
+D9  PB1                      
+D10 PB2      SS   RFM12B SEL 
+D11 PB3      MOSI RFM12B SDI 
+D12 PB4      MISO RFM12B DSO 
+D13 PB5      SCK  RFM12B SCK 
+A0  PC1 AIO1                 
+A1  PC1 AIO2                 
+A2  PC2 AIO3                 
+A1  PC3 AIO4      LDR        
+A4  PC4      SDA             
+A5  PC5      SCL             
+    PC6      RST  Reset      
+=== === ==== ==== ===========
+
+
+Todo:
+
+Ard Atm Jee  Sign Mapping
+=== === ==== ==== ===========
+D4  PD4 DIO1      MP-1 RIGHT 
+D5  PD5 DIO2      MP-1 LEFT  
+D6  PD6 DIO3      MP-2 RIGHT 
+D7  PD7 DIO4      MP-2 LEFT  
+D8  PB0           MP-1 LED   
+D9  PB1           MP-2 LED   
+A0  PC1 AIO1      MP1 measure
+A1  PC1 AIO2      MP2 measure
+A2  PC2 AIO3                 
+A1  PC3 AIO4      LDR        
+A4  PC4      SDA  Dallas bus 
+A5  PC5      SCL  DHT out    
+=== === ==== ==== ===========
 
 ToDo
   - Announce payload config
+  - 
 */
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
@@ -11,6 +62,7 @@ ToDo
 #include <stdlib.h>
 #include <avr/sleep.h>
 #include <avr/pgmspace.h>
+#include <util/atomic.h>
 
 #include <JeeLib.h>
 #include <OneWire.h>
@@ -19,21 +71,22 @@ ToDo
 // include EEPROMEx.h
 #include "EmBencode.h"
 
-#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
+#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 
+#define SERIAL  1   // set to 1 to enable serial interface
+
+#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
+#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
+#define PIR_PORT    1
 #define MEMREPORT 1
 #define ATMEGA_TEMP 1
 
-#define SERIAL  1   // set to 1 to enable serial interface
-#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
-#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 
-#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
-#define RETRY_LIMIT     5   // maximum number of times to retry
+#define RETRY_PERIOD    10   // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 
 #define RADIO_SYNC_MODE 2
@@ -100,13 +153,15 @@ struct {
 #if LDR_PORT
 	byte light  :8;     // light sensor: 0..255
 #endif
-//	byte moved :1;  // motion detector: 0..1
+#if PIR_PORT
+	byte moved  :1;  // motion detector: 0..1
+#endif
 #if DHT_PIN
-	int rhum   :7;   // rhumdity: 0..100 (4 or 5% resolution?)
+	int rhum    :7;   // rhumdity: 0..100 (4 or 5% resolution?)
 	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
 #if ATMEGA_TEMP
-	int attemp   :10; // atmega temperature: -500..+500 (tenths)
+	int attemp  :10; // atmega temperature: -500..+500 (tenths)
 #endif
 #if MEMREPORT
 	int memfree :16;
@@ -127,8 +182,21 @@ DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 
 #endif
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+/**
+ l
+ */
+static bool waitForAck() {
+    MilliTimer ackTimer;
+    while (!ackTimer.poll(ACK_TIME)) {
+        if (rf12_recvDone() && rf12_crc == 0 &&
+                // see http://talk.jeelabs.net/topic/811#post-4712
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
+            return 1;
+        set_sleep_mode(SLEEP_MODE_IDLE);
+        sleep_mode();
+    }
+    return 0;
+}
 
 static void serialFlush () {
 #if ARDUINO >= 100
@@ -136,6 +204,98 @@ static void serialFlush () {
 #endif  
 	delay(2); // make sure tx buf is empty before going back to sleep
 }
+
+
+#if PIR_PORT
+
+#define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
+#define PIR_HOLD_TIME   30  // hold PIR value this many seconds after change
+/// Interface to a Passive Infrared motion sensor.
+    class PIR : public Port {
+        volatile byte value, changed;
+    public:
+        volatile uint32_t lastOn;
+        PIR (byte portnum)
+            : Port (portnum), value (0), changed (0), lastOn (0) {}
+
+        // this code is called from the pin-change interrupt handler
+        void poll() {
+            // see http://talk.jeelabs.net/topic/811#post-4734 for PIR_INVERTED
+            byte pin = digiRead() ^ PIR_INVERTED;
+            // if the pin just went on, then set the changed flag to report it
+            if (pin) {
+                if (!state())
+                    changed = 1;
+                lastOn = millis();
+            }
+            value = pin;
+        }
+
+        // state is true if curr value is still on or if it was on recently
+        byte state() const {
+            byte f = value;
+            if (lastOn > 0)
+                ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+                    if (millis() - lastOn < 1000 * PIR_HOLD_TIME)
+                        f = 1;
+                }
+            return f;
+        }
+
+        // return true if there is new motion to report
+        byte triggered() {
+            byte f = changed;
+            changed = 0;
+            return f;
+        }
+    };
+
+
+PIR pir (PIR_PORT);
+
+ISR(PCINT2_vect) { pir.poll(); }
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+// send packet and wait for ack when there is a motion trigger
+static void doTrigger() {
+    #if DEBUG
+        Serial.print("PIR ");
+        Serial.print((int) payload.moved);
+		Serial.print(' ');
+        Serial.print((int) pir.lastOn);
+		Serial.println(' ');
+        serialFlush();
+    #endif
+
+    for (byte i = 0; i < RETRY_LIMIT; ++i) {
+        rf12_sleep(RF12_WAKEUP);
+        rf12_sendNow(RF12_HDR_ACK, &payload, sizeof payload);
+        rf12_sendWait(RADIO_SYNC_MODE);
+        byte acked = waitForAck();
+        rf12_sleep(RF12_SLEEP);
+
+        if (acked) {
+            #if DEBUG
+                Serial.print(" ack ");
+                Serial.println((int) i);
+                serialFlush();
+            #endif
+            // reset scheduling to start a fresh measurement cycle
+            scheduler.timer(MEASURE, MEASURE_PERIOD);
+            return;
+        }
+        
+        delay(RETRY_PERIOD * 100);
+    }
+    scheduler.timer(MEASURE, MEASURE_PERIOD);
+    #if DEBUG
+        Serial.println(" no ack!");
+        serialFlush();
+    #endif
+}
+#endif
 
 void blink(int led, int count, int length) {
   for (int i=0;i<count;i++) {
@@ -421,25 +581,12 @@ void printDS18B20(bool do_read=false) {
 static void doConfig() {
 }
 
-/**
- l
- */
-static bool waitForAck() {
-    MilliTimer ackTimer;
-    while (!ackTimer.poll(ACK_TIME)) {
-        if (rf12_recvDone() && rf12_crc == 0 &&
-                // see http://talk.jeelabs.net/topic/811#post-4712
-                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
-            return 1;
-        set_sleep_mode(SLEEP_MODE_IDLE);
-        sleep_mode();
-    }
-    return 0;
-}
-
 static bool doAnnounce() {
 #if SERIAL
-//	Serial.print(F("REG ROOM"));
+	Serial.print(node_id);
+	Serial.print(' ');
+	Serial.print(rf12_id);
+	Serial.print(' ');
 #endif
 
 	embenc_push(ANNOUNCE_MSG);
@@ -457,7 +604,16 @@ static bool doAnnounce() {
 	payload_spec.push("int(0-255)");
 	payload_spec.endList();
 #if SERIAL
-//	Serial.print(F(" ldr"));
+	Serial.print(F(" ldr"));
+#endif
+#endif
+#if PIR_PORT
+	payload_spec.startList();
+	payload_spec.push("moved");
+	payload_spec.push(1);
+	payload_spec.endList();
+#if SERIAL
+	Serial.print("moved ");
 #endif
 #endif
 #if DHT_PIN
@@ -466,7 +622,7 @@ static bool doAnnounce() {
 	payload_spec.push(7);
 	payload_spec.endList();
 #if SERIAL
-//	Serial.print(F(" dht11-rhum dht11-temp"));
+	Serial.print(F(" dht11-rhum dht11-temp"));
 #endif
 #endif
 #if ATMEGA_TEMP
@@ -475,7 +631,7 @@ static bool doAnnounce() {
 	payload_spec.push(10);
 	payload_spec.endList();
 #if SERIAL
-//	Serial.print(F(" attemp"));
+	Serial.print(F(" attemp"));
 #endif
 #endif
 #if MEMREPORT
@@ -484,14 +640,14 @@ static bool doAnnounce() {
 	payload_spec.push(16);
 	payload_spec.endList();
 #if SERIAL
-//	Serial.print(F(" memfree"));
+	Serial.print(F(" memfree"));
 #endif
 #endif
 	payload_spec.startList();
 	payload_spec.push("lobat");
 	payload_spec.endList();
 #if SERIAL
-//	Serial.println(F(" lobat"));
+	Serial.println(F(" lobat"));
 	serialFlush();
 #endif
 	payload_spec.endList();
@@ -519,14 +675,16 @@ static bool doAnnounce() {
 		sizeof embencBuff);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	bool acked = waitForAck();
+	
+	acked = 1;
 
 	embencBuff = (uint8_t *) realloc(embencBuff, 0); // free??
 	embencBuffLen = 0;
 
 	if (acked) {
-		Serial.println("ACK");
-	} else {
-		Serial.println("NACK");
+//		Serial.println("ACK");
+//	} else {
+//		Serial.println("NACK");
 	}
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -558,6 +716,10 @@ static void doMeasure()
 
 	payload.lobat = rf12_lowbat();
 
+#if PIR_PORT
+	payload.moved = pir.state();
+#endif
+
 #if DHT_PIN
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
@@ -578,7 +740,7 @@ static void doMeasure()
 #endif //DHT
 
 #if LDR_PORT
-	ldr.digiWrite2(1);  // enable AIO pull-up
+	//ldr.digiWrite2(1);  // enable AIO pull-up
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
@@ -604,8 +766,10 @@ static void doReport() {
 	Serial.print((int) payload.light);
 	Serial.print(' ');
 #endif
-//  Serial.print((int) payload.moved);
-//  Serial.print(' ');
+#if PIR_PORT
+	Serial.print((int) payload.moved);
+	Serial.print(' ');
+#endif
 #if DHT_PIN
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
@@ -667,12 +831,17 @@ void setup()
 	// Reported on serial?
 	node_id = "CarrierCase.0-2-RF12-5-23";
 	//<sketch>.0-<count>-RF12....
-
 	rf12_id = 23;
 	rf12_initialize(rf12_id, RF12_868MHZ, 5);
 	//rf12_config(rf12_show);
     
 	rf12_sleep(RF12_SLEEP); // power down
+
+	// PIR pull down and interrupt 
+	pir.digiWrite(0);
+	// PCMSK2 = PCIE2 = PCINT16-23 = D0-D7
+	bitSet(PCMSK2,  3 + PIR_PORT); // DIO1
+	bitSet(PCICR, PCIE2); // enable PCMSK2 for PCINT at DIO1-4 (D4-7)
 
 	/* warn out of bound if _EEPROMEX_DEBUG */
   //EEPROM.setMemPool(memBase, memCeiling);
@@ -686,7 +855,7 @@ void setup()
 //#if DEBUG
 //		Serial.println("");
 //#endif
-//		doConfig();
+		doConfig();
 //	}
   
 #if DHT_PIN
@@ -697,11 +866,24 @@ void setup()
 	scheduler.timer(ANNOUNCE, 0);
 }
 
+int line = 0;
 void loop(void)
 {
 #if DEBUG
+	line++;
 	Serial.print('.');
+	if (line > 79) {
+		line = 0;
+		Serial.println();
+	}
 	serialFlush();
+#endif
+
+#if PIR_PORT
+	if (pir.triggered()) {
+		payload.moved = pir.state();
+		doTrigger();
+	}
 #endif
 
 	switch (scheduler.pollWaiting()) {
@@ -728,6 +910,14 @@ void loop(void)
 		case REPORT:
 			payload.msgtype = REPORT_MSG;
 			doReport();
+			break;
+
+		case DISCOVERY:
+			Serial.print("discovery? ");
+			break;
+
+		case TASK_END:
+			Serial.print("task? ");
 			break;
 	}
 }

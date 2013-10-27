@@ -48,12 +48,18 @@ listen:
 radio:
 	python readhex.py
 
+# avrdude chip ID
 upload: C := m328p
+# avrdude protocol
 upload: M := arduino
+# flash image
 #upload: I := firmware/ArduinoISP_mega328.hex
 #upload: I := firmware/isp_flash_m328p.hex
+# avrdude extra flags
 upload: X := -D
-upload:
+upload: _upload
+
+_upload:
 	avrdude \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
@@ -74,71 +80,118 @@ download:
 		-U flash:r:$$I.hex:i \
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
 
-uctest: C := m328p
-uctest: M := arduinoisp__
-uctest:
+_uctest:
 	avrdude \
 		-p $(C) \
-		$(call key,METHODS,$(M)) 
+		$(call key,METHODS,$(M)) \
+		$(X)
 
-#flash: C := m8
-#flash: M := usbasp
-#flash: I := 
-## Low-, high- and extended fuse
-#flash: LF := 
-#flash: HF := 
-#flash: EF := 
-## Lock/unlock bits
-#flash: LB := 
-#flash: UB := 
-## Debug
-#flash: D := echo
-flash:
+uctest: C := m328p
+uctest: M := arduinoisp
+uctest: X := 
+uctest: _uctest
+
+m328ptest: C := m328p
+m328ptest: M := arduinoisp
+m328ptest: X := 
+m328ptest: _uctest
+
+t85test: C := t85
+t85test: M := usbasp
+t85test: X := "-B 3"
+t85test: _uctest
+
+erase: C := m328p
+erase: M := arduinoisp
+erase:
+	avrdude \
+		-p $(C) $(call key,METHODS,$(M)) -D
+
+flash: C := m8
+flash: M := usbasp
+flash: I := 
+# Low-, high- and extended fuse
+flash: LF := 
+flash: HF := 
+flash: EF := 
+# Lock/unlock bits
+flash: LB := 
+flash: UB := 
+# Debug
+flash: D := echo
+flash: _flash
+
+_flash:
 	@\
-	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 2; } ) && ( \
-		[ -n "$(EF)" ] && { \
-			$(D) sudo avrdude \
-				-p $(C) -e \
+	X="$(X)";\
+	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 1; } ) && ( \
+		[ -n "$(UB)" ] && { \
+			$(ll) attention $@ "Unlocking & erasing.." && \
+			$(D) $(sudo)avrdude \
+				-p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U lock:w:$(UB):m \
+				|| exit 2;\
+		}; \
+		$(ll) attention $@ "Writing new fuses.." && \
+		([ -n "$(EF)" ] && { \
+			$(D) $(sudo)avrdude \
+				-p $(C) -e $$X \
+				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
 				-U efuse:w:$(EF):m \
-				;\
+				&& $(ll) info $@ OK \
+				|| exit 3;\
 		} || { \
-			$(D) sudo avrdude -p $(C) -e \
+			$(D) $(sudo)avrdude -p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
-				-U lock:w:$(UB):m \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
-				;\
-		};\
-		[ -n "$(I)" ] && { \
-			$(D) sudo avrdude -p $(C) -D \
+				&& $(ll) info $@ OK \
+				|| exit 4;\
+		});\
+		([ -n "$(E)" ] && { \
+			$(ll) attention $@ "Writing EEPROM.." && \
+			$(D) $(sudo)avrdude -p $(C) -D $$X \
+				$(call key,METHODS,$(M)) \
+				-U eeprom:w:$(E) \
+				&& $(ll) info $@ OK \
+				|| exit 5;\
+		});\
+		([ -n "$(I)" ] && { \
+			$(ll) attention $@ "Writing Flash.." && \
+			$(D) $(sudo)avrdude -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
 				-U flash:w:$(I) \
-				;\
-		};\
-		echo $(D) sudo avrdude \
-			-p $(C) -e \
-			$(call key,METHODS,$(M)) \
-			-U lock:w:$(LB):m \
-			;\
+				&& $(ll) info $@ OK \
+				|| exit 6;\
+		});\
+		([ -n "$(LB)" ] && { \
+			$(ll) attention $@ "Locking.." && \
+				$(D) $(sudo)avrdude $$X \
+					-p $(C) -D \
+					$(call key,METHODS,$(M)) \
+					-U lock:w:$(LB):m \
+					&& $(ll) info $@ OK \
+					|| exit 7;\
+		}); \
 	)
 
 ### Preset common flash 
 
 fusebit-doctor-m328: C := m328p
 fusebit-doctor-m328: M := usbasp
-fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.09_m328p.hex
+fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.11_m328p.hex
 #fusebit-doctor-m328: LF := 0x62
 #fusebit-doctor-m328: HF := 0xD9
 fusebit-doctor-m328: LF := 0x62
-fusebit-doctor-m328: HF := 0xD1
+fusebit-doctor-m328: HF := 0xD2
 fusebit-doctor-m328: EF := 0x07
-fusebit-doctor-m328: LB := 0x3F
+fusebit-doctor-m328: LB := 0x0F
 fusebit-doctor-m328: UB := 0x3F
-fusebit-doctor-m328: flash
+fusebit-doctor-m328: X := -B 3
+fusebit-doctor-m328: _flash
 #fusebit-doctor-m328: D := 
 
 
@@ -151,7 +204,7 @@ fusebit-doctor-m8: EF :=
 fusebit-doctor-m8: LB := 0x3C
 fusebit-doctor-m8: UB := 0x3F
 fusebit-doctor-m8: D := 
-fusebit-doctor-m8: flash
+fusebit-doctor-m8: _flash
 
 
 flash-betemcu: C := m8
@@ -162,7 +215,7 @@ flash-betemcu: HF := 0xD9
 flash-betemcu: EF := 
 flash-betemcu: LB := 0x3C
 flash-betemcu: UB := 0x3F
-flash-betemcu: flash
+flash-betemcu: _flash
 
 upload-betemcu-usbasploader: M := usbasp
 upload-betemcu-usbasploader: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
@@ -203,6 +256,15 @@ m8-16Mhz:
 		-p m8 \
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
+
+m8-fd: C := m8
+m8-fd: M := usbasp
+m8-fd: HF := 0x99
+m8-fd: LF := 0XC1
+m8-fd: LB := 0x0F
+m8-fd: UB := 0x3F
+m8-fd: X := -B 3 
+m8-fd: _flash
 
 m8: M := arduinoisp
 m8: 
@@ -281,19 +343,13 @@ m328p-8Mhz:
 m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
 #m328p-16Mhz: I := firmware/optiboot_atmega328.hex
 m328p-16Mhz: M := usbasp
+m328p-16Mhz: X :=
 m328p-16Mhz:
 	avrdude \
-		-p m328p -e \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x07:m
-	avrdude \
-		-p m328p \
-		$(call key,METHODS,$(M)) \
-		-D -U flash:w:$(I)
-	avrdude \
-		-p m328p \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x0F:m
+		-p m328p -e $(call key,METHODS,$(M)) $(X) \
+		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x07:m \
+		-U flash:w:$(I) \
+		-U lock:w:0x0F:m 
 
 # Cannot re-read protected flash without -e? check fuses
 #verify-betemcu: M := usbasp
@@ -335,15 +391,22 @@ $(info ARDUINODIR=$(ARDUINODIR))
 # Build anything in target folder 'P'
 #arduino: P :=
 #arduino: B := 
-arduino: LIB := $/libraries/
-arduino: TARGETS := clean all
-arduino: 
+#_arduino: LIB := $/libraries/
+#_arduino: TARGETS := clean all
+_arduino: 
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
 		AVRTOOLSPATH="$(AVRTOOLSPATH)" \
 		BOARD=$(B) \
 		make -f $$p/arduino.mk $(TARGETS)
+
+arduino: TARGETS := clean all
+arduino: _arduino
+
+boards: TARGETS := boards
+boards: _arduino
+
 
 ardnlib:
 	cd $(ARDUINODIR)/libraries/;\
@@ -359,8 +422,9 @@ jeenode: M := arduino
 jeenode: arduino
 
 isp_flash: P := $/libraries/jeelib/examples/Ports/isp_flash/
+isp_flash: I := $/libraries/jeelib/examples/Ports/isp_flash/isp_flash.hex
 isp_flash: B := atmega328
-isp_flash: arduino
+isp_flash: arduino upload
 
 arduino-boards:
 	@p=$$(realpath .);\
@@ -450,6 +514,71 @@ pcd8544: C := m328p
 pcd8544: P := Misc/nokia_pcd8544_display_testing2/
 pcd8544: I := Misc/nokia_pcd8544_display_testing2/nokia_pcd8544_display_testing2.hex
 pcd8544: jeenode upload
+
+ledseg: C := m328p
+ledseg: P := libraries/LedControl/examples/LCDemo7Segment
+ledseg: I := libraries/LedControl/examples/LCDemo7Segment/LCDemo7Segment.hex
+ledseg: jeenode upload
+
+ledseg595: C := m328p
+ledseg595: P := Mpe/LedSegment595/
+ledseg595: I := Mpe/LedSegment595/LedSegment595.hex
+ledseg595: jeenode upload
+
+avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
+avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
+avrtransistortester: M := usbasp
+avrtransistortester: LF := 0xC1
+avrtransistortester: HF := 0xD9
+avrtransistortester: UB := 0x3F
+avrtransistortester: LB := 0x30
+avrtransistortester: C := m8
+avrtransistortester: X := -B 3
+avrtransistortester: _flash
+
+at85blink: M:=usbasp
+at85blink: B:=t85
+at85blink: C:=t85
+at85blink: X:=-B 3
+at85blink: P:=Mpe/Blink
+at85blink: I:=Mpe/Blink/Blink.hex
+at85blink: TARGETS:= clean all
+at85blink: _arduino _upload
+
+at85usb: D:=sudo
+at85usb: M:=usbasp
+at85usb: B:=t85
+at85usb: C:=t85
+at85usb: X:=-B 3
+#-q -q
+#no locking:
+at85usb: LB:= 
+at85usb: UB:= 
+#v-usb atiny fuses:
+at85usb: LF:=0xE1
+at85usb: HF:=0xDD
+#clock out PB4:
+#at85usb: LF:=0xA1
+#at85usb: HF:=0xDD
+#int 1Mhz:
+#at85usb: LF:=0x62
+#at85usb: HF:=0xDF
+#clock out PB4:
+#at85usb: LF:=0x22
+#at85usb: HF:=0xDF
+#at85usb: D:=echo
+#at85usb: P:=Mpe/BlinkAll/
+#at85usb: I:=Mpe/BlinkAll/BlinkAll.hex
+#at85usb: TARGETS := clean all
+#at85usb: _arduino _flash
+at85usb: P:=Mpe/TinyUSB/TinyUSBLedDimmer1
+at85usb: I:=Mpe/TinyUSB/TinyUSBLedDimmer1/TinyUSBLedDimmer1.hex
+at85usb: TARGETS := clean all
+at85usb: _arduino _flash
+
+#at85usb: I:=Misc/usb_tiny85/main.hex
+#at85usb: _flash
+
 
 #      ------------ -- 
 #
