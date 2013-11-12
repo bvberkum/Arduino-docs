@@ -46,11 +46,13 @@ void blink(int led, int count, int length) {
 void setup() 
 {
 #if !defined(__AVR_ATtiny85__)
-  Serial.begin(57600);
-  Serial.println("Atmega328P Blink");
+  Serial.begin(9600);
+  Serial.println("Atmega328 Blink");
 #endif
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
+  blink(pin, 5, 25);
+  delay(1500);
 }
 
 void loop() 

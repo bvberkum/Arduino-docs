@@ -12,15 +12,23 @@ MK                  += $(MK_$d)
 # DMK += $/dynamic-makefile.mk
 # DEP += $/generated-dependency
 # TRGT += $/build-target
-# XXX: using find here is so wastefull, there is no cache at all?
-CLN += $(shell find $/ -name .dep -or -name .lib)
 # TEST += $/testtarget
+# XXX: cleanable only noticed on 'make clean'
+#ifneq ($(call contains,$(MAKECMDGOALS),clean),)
+# XXX: using find here is so wastefull (otherwise), there is no cache at all?
+CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
+#endif
+
 
 METHODS = \
-		arduino_="-c arduino -P $(PORT) -b 19200"; \
+		arduino576="-c arduino -P $(PORT) -b 57600"; \
+		arduino384="-c arduino -P $(PORT) -b 38400"; \
+		arduino192="-c arduino -P $(PORT) -b 19200"; \
+		arduino96="-c arduino -P $(PORT) -b 9600"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
 		parisp="-c avr-par-isp-mpe -b 19200"; \
 		parisp_="-c bsd -b 19200"; \
+		arduino8="-cstk500 -P $(PORT) -b 19200"; \
 		arduinoisp="-cstk500v1 -P $(PORT) -b 9600"; \
 		arduinoisp_="-cstk500v1 -P $(PORT) -b 19200"; \
 		arduinoisp__="-cstk500v1 -P $(PORT) -b 57600"; \
@@ -60,7 +68,9 @@ upload: X := -D
 upload: _upload
 
 _upload:
-	avrdude \
+	@\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
+	$$D $${sudo}avrdude \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
@@ -81,7 +91,7 @@ download:
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
 
 _uctest:
-	avrdude \
+	$(D) avrdude \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		$(X)
@@ -123,11 +133,12 @@ flash: _flash
 
 _flash:
 	@\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	X="$(X)";\
 	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 1; } ) && ( \
 		[ -n "$(UB)" ] && { \
 			$(ll) attention $@ "Unlocking & erasing.." && \
-			$(D) $(sudo)avrdude \
+			$(D) $${sudo}avrdude \
 				-p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U lock:w:$(UB):m \
@@ -135,7 +146,7 @@ _flash:
 		}; \
 		$(ll) attention $@ "Writing new fuses.." && \
 		([ -n "$(EF)" ] && { \
-			$(D) $(sudo)avrdude \
+			$(D) $${sudo}avrdude \
 				-p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
@@ -144,7 +155,7 @@ _flash:
 				&& $(ll) info $@ OK \
 				|| exit 3;\
 		} || { \
-			$(D) $(sudo)avrdude -p $(C) -e $$X \
+			$(D) $${sudo}avrdude -p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
@@ -153,7 +164,7 @@ _flash:
 		});\
 		([ -n "$(E)" ] && { \
 			$(ll) attention $@ "Writing EEPROM.." && \
-			$(D) $(sudo)avrdude -p $(C) -D $$X \
+			$(D) $${sudo}avrdude -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
 				-U eeprom:w:$(E) \
 				&& $(ll) info $@ OK \
@@ -161,7 +172,7 @@ _flash:
 		});\
 		([ -n "$(I)" ] && { \
 			$(ll) attention $@ "Writing Flash.." && \
-			$(D) $(sudo)avrdude -p $(C) -D $$X \
+			$(D) $${sudo}avrdude -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
 				-U flash:w:$(I) \
 				&& $(ll) info $@ OK \
@@ -169,7 +180,7 @@ _flash:
 		});\
 		([ -n "$(LB)" ] && { \
 			$(ll) attention $@ "Locking.." && \
-				$(D) $(sudo)avrdude $$X \
+				$(D) $${sudo}avrdude $$X \
 					-p $(C) -D \
 					$(call key,METHODS,$(M)) \
 					-U lock:w:$(LB):m \
@@ -238,25 +249,20 @@ upload-betemcu-usbasploader:
 		-U lock:w:0x0F:m
 
 # from /home/berend/Application/arduino-0021/hardware/arduino/boards.txt
-#m8-16Mhz: M := usbasp
-m8-16Mhz: M := arduinoisp
+# This is working with 19200 baud
+m8-16Mhz: C := m8
+m8-16Mhz: M := usbasp
 #m8-16Mhz: I := firmware/ATmegaBOOT.hex
 # from 1.0.3
 m8-16Mhz: I := firmware/ATmegaBOOT-prod-firmware-2009-11-07.hex
-m8-16Mhz:
-	avrdude \
-		-p m8 -e \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x3F:m -U lfuse:w:0xDF:m -U hfuse:w:0xCA:m
-	avrdude \
-		-p m8 \
-		$(call key,METHODS,$(M)) \
-		-D -U flash:w:$(I)
-	avrdude \
-		-p m8 \
-		$(call key,METHODS,$(M)) \
-		-U lock:w:0x0F:m
+m8-16Mhz: HF := 0xCA
+m8-16Mhz: LF := 0xDF
+m8-16Mhz: LB := 0x0F
+m8-16Mhz: UB := 0x3F
+m8-16Mhz: X := -B 3 
+m8-16Mhz: _flash
 
+# not sure what this is
 m8-fd: C := m8
 m8-fd: M := usbasp
 m8-fd: HF := 0x99
@@ -265,6 +271,36 @@ m8-fd: LB := 0x0F
 m8-fd: UB := 0x3F
 m8-fd: X := -B 3 
 m8-fd: _flash
+
+# 8Mhz optiboot, cannot get this to work at 9600b
+# http://www.robertoinzerillo.com/wordpress/wp-content/uploads/2012/10/optiboot_atmega8_8.zip
+# http://www.robertoinzerillo.com/wordpress/?p=45
+# Arduino BOARD: atmega8_opti_8mhz
+m8-optiboot: C := m8
+m8-optiboot: M := usbasp
+m8-optiboot: HF := 0xCC
+m8-optiboot: LF := 0xA4
+m8-optiboot: LB := 0x0F
+m8-optiboot: UB := 0x3F
+m8-optiboot: I := firmware/optiboot_atmega8_8.hex
+m8-optiboot: X := -B 3 
+m8-optiboot: D := 
+m8-optiboot: _flash
+
+# 8Mhz noxtal
+# http://todbot.com/blog/2009/05/26/minimal-arduino-with-atmega8/
+# http://todbot.com/blog/wp-content/uploads/2009/05/atmega8_noxtal.zip
+# Arduino BOARD: atmega8noxtal
+m8-noxtal: C := m8
+m8-noxtal: M := usbasp
+m8-noxtal: HF := 0xC4
+m8-noxtal: LF := 0xE4
+m8-noxtal: LB := 0x0F
+m8-noxtal: UB := 0x3F
+m8-noxtal: I := firmware/atmega8_noxtal/ATmegaBOOT.hex
+#m8-noxtal: X := -B 3 
+m8-noxtal: D := 
+m8-noxtal: _flash
 
 m8: M := arduinoisp
 m8: 
@@ -340,16 +376,18 @@ m328p-8Mhz:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
 #m328p-16Mhz: I := firmware/optiboot_atmega328.hex
+
+m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
 m328p-16Mhz: M := usbasp
 m328p-16Mhz: X :=
-m328p-16Mhz:
-	avrdude \
-		-p m328p -e $(call key,METHODS,$(M)) $(X) \
-		-U lock:w:0x3F:m -U lfuse:w:0xFF:m -U hfuse:w:0xDA:m -U efuse:w:0x07:m \
-		-U flash:w:$(I) \
-		-U lock:w:0x0F:m 
+m328p-16Mhz: C := m328p
+m328p-16Mhz: LF := 0xFF
+m328p-16Mhz: HF := 0xDA
+m328p-16Mhz: EF := 0x07
+m328p-16Mhz: LB := 0x0F
+m328p-16Mhz: UB := 0x3F
+m328p-16Mhz: _flash
 
 # Cannot re-read protected flash without -e? check fuses
 #verify-betemcu: M := usbasp
@@ -383,10 +421,12 @@ ARDUINODIR := /home/berend/Application/arduino-1.0.3
 #ARDUINODIR := $(shell realpath ./arduino-1.0.5)
 #ARDUINODIR := $(shell realpath ./arduino-1.0.1)
 ARDUINODIR := $(shell realpath ./arduinodir)
-$(info ARDUINODIR=$(ARDUINODIR))
 #AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
 #AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin
-#$(info AVRTOOLSPATH=$(AVRTOOLSPATH))
+
+$(info $(shell $(ll) header1 $(MK_$d) Wrapping arduino.mk))
+$(info $(shell $(ll) header3 $(MK_$d) AVRTOOLSPATH:  $(AVRTOOLSPATH)))
+$(info $(shell $(ll) header3 $(MK_$d) ARDUINODIR: $(ARDUINODIR)))
 
 # Build anything in target folder 'P'
 #arduino: P :=
@@ -453,7 +493,7 @@ jeenodeisp-repair: upload
 blink: C := m328p
 blink: P := Mpe/Blink
 blink: I := Mpe/Blink/Blink.hex
-blink: jeenode upload
+blink: jeenode _upload
 
 blinkall: C := m328p
 blinkall: P := Mpe/BlinkAll
