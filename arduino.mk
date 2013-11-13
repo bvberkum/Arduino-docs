@@ -174,11 +174,10 @@ SOURCES := $(INOFILE) \
 LIBRARIES := $(filter $(notdir $(wildcard $(ARDUINODIR)/libraries/*)), \
 	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
 
-$(info adir $(ARDUINODIR))
-$(info libs $(notdir $(wildcard $(ARDUINODIR)/libraries/*)))
-$(info includes	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
-
-$(info LIBRARIES $(LIBRARIES))
+#$(info adir $(ARDUINODIR))
+#$(info libs $(notdir $(wildcard $(ARDUINODIR)/libraries/*)))
+#$(info includes	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
+$(info "Loading for LIBRARIES:" $(LIBRARIES))
 endif
 
 # no serial device? make a poor attempt to detect an arduino
@@ -331,54 +330,67 @@ size: $(TARGET).elf
 # building the target
 
 $(TARGET).hex: $(TARGET).elf
-	$(OBJCOPY) -O ihex -R .eeprom $< $@
+	@$(OBJCOPY) -O ihex -R .eeprom $< $@
+	@echo -n .
 
 .INTERMEDIATE: $(TARGET).elf
 
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
-	$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
+	@$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
+	@echo -n .
 
 %.o: %.c
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
+	@echo -n .
 
 %.o: %.cpp
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@echo -n .
 
 %.o: %.cc
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@echo -n .
 
 %.o: %.C
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@echo -n .
 
 %.o: %.ino
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
+	@echo -n .
 
 %.o: %.pde
-	mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ -x c++ -include $(ARDUINOCOREDIR)/Arduino.h $<
+	@mkdir -p .dep/$(dir $<)
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ -x c++ -include $(ARDUINOCOREDIR)/Arduino.h $<
+	@echo -n .
 
 # building the arduino library
 
 $(ARDUINOLIB): $(ARDUINOLIBOBJS)
 	$(AR) rcs $@ $?
+	@echo -n .
 
 .lib/%.c.o: %.c
-	mkdir -p $(dir $@)
-	$(COMPILE.c) -o $@ $<
+	@mkdir -p $(dir $@)
+	@$(COMPILE.c) -o $@ $<
+	@echo -n .
 
 .lib/%.cpp.o: %.cpp
-	mkdir -p $(dir $@)
-	$(COMPILE.cpp) -o $@ $<
+	@mkdir -p $(dir $@)
+	@$(COMPILE.cpp) -o $@ $<
+	@echo -n .
 
 .lib/%.cc.o: %.cc
-	mkdir -p $(dir $@)
-	$(COMPILE.cpp) -o $@ $<
+	@mkdir -p $(dir $@)
+	@$(COMPILE.cpp) -o $@ $<
+	@echo -n .
 
 .lib/%.C.o: %.C
-	mkdir -p $(dir $@)
-	$(COMPILE.cpp) -o $@ $<
+	@mkdir -p $(dir $@)
+	@$(COMPILE.cpp) -o $@ $<
+	@echo -n .

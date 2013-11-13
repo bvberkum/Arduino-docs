@@ -2,7 +2,8 @@
 //   This is working with JeeNode I2C port. I found pullups unecessary while only
 //   the LCD is plugged in using jumper wires.
 //   Incompatible with JeeLib as interface is not there yet
-
+// 2013-11-13
+//   Testing again, failing at first but works okay later.
 //DFRobot.com
 //Compatible with the Arduino IDE 1.0
 //Library version:1.1
@@ -51,6 +52,7 @@ void i2c_lcd_init()
 	lcd.begin(16,2);
 	lcd.setBacklightPin(BACKLIGHT_PIN,NEGATIVE);
 	lcd.setBacklight(LED_ON);
+//	lcd.setBacklight(LED_OFF);
 
 	lcd.createChar(0, bell);
 	lcd.createChar(1, note);

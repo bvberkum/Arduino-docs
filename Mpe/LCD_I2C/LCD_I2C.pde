@@ -1,10 +1,12 @@
 /**
  * Connect a 16x2 LCD by I2C bus (provided by MCP23008)
+ * But I do not have this plug.
  */
 
 // Demo sketch for an LCD connected to I2C port via MCP23008 I/O expander
 // 2009-10-31 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
 
+#include <JeeLib.h>
 #include <PortsLCD.h>
 
 PortI2C i2c_bus1(1);

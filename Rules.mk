@@ -51,7 +51,11 @@ listen: D := $(PORT)
 listen: B := 57600
 #listen: B := 38400
 listen:
+	@\
+	$(ll) attention $@ "Starting minicom @$(B) baud.." $(D);\
 	minicom -D $(D) -b $(B) minirc.arduino
+	@\
+	$(ll) ok $@ "minicom ended." $(D)
 
 radio:
 	python readhex.py
@@ -69,18 +73,22 @@ upload: _upload
 
 _upload:
 	@\
+	$(ll) attention $@ "Starting flash upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	$$D $${sudo}avrdude \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
-		$(X)
+		$(X) ; \
+	$(ll) OK $@ "Flash upload completed successfully"
 
 download: C := m328p
 download: M := arduino
 download: I := 
 download: X := -D
 download:
+	@\
+	$(ll) attention $@ "Starting flash/eeprom download using $(M).." $(I);\
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
 	avrdude \
@@ -89,12 +97,14 @@ download:
 		-U eeprom:r:$$I-eeprom.hex:i \
 		-U flash:r:$$I.hex:i \
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
+	$(ll) OK $@ "Download completed successfully" $$I-*
 
 _uctest:
 	$(D) avrdude \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		$(X)
+	$(ll) OK $@ 
 
 uctest: C := m328p
 uctest: M := arduinoisp
@@ -108,14 +118,17 @@ m328ptest: _uctest
 
 t85test: C := t85
 t85test: M := usbasp
-t85test: X := "-B 3"
+t85test: X := "-B3"
 t85test: _uctest
 
 erase: C := m328p
 erase: M := arduinoisp
 erase:
+	@\
+	$(ll) attention $@ "Starting erase of $(C) using $(M)..";\
 	avrdude \
-		-p $(C) $(call key,METHODS,$(M)) -D
+		-p $(C) $(call key,METHODS,$(M)) -D;\
+	$(ll) OK $@ 
 
 flash: C := m8
 flash: M := usbasp
@@ -430,7 +443,7 @@ $(info $(shell $(ll) header3 $(MK_$d) ARDUINODIR: $(ARDUINODIR)))
 
 # Build anything in target folder 'P'
 #arduino: P :=
-#arduino: B := 
+#arduino: BRD := 
 #_arduino: LIB := $/libraries/
 #_arduino: TARGETS := clean all
 _arduino: 
@@ -438,7 +451,7 @@ _arduino:
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
 		AVRTOOLSPATH="$(AVRTOOLSPATH)" \
-		BOARD=$(B) \
+		BOARD=$(BRD) \
 		make -f $$p/arduino.mk $(TARGETS)
 
 arduino: TARGETS := clean all
@@ -446,6 +459,13 @@ arduino: _arduino
 
 boards: TARGETS := boards
 boards: _arduino
+
+monitor: TARGETS := monitor
+monitor: _arduino
+
+size: P := 
+size: TARGETS := size
+size: _arduino
 
 
 ardnlib:
@@ -457,13 +477,13 @@ ardnlib:
 	ln -s /srv/project-mpe/Arduino-mpe/libraries/OneWire
 
 #jeenode: C := m328p
-jeenode: B := atmega328
+jeenode: BRD := atmega328
 jeenode: M := arduino
 jeenode: arduino
 
 isp_flash: P := $/libraries/jeelib/examples/Ports/isp_flash/
 isp_flash: I := $/libraries/jeelib/examples/Ports/isp_flash/isp_flash.hex
-isp_flash: B := atmega328
+isp_flash: BRD := atmega328
 isp_flash: arduino upload
 
 arduino-boards:
@@ -540,6 +560,11 @@ sandbox: P := Mpe/Sandbox/
 sandbox: I := Mpe/Sandbox/Sandbox.hex
 sandbox: jeenode upload
 
+sandbox-avr: C := m328p
+sandbox-avr: P := Mpe/Sandbox/AVR
+sandbox-avr: I := Mpe/Sandbox/AVR/AVR.hex
+sandbox-avr: arduino _upload
+
 mla: C := m328p
 mla: P := Misc/miniLogicAnalyzer/
 mla: I := Misc/miniLogicAnalyzer/miniLogicAnalyzer.hex
@@ -577,7 +602,7 @@ avrtransistortester: X := -B 3
 avrtransistortester: _flash
 
 at85blink: M:=usbasp
-at85blink: B:=t85
+at85blink: BRD:=t85
 at85blink: C:=t85
 at85blink: X:=-B 3
 at85blink: P:=Mpe/Blink
@@ -587,7 +612,7 @@ at85blink: _arduino _upload
 
 at85usb: D:=sudo
 at85usb: M:=usbasp
-at85usb: B:=t85
+at85usb: BRD:=t85
 at85usb: C:=t85
 at85usb: X:=-B 3
 #-q -q
@@ -618,6 +643,21 @@ at85usb: _arduino _flash
 
 #at85usb: I:=Misc/usb_tiny85/main.hex
 #at85usb: _flash
+
+lcd1602_i2c: C := m328p
+lcd1602_i2c: BRD := atmega328
+# this is for JeeLabs expander plug
+#lcd1602_i2c: P := Mpe/LCD_I2C
+#lcd1602_i2c: I := Mpe/LCD_I2C/LCD_I2C.hex
+lcd1602_i2c: P := Misc/I2C_LCD_CustomChars_mjkdz
+lcd1602_i2c: I := Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.hex
+lcd1602_i2c: _arduino upload
+
+all_i2c: C := m328p
+all_i2c: BRD := atmega328
+all_i2c: P := Mpe/i2c_all/
+all_i2c: I := Mpe/i2c_all/i2c_all.hex
+all_i2c: _arduino upload
 
 
 #      ------------ -- 
