@@ -590,8 +590,10 @@ ledseg595: P := Mpe/LedSegment595/
 ledseg595: I := Mpe/LedSegment595/LedSegment595.hex
 ledseg595: jeenode upload
 
-avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
-avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
+#avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
+#avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
+avrtransistortester: E := Mpe/transistortester/Software/trunk/mega8/TransistorTester.eep
+avrtransistortester: I := Mpe/transistortester/Software/trunk/mega8/TransistorTester.hex
 avrtransistortester: M := usbasp
 avrtransistortester: LF := 0xC1
 avrtransistortester: HF := 0xD9
