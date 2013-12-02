@@ -525,6 +525,21 @@ blinkall: jeenode upload
 3way: I := Mpe/eBay-ThreeWayMeter/Prototype.hex
 3way: jeenode upload
 
+rf12demo: C := m328p
+rf12demo: P := libraries/jeelib/examples/RF12/RF12demo/
+rf12demo: I := libraries/jeelib/examples/RF12/RF12demo/RF12demo.hex
+rf12demo: jeenode upload
+
+jeeblip: C := m328p
+jeeblip: P := Mpe/RadioBlip/
+jeeblip: I := Mpe/RadioBlip/RadioBlip.hex
+jeeblip: jeenode upload
+
+radioblip: C := m328p
+radioblip: P := libraries/jeelib/examples/RF12/radioBlip/
+radioblip: I := libraries/jeelib/examples/RF12/radioBlip/radioBlip.hex
+radioblip: jeenode upload
+
 radiolink: C := m328p
 radiolink: P := Mpe/RadioLink/
 radiolink: I := Mpe/RadioLink/RadioLink.hex
@@ -590,10 +605,11 @@ ledseg595: P := Mpe/LedSegment595/
 ledseg595: I := Mpe/LedSegment595/LedSegment595.hex
 ledseg595: jeenode upload
 
-#avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
-#avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
-avrtransistortester: E := Mpe/transistortester/Software/trunk/mega8/TransistorTester.eep
-avrtransistortester: I := Mpe/transistortester/Software/trunk/mega8/TransistorTester.hex
+avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
+avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
+# XXX: This one gives timeout, circuit change?
+#avrtransistortester: E := Mpe/transistortester/Software/trunk/mega8/TransistorTester.eep
+#avrtransistortester: I := Mpe/transistortester/Software/trunk/mega8/TransistorTester.hex
 avrtransistortester: M := usbasp
 avrtransistortester: LF := 0xC1
 avrtransistortester: HF := 0xD9
