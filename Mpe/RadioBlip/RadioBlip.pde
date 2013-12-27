@@ -42,7 +42,7 @@ void setup() {
     bitClear(PORTB, 0);
 #endif
 
-    rf12_initialize(2, RF12_868MHZ, 5);
+    rf12_initialize(3, RF12_868MHZ, 5);
     // see http://tools.jeelabs.org/rfm12b
     rf12_control(0xC040); // set low-battery level to 2.2V i.s.o. 3.1V
     Serial.println("initialized");
