@@ -18,6 +18,7 @@ MK                  += $(MK_$d)
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 #endif
 
+
 METHODS = \
 		arduino576="-c arduino -P $(PORT) -b 57600"; \
 		arduino384="-c arduino -P $(PORT) -b 38400"; \
@@ -544,15 +545,15 @@ rf12demo: P := libraries/jeelib/examples/RF12/RF12demo/
 rf12demo: I := libraries/jeelib/examples/RF12/RF12demo/RF12demo.hex
 rf12demo: jeenode upload
 
-jeeblip: C := m328p
-jeeblip: P := Mpe/RadioBlip/
-jeeblip: I := Mpe/RadioBlip/RadioBlip.hex
-jeeblip: jeenode upload
-
 radioblip: C := m328p
-radioblip: P := libraries/jeelib/examples/RF12/radioBlip/
-radioblip: I := libraries/jeelib/examples/RF12/radioBlip/radioBlip.hex
+radioblip: P := Mpe/RadioBlip/
+radioblip: I := Mpe/RadioBlip/RadioBlip.hex
 radioblip: jeenode upload
+
+jeeblip: C := m328p
+jeeblip: P := libraries/jeelib/examples/RF12/radioBlip/
+jeeblip: I := libraries/jeelib/examples/RF12/radioBlip/radioBlip.hex
+jeeblip: jeenode upload
 
 radiolink: C := m328p
 radiolink: P := Mpe/RadioLink/

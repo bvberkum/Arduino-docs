@@ -54,20 +54,31 @@ A5  PC5      SCL  DHT out
 
 ToDo
   - Announce payload config
+
+  	spec:
+		detect:
+			PIR
+				motion
+			LDR
+				
   - 
 */
+
+//#ifdef MYCMDLINE
+
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
 #include <stdlib.h>
 #include <avr/sleep.h>
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 #include <util/atomic.h>
 
 #include <JeeLib.h>
 #include <OneWire.h>
 #include <DHT.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 // include EEPROMEx.h
 #include "EmBencode.h"
 
@@ -78,6 +89,7 @@ ToDo
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT    1
+#define DS_PIN      A5
 #define MEMREPORT 1
 #define ATMEGA_TEMP 1
 
@@ -92,9 +104,15 @@ ToDo
 #define RADIO_SYNC_MODE 2
 
 
+static String node_id = "";
+
+/* embenc for storage and xfer proto */
+
+// unused?
 uint8_t* embencBuff;
 int embencBuffLen = 0;
 
+// dynamic allocation for embencBuff
 void embenc_push(char ch) {
 	embencBuffLen += 1;
 	uint8_t* np = (uint8_t *) realloc( embencBuff, sizeof(uint8_t) * embencBuffLen);
@@ -106,24 +124,30 @@ void embenc_push(char ch) {
 	}
 }
 
-void EmBencode::PushChar(char ch) {
-	Serial.write(ch);
-	embenc_push(ch);
+//void EmBencode::PushChar(char ch) {
+//	Serial.write(ch);
+//	embenc_push(ch);
+//}
+
+void freeEmbencBuff() {
+	embencBuff = (uint8_t *) realloc(embencBuff, 0); // free??
+	embencBuffLen = 0;
 }
 
-enum { ANNOUNCE_MSG, REPORT_MSG };
 
-/* Atmega EEPROM */
+/* Atmega EEPROM stuff */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
-/* Dallas bus for DS18S20 temperature */
-OneWire ds(A5);  // on pin 10
+/* RF12 message types */
+enum { ANNOUNCE_MSG, REPORT_MSG };
 
-String node_id = "";
-String inputString = "";         // a string to hold incoming data
+
+#if DS_PIN
+/* Dallas bus for DS18S20 temperature */
+OneWire ds(DS_PIN);  // on pin 10
 
 const int ds_count = 3;
 uint8_t ds_addr[ds_count][8] = {
@@ -132,7 +156,7 @@ uint8_t ds_addr[ds_count][8] = {
 	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
 };
 volatile int ds_value[ds_count];
-
+#endif
 
 // The scheduler makes it easy to perform various tasks at various times:
 
@@ -373,6 +397,7 @@ int freeRam () {
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
+// XXX: just an example, not actually used 
 static void sendSomeData () {
   EmBencode encoder;
   // send a simple string
@@ -402,6 +427,22 @@ static void sendSomeData () {
   encoder.push("bye!");
 }
 
+static void writeConfig() {
+	eeprom_write_byte(RF12_EEPROM_ADDR, 4);
+	eeprom_write_byte(RF12_EEPROM_ADDR+1, 5);
+//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
+	// JeeLib RF12_EEPROM_ADDR is at 20
+    int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+    int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+
+    Serial.print("nodeId: ");
+    Serial.println(nodeId);
+    Serial.print("group: ");
+    Serial.println(group);
+    serialFlush();
+}
+
+#if DS_PIN
 enum { DS_OK, DS_ERR_CRC };
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
@@ -577,8 +618,64 @@ void printDS18B20(bool do_read=false) {
 #endif
 }
 */
+#endif
 
 static void doConfig() {
+	// JeeLib RF12_EEPROM_ADDR is at 20
+    int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+    int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+
+	// Read embencoded from eeprom
+	int specByteCnt= eeprom_read_byte(RF12_EEPROM_ADDR + 2);
+	uint8_t specRaw [specByteCnt]; 
+	eeprom_read_block( 
+			(void*)specRaw, 
+			(const void*)RF12_EEPROM_ADDR + 3,
+			specByteCnt 
+		);
+
+	char embuf [200];
+	EmBdecode decoder (embuf, sizeof embuf);
+	uint8_t bytes;
+	int i = 0;
+	// XXX: fix this, catch longer than scenario, check for remaining raw spec
+	while (!bytes) {
+		bytes = decoder.process(specRaw[i]);
+		i += 1;
+	}
+
+	if (!bytes) {
+		Serial.println("Unable to decode");
+	} else {
+		Serial.print(" => ");
+		Serial.print((int) bytes);
+		Serial.println(" bytes");
+		for (;;) {
+			uint8_t token = decoder.nextToken();
+			if (token == EmBdecode::T_END)
+				break;
+			switch (token) {
+				case EmBdecode::T_STRING:
+					Serial.print(" string: ");
+					Serial.println(decoder.asString());
+					break;
+				case EmBdecode::T_NUMBER:
+					Serial.print(" number: ");
+					Serial.println(decoder.asNumber());
+					break;
+				case EmBdecode::T_DICT:
+					Serial.println(" > dict");
+					break;
+				case EmBdecode::T_LIST:
+					Serial.println(" > list");
+					break;
+				case EmBdecode::T_POP:
+					Serial.println(" < pop");
+					break;
+			}
+		}
+		decoder.reset();
+	}
 }
 
 static bool doAnnounce() {
@@ -600,7 +697,7 @@ static bool doAnnounce() {
 	payload_spec.push("ldr2250"); 
 	// bits in payload
 	payload_spec.push(8);
-	// decoder params, optional?
+	// XXX decoder params, optional?
 	payload_spec.push("int(0-255)");
 	payload_spec.endList();
 #if SERIAL
@@ -678,8 +775,7 @@ static bool doAnnounce() {
 	
 	acked = 1;
 
-	embencBuff = (uint8_t *) realloc(embencBuff, 0); // free??
-	embencBuffLen = 0;
+	freeEmbencBuff();
 
 	if (acked) {
 //		Serial.println("ACK");
@@ -693,6 +789,7 @@ static bool doAnnounce() {
 	rf12_sleep(RF12_SLEEP);
 	return acked;
 
+#if DS_PIN
 			// report a new node or reinitialize node with central link node
 //			for ( int x=0; x<ds_count; x++) {
 //				Serial.print("SEN ");
@@ -705,6 +802,7 @@ static bool doAnnounce() {
 //				}
 //				Serial.println("");
 //			}
+#endif
 }
 
 // readout all the sensors and other values
@@ -780,12 +878,14 @@ static void doReport() {
 	Serial.print((int) payload.attemp);
 	Serial.print(' ');
 #endif
+#if DS_PIN
 //	Serial.print((int) ds_value[0]);
 //	Serial.print(' ');
 //	Serial.print((int) ds_value[1]);
 //	Serial.print(' ');
 //	Serial.print((int) ds_value[2]);
 //	Serial.print(' ');
+#endif
 #if MEMREPORT
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
@@ -795,6 +895,9 @@ static void doReport() {
 	serialFlush();
 #endif//SERIAL
 }
+
+
+String inputString = "";         // a string to hold incoming data
 
 void serialEvent() {
 	while (Serial.available()) {
@@ -813,6 +916,12 @@ void serialEvent() {
 	}
 }
 
+/*
+  *
+  * Main
+  *
+   */
+
 void setup()
 {
 #if SERIAL || DEBUG
@@ -827,6 +936,11 @@ void setup()
 #endif
 	serialFlush();
 #endif
+
+	writeConfig();
+	//doConfig();
+	return;
+
 
 	// Reported on serial?
 	node_id = "CarrierCase.0-2-RF12-5-23";
@@ -869,6 +983,7 @@ void setup()
 int line = 0;
 void loop(void)
 {
+	return;
 #if DEBUG
 	line++;
 	Serial.print('.');
@@ -922,4 +1037,4 @@ void loop(void)
 	}
 }
 
-
+//#endif
