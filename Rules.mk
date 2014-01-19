@@ -24,7 +24,6 @@ endif
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 #endif
 
-
 #      ------------ -- 
 #
 include                $(MK_SHARE)Core/Main.dirstack-pop.mk
