@@ -44,6 +44,9 @@ else
 PORT := /dev/ttyUSB0
 endif
 
+watch:
+	watch -n 1 ls -la /dev/tty.usbserial-* /dev/ttyUSB*
+
 find:
 	find ./ -iname '*.hex'
 
@@ -75,7 +78,7 @@ _upload:
 	@\
 	$(ll) attention $@ "Starting flash upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
-	$$D $${sudo}avrdude \
+	$(D) $${sudo}avrdude \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
@@ -100,11 +103,14 @@ download:
 	$(ll) OK $@ "Download completed successfully" $$I-*
 
 _uctest:
-	$(D) avrdude \
+	@\
+	$(ll) attention $@ "Testing for $(C) using $(M).." $(PORT);\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
+	$(D) $${sudo}avrdude \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		$(X)
-	$(ll) OK $@ 
+	@$(ll) OK $@ 
 
 uctest: C := m328p
 uctest: M := arduinoisp
