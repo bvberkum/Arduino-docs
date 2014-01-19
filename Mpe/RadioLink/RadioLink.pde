@@ -21,7 +21,8 @@ ToDo
 #define DATAFLASH 1 // check for presence of DataFlash memory on JeeLink
 #define FLASH_MBIT  16  // support for various dataflash sizes: 4/8/16 Mbit
 
-#define LED_PIN   9 // activity LED, comment out to disable
+#define LED1_PIN   8 // B0 - node activity LED, comment out to disable
+#define LED2_PIN   9 // B1 - radio activity LED, comment out to disable
 
 #endif
 
@@ -35,10 +36,17 @@ static unsigned long now () {
 	return millis() / 1000;
 }
 
-static void activityLed (byte on) {
-#ifdef LED_PIN
-	pinMode(LED_PIN, OUTPUT);
-	digitalWrite(LED_PIN, !on);
+static void nodeLed (byte on) {
+#ifdef LED1_PIN
+	pinMode(LED1_PIN, OUTPUT);
+	digitalWrite(LED1_PIN, !on);
+#endif
+}
+
+static void radioLed (byte on) {
+#ifdef LED1_PIN
+	pinMode(LED2_PIN, OUTPUT);
+	digitalWrite(LED2_PIN, !on);
 #endif
 }
 
@@ -272,20 +280,20 @@ static void handleInput (char c) {
 				memcpy(testbuf, stack, top);
 				break;
 			case 'l': // turn activity LED on or off
-				activityLed(value);
+				nodeLed(value);
 				break;
 			case 'f': // send FS20 command: <hchi>,<hclo>,<addr>,<cmd>f
 				rf12_initialize(0, RF12_868MHZ);
-				activityLed(1);
+				radioLed(1);
 				fs20cmd(256 * stack[0] + stack[1], stack[2], value);
-				activityLed(0);
+				radioLed(0);
 				rf12_config(0); // restore normal packet listening mode
 				break;
 			case 'k': // send KAKU command: <addr>,<dev>,<on>k
 				rf12_initialize(0, RF12_433MHZ);
-				activityLed(1);
+				radioLed(1);
 				kakuSend(stack[0], stack[1], value);
-				activityLed(0);
+				radioLed(0);
 				rf12_config(0); // restore normal packet listening mode
 				break;
 			case 'q': // turn quiet mode on or off (don't report bad packets)
@@ -294,6 +302,7 @@ static void handleInput (char c) {
 			case 'z': // put the ATmega in ultra-low power mode (reset needed)
 				if (value == 123) {
 					delay(10);
+					nodeLed(0);
 					rf12_sleep(RF12_SLEEP);
 					cli();
 					Sleepy::powerDown();
@@ -323,7 +332,8 @@ void setup() {
 	Serial.begin(SERIAL_BAUD);
 	Serial.println();
 	Serial.print(F("[RadioLink]"));
-	activityLed(0);
+	nodeLed(1);
+	radioLed(0);
 
 	if (rf12_config()) {
 		config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
@@ -339,10 +349,14 @@ void setup() {
 
 
 void loop() {
-	if (Serial.available())
+	if (Serial.available()) {
+		radioLed(1);
 		handleInput(Serial.read());
+		radioLed(0);
+	}
 
 	if (rf12_recvDone()) {
+		nodeLed(1);
 		byte n = rf12_len;
 		if (rf12_crc == 0)
 			Serial.print(F("OK"));
@@ -368,7 +382,7 @@ void loop() {
 		}
 		Serial.println();
 		if (rf12_crc == 0) {
-			activityLed(1);
+			radioLed(1);
 			Serial.print((int) rf12_len);
 			Serial.println(F(" bytes received"));
 			if (RF12_WANTS_ACK) {
@@ -380,12 +394,13 @@ void loop() {
 				/*
 				*/
 			}
-			activityLed(0);
-		}
+			radioLed(0);
+		} // else blink?
+		nodeLed(0);
 	}
 
 	if (cmd && rf12_canSend()) {
-		activityLed(1);
+		nodeLed(1);
 
 		Serial.print(F(" -> "));
 		Serial.print((int) sendLen);
@@ -393,10 +408,12 @@ void loop() {
 		byte header = cmd == 'a' ? RF12_HDR_ACK : 0;
 		if (dest)
 			header |= RF12_HDR_DST | dest;
+		radioLed(1);
 		rf12_sendStart(header, testbuf, sendLen);
 		cmd = 0;
 
-		activityLed(0);
+		radioLed(0);
+		nodeLed(0);
 	}
 }
 
