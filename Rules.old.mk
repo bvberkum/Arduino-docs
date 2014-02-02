@@ -18,13 +18,14 @@ MK                  += $(MK_$d)
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 #endif
 
-
 METHODS = \
 		arduino576="-c arduino -P $(PORT) -b 57600"; \
 		arduino384="-c arduino -P $(PORT) -b 38400"; \
 		arduino192="-c arduino -P $(PORT) -b 19200"; \
 		arduino96="-c arduino -P $(PORT) -b 9600"; \
 		arduino="-c arduino -P $(PORT) -b 57600"; \
+		uno="-c arduino -P $(PORT) -b 115200"; \
+		leonardo="-cavr109 -P $(PORT) -b 57600 "; \
 		parisp="-c avr-par-isp-mpe -b 19200"; \
 		parisp_="-c bsd -b 19200"; \
 		arduino8="-cstk500 -P $(PORT) -b 19200"; \
@@ -580,6 +581,11 @@ fuseboxmon: P := libraries/jeelib/examples/RF12/p1scanner
 fuseboxmon: I := libraries/jeelib/examples/RF12/p1scanner/p1scanner.hex
 fuseboxmon: jeenode upload
 
+utilitybug: C := m328p
+utilitybug: P := Mpe/Utility/UtilityBug/
+utilitybug: I := Mpe/Utility/UtilityBug/UtilityBug.hex
+utilitybug: jeenode upload
+
 gasdetector: C := m328p
 gasdetector: P := Mpe/GasDetector/
 gasdetector: I := Mpe/GasDetector/GasDetector.hex
@@ -691,6 +697,35 @@ all_i2c: BRD := atmega328
 all_i2c: P := Mpe/i2c_all/
 all_i2c: I := Mpe/i2c_all/i2c_all.hex
 all_i2c: _arduino upload
+
+rf12mon: C := m328p
+rf12mon: P := Misc/rf12mon/
+rf12mon: I := Misc/rf12mon/rf12mon.hex
+rf12mon: jeenode upload
+
+rf12bert: C := m328p
+rf12bert: P := Misc/rf12bert/
+rf12bert: I := Misc/rf12bert/rf12bert.hex
+rf12bert: jeenode upload
+
+nrfmon: C := m328p
+nrfmon: P := Mpe/Milli/
+nrfmon: I := Mpe/Milli/Milli.hex
+nrfmon: jeenode upload
+
+mbug1: C := m328p
+mbug1: P := Mpe/MoistureBug/MoistureNode
+mbug1: I := Mpe/MoistureBug/MoistureNode/MoistureNode.hex
+mbug1: jeenode upload
+
+soarer: I := Misc/Soarer_Convertor/tmp/Soarer_at2usb_v1.12_atmega32u4.hex
+soarer: M := leonardo
+soarer: C := atmega32u4 
+soarer: PORT := /dev/ttyACM0
+soarer: X := -D -v
+soarer: _upload
+
+# Leonardo mega32u4 / teensy 2.0?
 
 
 library: $(realpath $/libraries/)

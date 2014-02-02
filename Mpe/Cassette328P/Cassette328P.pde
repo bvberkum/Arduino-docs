@@ -299,12 +299,13 @@ static void serialFlush () {
 }
 #endif
 
-void blink(int led, int count, int length) {
+void blink(int led, int count, int length, int length_off=0) {
   for (int i=0;i<count;i++) {
     digitalWrite (led, HIGH);
     delay(length);
     digitalWrite (led, LOW);
     delay(length);
+    (length_off > 0) ? delay(length_off) : delay(length);
   }
 }
 

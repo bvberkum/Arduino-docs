@@ -4,7 +4,10 @@
 
 #include <JeeLib.h>
 
-static long payload;
+struct {
+	char msgtype;
+	long payload;
+} payload;
 static int sleeptime = 60000;
 
 // this must be added since we're using the watchdog for low-power waiting
@@ -21,20 +24,21 @@ void setup() {
     Serial.begin(57600);
     Serial.println("\n[radioBlip/0.1]");
     serialFlush();
-    pinMode(8, INPUT);
-	if (digitalRead(8)) {
-		Serial.println("Locking");
-		serialFlush();
-		while (true);
-	}
-    cli();
-    CLKPR = bit(CLKPCE);
-#if defined(__AVR_ATtiny84__)
-    CLKPR = 0; // div 1, i.e. speed up to 8 MHz
-#else
-    CLKPR = 1; // div 2, i.e. slow down to 8 MHz
-#endif
-    sei();
+    serialFlush();
+//    pinMode(8, INPUT);
+//	if (digitalRead(8)) {
+//		Serial.println("Locking");
+//		serialFlush();
+//		while (true);
+//	}
+//    cli();
+//    CLKPR = bit(CLKPCE);
+//#if defined(__AVR_ATtiny84__)
+//    CLKPR = 0; // div 1, i.e. speed up to 8 MHz
+//#else
+//    CLKPR = 1; // div 2, i.e. slow down to 8 MHz
+//#endif
+//    sei();
 
 #if defined(__AVR_ATtiny84__)
     // power up the radio on JMv3
@@ -42,15 +46,17 @@ void setup() {
     bitClear(PORTB, 0);
 #endif
 
-    rf12_initialize(3, RF12_868MHZ, 5);
+    rf12_initialize(6, RF12_868MHZ, 5);
     // see http://tools.jeelabs.org/rfm12b
-    rf12_control(0xC040); // set low-battery level to 2.2V i.s.o. 3.1V
+    //rf12_control(0xC040); // set low-battery level to 2.2V i.s.o. 3.1V
     Serial.println("initialized");
     serialFlush();
+    serialFlush();
+    payload.msgtype = 0;
 }
 
 void loop() {
-    ++payload;
+    ++payload.payload;
     Serial.print('t');
     serialFlush();
     
@@ -62,6 +68,7 @@ void loop() {
     rf12_sendWait(2);
     
     Serial.print('s');
+    serialFlush();
     serialFlush();
     rf12_sleep(RF12_SLEEP);
     Sleepy::loseSomeTime(sleeptime);

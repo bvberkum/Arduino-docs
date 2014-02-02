@@ -1,7 +1,6 @@
 /*
 
 MoistureBug
-	- Starting based on GasDetector.
 
 	- Working toward MoistureBug for PipeConnectors
 	- Perhaps demux, switching later
@@ -41,17 +40,6 @@ Hardware
 #define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-
-
-/* The pin connected to the 100 ohm side */
-#define voltageFlipPinA 9
-/* The pin connected to the 50k-100k (measuring) side. */
-#define voltageFlipPinAMeasure 10
-/* The analog pin for measuring */
-#define sensorPinA 2
-//#define sensorPinAB 3
-
-int flipTimer = 1000;
 
 
 /* The pin connected to the 100 ohm side */

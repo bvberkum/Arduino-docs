@@ -21,8 +21,8 @@ ToDo
 #define DATAFLASH 1 // check for presence of DataFlash memory on JeeLink
 #define FLASH_MBIT  16  // support for various dataflash sizes: 4/8/16 Mbit
 
-#define LED1_PIN   8 // B0 - node activity LED, comment out to disable
-#define LED2_PIN   9 // B1 - radio activity LED, comment out to disable
+#define LED_NODE  8 // B0 - node activity LED, comment out to disable
+#define LED_RADIO 9 // B1 - radio activity LED, comment out to disable
 
 #endif
 
@@ -36,19 +36,41 @@ static unsigned long now () {
 	return millis() / 1000;
 }
 
-static void nodeLed (byte on) {
-#ifdef LED1_PIN
-	pinMode(LED1_PIN, OUTPUT);
-	digitalWrite(LED1_PIN, !on);
-#endif
+
+//static unsigned long blinkRun [2][3]; /* lednr -> blink-count, active-mili, inactive-mili */
+//static unsigned long ledOn [2];
+//static void switchLed( pin, on ) {
+//	ledOn[pin] = milis();
+//	pinMode(pin, OUTPUT);
+//	digitalWrite(pin, on);
+//}
+void runLeds() {
+
+//	static unsigned long lasttime = 0;  // static vars remembers values over function calls without being global
+//
+//	if (millis() - lasttime <= 2) return;  // instead of delay(2) just ignore if called too fast 
+//	lasttime = millis();
+//
+//	for (int i=0;i<2;i++) {
+//		if (ledOn[i] == 0) {
+//			if (blinkRun[i][0] > 0) {
+//				blinkRun[i][0]--;
+//				switchLed(i, 1);
+//			}
+//
+//		} else if (ledOn[i]-milis() >= blinkRun[1]){
+//			switchLed(i, 0);
+//			ledOn[i] = milis();
+//		}
+//		} else if (ledOn[i]-milis() >= blinkRun[2]){
+//		}
+//	}
 }
 
-static void radioLed (byte on) {
-#ifdef LED1_PIN
-	pinMode(LED2_PIN, OUTPUT);
-	digitalWrite(LED2_PIN, !on);
-#endif
+static void blink( int pin, int count, int active, int inactive ) {
+//	blinkRun[pin] = [count, active, inactive];
 }
+
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // RF12 configuration setup code
@@ -280,20 +302,18 @@ static void handleInput (char c) {
 				memcpy(testbuf, stack, top);
 				break;
 			case 'l': // turn activity LED on or off
-				nodeLed(value);
+				blink( LED_NODE, 1, 50, 0);
 				break;
 			case 'f': // send FS20 command: <hchi>,<hclo>,<addr>,<cmd>f
 				rf12_initialize(0, RF12_868MHZ);
-				radioLed(1);
+				blink( LED_RADIO, 1, 50, 0);
 				fs20cmd(256 * stack[0] + stack[1], stack[2], value);
-				radioLed(0);
 				rf12_config(0); // restore normal packet listening mode
 				break;
 			case 'k': // send KAKU command: <addr>,<dev>,<on>k
 				rf12_initialize(0, RF12_433MHZ);
-				radioLed(1);
+				blink( LED_RADIO, 1, 50, 0);
 				kakuSend(stack[0], stack[1], value);
-				radioLed(0);
 				rf12_config(0); // restore normal packet listening mode
 				break;
 			case 'q': // turn quiet mode on or off (don't report bad packets)
@@ -301,8 +321,8 @@ static void handleInput (char c) {
 				break;
 			case 'z': // put the ATmega in ultra-low power mode (reset needed)
 				if (value == 123) {
+					blink( LED_NODE, 1, 50, 0);
 					delay(10);
-					nodeLed(0);
 					rf12_sleep(RF12_SLEEP);
 					cli();
 					Sleepy::powerDown();
@@ -331,9 +351,10 @@ static void handleInput (char c) {
 void setup() {
 	Serial.begin(SERIAL_BAUD);
 	Serial.println();
-	Serial.print(F("[RadioLink]"));
-	nodeLed(1);
-	radioLed(0);
+	Serial.println(F("[RadioLink]"));
+	//lastRunLed = milis();
+	//ledOn = [0,0];
+	blink( LED_NODE, 2, 50, 50 );
 
 	if (rf12_config()) {
 		config.nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
@@ -347,16 +368,17 @@ void setup() {
 	showHelp();
 }
 
-
 void loop() {
 	if (Serial.available()) {
-		radioLed(1);
+		blink( LED_RADIO, 1, 50, 50 );
 		handleInput(Serial.read());
-		radioLed(0);
+		delay(150);
 	}
 
+	runLeds();
+
 	if (rf12_recvDone()) {
-		nodeLed(1);
+		blink( LED_NODE, 1, 50, 50 );
 		byte n = rf12_len;
 		if (rf12_crc == 0)
 			Serial.print(F("OK"));
@@ -382,25 +404,24 @@ void loop() {
 		}
 		Serial.println();
 		if (rf12_crc == 0) {
-			radioLed(1);
-			Serial.print((int) rf12_len);
-			Serial.println(F(" bytes received"));
+			//Serial.print((int) rf12_len);
+			//Serial.println(F(" bytes received"));
 			if (RF12_WANTS_ACK) {
 			}
 			if (RF12_WANTS_ACK && (config.nodeId & COLLECT) == 0) {
 				// should ack
+				blink( LED_RADIO, 2, 50, 50 );
 				Serial.println(F(" -> ack"));
 				rf12_sendStart(RF12_ACK_REPLY, 0, 0);
 				/*
 				*/
 			}
-			radioLed(0);
 		} // else blink?
-		nodeLed(0);
 	}
 
 	if (cmd && rf12_canSend()) {
-		nodeLed(1);
+		blink( LED_NODE, 1, 200, 0 );
+		blink( LED_RADIO, 4, 50, 50 );
 
 		Serial.print(F(" -> "));
 		Serial.print((int) sendLen);
@@ -408,12 +429,8 @@ void loop() {
 		byte header = cmd == 'a' ? RF12_HDR_ACK : 0;
 		if (dest)
 			header |= RF12_HDR_DST | dest;
-		radioLed(1);
 		rf12_sendStart(header, testbuf, sendLen);
 		cmd = 0;
-
-		radioLed(0);
-		nodeLed(0);
 	}
 }
 
