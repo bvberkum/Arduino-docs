@@ -38,11 +38,13 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
-ifeq ($(shell uname),"Linux")
+ifeq ($(shell uname),Darwin)
 PORT := /dev/tty.usbserial-A900TTH0
 else
 PORT := /dev/ttyUSB0
 endif
+
+$(info $(PORT))
 
 find:
 	find ./ -iname '*.hex'
