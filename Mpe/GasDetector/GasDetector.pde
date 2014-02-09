@@ -16,14 +16,16 @@
 #define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 
 #define SERIAL  1   // set to 1 to enable serial interface
-//#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
+#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 //#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 //#define DS
 
 //#define MQ4
 
+#define LED 11
+
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
-#define REPORT_EVERY    1   // report every N measurement cycles
+#define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 
 
@@ -77,8 +79,8 @@ struct {
 	byte light;     // light sensor: 0..255
 	byte moved :1;  // motion detector: 0..1
 	byte rhum  :7;  // rhumdity: 0..100
-	int mq4;
-	int mq7;
+	int mq4; // methane
+	int mq7; // co
 	int temp   :10; // temperature: -500..+500 (tenths)
 	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
 	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
@@ -343,8 +345,8 @@ static void doMeasure() {
 	int mq4 = analogRead(MthSensorData);
 	payload.mq4 = smoothedAverage(payload.mq4, mq4, firstTime);
 	
-//	int mq7 = analogRead(CoSensorData);
-//	payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
+	int mq7 = analogRead(CoSensorData);
+	payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -387,8 +389,8 @@ static void doReport() {
 	Serial.print(' ');
 	Serial.print((int) ds_value[1]);
 	Serial.print(' ');
-	Serial.print((int) ds_value[2]);
-	Serial.print(' ');
+//	Serial.print((int) ds_value[2]);
+//	Serial.print(' ');
 #endif
 	//        Serial.print(' ');
 	//        Serial.print((int) payload.lobat);
@@ -418,10 +420,11 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	//Serial.begin(38400);
 	Serial.println("AirQuality+GasDetector MQ4/MQ7");
 	serialFlush();
 #endif
+
+	pinMode(LED, OUTPUT);
 
 	pinMode(CoSensorData, INPUT);
 	pinMode(MthSensorData, INPUT);
@@ -458,7 +461,7 @@ void setup()
 //		doConfig();
 //	}
 
-	Serial.println("REG GAS ldr dht11-rhum dht11-temp attemp mq4 mq7 ds-1 ds-2 ds-3");
+	Serial.println("REG GAS ldr dht11-rhum dht11-temp attemp mq4 mq7");// ds-1 ds-2 ds-3");
 	serialFlush();
 	node_id = "GAS-1";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
@@ -466,6 +469,11 @@ void setup()
 }
 
 void loop(){
+
+	doMeasure();
+	doReport();
+	delay(500);
+	return;
 
 #if DEBUG
 	Serial.print('.');
@@ -477,6 +485,7 @@ void loop(){
 		case PREHEAT:
 			Serial.println("PREHEAT");
 			digitalWrite(CoSensorPower, HIGH);
+			analogWrite(LED, HIGH);
 			scheduler.timer(HEAT, PREHEAT_PERIOD);
 			serialFlush();
 			break;
@@ -484,6 +493,7 @@ void loop(){
 		case HEAT:
 			Serial.println("HEAT");
 			analogWrite(CoSensorPower, 0x10);
+			analogWrite(LED, 0x10);
 			scheduler.timer(MEASURE, HEATING_PERIOD);
 			serialFlush();
 			break;
@@ -491,6 +501,7 @@ void loop(){
 		case MEASURE:
 			Serial.println("MEASURE");
 			digitalWrite(CoSensorPower, LOW);
+			analogWrite(LED, LOW);
 			scheduler.timer(PREHEAT, MEASURE_PERIOD);
 			doMeasure();
 			if (++reportCount >= REPORT_EVERY) {
