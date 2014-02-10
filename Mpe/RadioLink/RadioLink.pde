@@ -241,8 +241,8 @@ static void showString (PGM_P s) {
 
 static void showHelp () {
 	showString(helpText1);
-	Serial.println(F("Current configuration:"));
-	rf12_config();
+	//Serial.println(F("Current configuration:"));
+	//rf12_config();
 }
 
 static void handleInput (char c) {
@@ -364,8 +364,12 @@ void setup() {
 		config.group = 0x5; 
 		saveConfig();
 	}
+	//rf12_control(0x949C); // Receiver Control: LNA -20, RX @ 200Mhz, DRSSI-97
+	rf12_control(0x9485); // Receiver Control: LNA ma, RX @ 200Mhz, DRSSI-73
+	rf12_control(0x9850); // Transmission Control: Pos, 90kHz
+	rf12_control(0xC606); // Data Rate 6
 
-	showHelp();
+	//showHelp();
 }
 
 void loop() {

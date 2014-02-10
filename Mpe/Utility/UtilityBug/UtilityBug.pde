@@ -119,6 +119,9 @@ void setup () {
   }
 
   rf12_initialize(18, RF12_868MHZ, 5);
+  rf12_control(0x949C); // Receiver Control: LNA -20, RX @ 200Mhz, DRSSI-97
+  rf12_control(0x9850); // Transmission Control: Pos, 90kHz
+  rf12_control(0xC606); // Data Rate 6
   collectData(true); // empty packet on power-up
 }
 

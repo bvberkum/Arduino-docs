@@ -83,15 +83,14 @@ ToDo
 #include "EmBencode.h"
 
 #define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
+//#define SERIAL  1   // set to 1 to enable serial interface
 
-#define SERIAL  1   // set to 1 to enable serial interface
-
+#define _DHT        1    // defined if DHTxx data is connected to a DIO pin
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT    1
 #define DS_PIN      A5
-#define MEMREPORT 1
-#define ATMEGA_TEMP 1
+#define _MEM 1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -180,14 +179,12 @@ struct {
 #if PIR_PORT
 	byte moved  :1;  // motion detector: 0..1
 #endif
-#if DHT_PIN
+#if _DHT
 	int rhum    :7;   // rhumdity: 0..100 (4 or 5% resolution?)
 	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
-#if ATMEGA_TEMP
-	int attemp  :10; // atmega temperature: -500..+500 (tenths)
-#endif
-#if MEMREPORT
+	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
 	int memfree :16;
 #endif
 	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
@@ -197,7 +194,7 @@ struct {
 Port ldr (LDR_PORT);
 #endif
 
-#if DHT_PIN
+#if _DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
 #define DHTTYPE DHT11   // DHT 11 
@@ -713,7 +710,7 @@ static bool doAnnounce() {
 	Serial.print("moved ");
 #endif
 #endif
-#if DHT_PIN
+#if _DHT
 	payload_spec.startList();
 	payload_spec.push("dht11-rhum");
 	payload_spec.push(7);
@@ -722,16 +719,14 @@ static bool doAnnounce() {
 	Serial.print(F(" dht11-rhum dht11-temp"));
 #endif
 #endif
-#if ATMEGA_TEMP
 	payload_spec.startList();
-	payload_spec.push("attemp");
+	payload_spec.push("ctemp");
 	payload_spec.push(10);
 	payload_spec.endList();
 #if SERIAL
-	Serial.print(F(" attemp"));
+	Serial.print(F(" ctemp"));
 #endif
-#endif
-#if MEMREPORT
+#if _MEM
 	payload_spec.startList();
 	payload_spec.push("memfree");
 	payload_spec.push(16);
@@ -808,9 +803,9 @@ static bool doAnnounce() {
 // readout all the sensors and other values
 static void doMeasure() 
 {
-	byte firstTime = payload.attemp == 0; // special case to init running avg
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	payload.attemp = smoothedAverage(payload.attemp, internalTemp(), firstTime);
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
 
 	payload.lobat = rf12_lowbat();
 
@@ -818,7 +813,7 @@ static void doMeasure()
 	payload.moved = pir.state();
 #endif
 
-#if DHT_PIN
+#if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
@@ -835,16 +830,16 @@ static void doMeasure()
 	} else {
 		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
 	}
-#endif //DHT
+#endif // _DHT
 
-#if LDR_PORT
+#if _LDR
 	//ldr.digiWrite2(1);  // enable AIO pull-up
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
 #endif //LDR
 
-#if MEMREPORT
+#if _MEM
 	payload.memfree = freeRam();
 #endif
 
@@ -874,10 +869,8 @@ static void doReport() {
 	Serial.print((int) payload.temp);
 	Serial.print(' ');
 #endif
-#if ATMEGA_TEMP
-	Serial.print((int) payload.attemp);
+	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
-#endif
 #if DS_PIN
 //	Serial.print((int) ds_value[0]);
 //	Serial.print(' ');
@@ -886,7 +879,7 @@ static void doReport() {
 //	Serial.print((int) ds_value[2]);
 //	Serial.print(' ');
 #endif
-#if MEMREPORT
+#if _MEM
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
 #endif

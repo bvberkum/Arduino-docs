@@ -69,7 +69,7 @@ _upload:
 	@\
 	$(ll) attention $@ "Starting flash upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
-	$$D $${sudo}avrdude \
+	$(D) $${sudo}avrdude \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
@@ -94,11 +94,14 @@ download:
 	$(ll) OK $@ "Download completed successfully" $$I-*
 
 _uctest:
-	$(D) avrdude \
+	@\
+	$(ll) attention $@ "Testing for $(C) using $(M).." $(PORT);\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
+	$(D) $${sudo}avrdude \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		$(X)
-	$(ll) OK $@ 
+	@$(ll) OK $@
 
 uctest: C := m328p
 uctest: M := arduinoisp
@@ -714,7 +717,7 @@ nrfmon: I := Mpe/Milli/Milli.hex
 nrfmon: jeenode upload
 
 mbug1: C := m328p
-mbug1: P := Mpe/MoistureBug/MoistureNode
+mbug1: P := Mpe/
 mbug1: I := Mpe/MoistureBug/MoistureNode/MoistureNode.hex
 mbug1: jeenode upload
 
@@ -724,6 +727,16 @@ soarer: C := atmega32u4
 soarer: PORT := /dev/ttyACM0
 soarer: X := -D -v
 soarer: _upload
+
+jeedht: C := m328p
+jeedht: P := Mpe/DHT11Test/JeeLibDHT/
+jeedht: I := Mpe/DHT11Test/JeeLibDHT/JeeLibDHT.hex
+jeedht: jeenode upload
+
+adadht: C := m328p
+adadht: P := Mpe/DHT11Test/AdafruitDHT/
+adadht: I := Mpe/DHT11Test/AdafruitDHT/AdafruitDHT.hex
+adadht: jeenode upload
 
 # Leonardo mega32u4 / teensy 2.0?
 

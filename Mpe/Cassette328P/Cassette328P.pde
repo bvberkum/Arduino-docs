@@ -37,7 +37,7 @@ Free pins
 #include <Wire.h>
 #include <SPI.h>
 //include <RF24.h>
-#include <DHT.h>
+#include <DHT.h> // Adafruit DHT
 //include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
 
@@ -45,14 +45,12 @@ Free pins
 
 
 /** Globals and sketch configuration  */
-// redifined?#define SERIAL      0   // set to 1 to also report readings on the serial port
-#define DEBUG       1   // set to 1 to report each loop() run and trigger on serial, and enable serial protocol
-#define SERIAL  1   // set to 1 to also report readings on the serial port
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
-
-#define LED_RED   5
-#define LED_YELLOW  6
-#define LED_GREEN     7
+#define DEBUG           1   // set to 1 to report each loop() run and trigger on serial, and enable serial protocol
+#define SERIAL          1   // set to 1 to also report readings on the serial port
+#define DEBUG_MEASURE   1
+#define LED_RED         5
+#define LED_YELLOW      6
+#define LED_GREEN       7
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -65,9 +63,13 @@ Free pins
 #define RADIO_SYNC_MODE 2
 
 //#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
-#define DHT_PIN     A1   // defined if DHTxx data is connected to a DIO pin
-//#define RTC
+#define _DHT        1   // defined if _DHTxx data is connected to a DIO pin
+#define DHT_PIN     14
+#define _RTC        0
 //#define LCD
+#define _RF24       0
+#define _MEM        1
+# 					----	
 
 /**
  * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
@@ -150,38 +152,38 @@ struct {
 	byte light;     // light sensor: 0..255
 #endif
 //    byte moved :1;  // motion detector: 0..1
-#if DHT_PIN
+#if _DHT
 	byte rhum    :7;  // humidity: 0..100
 	int temp     :10; // temperature: -500..+500 (tenths)
 #endif
 	int ctemp    :10; // temperature: -500..+500 (tenths)
-#if MEMREPORT
+#if _MEM
 	int memfree;
 #endif
 	byte lobat    :1;  // supply voltage dropped under 3.1V: 0..1
-#if RTC
+//#if _RTC
 // XXX: datetime?
-#endif
+//#endif
 } payload;
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
 
-#if DHT_PIN
+#if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
 #define DHTTYPE   DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
-DHT dht;//(DHTPIN, DHTTYPE);
+DHT dht(DHT_PIN, DHTTYPE);
 /* DHTxx (jeelib) */
 //DHTxx dht (A1); // connected to ADC1
 #endif
 
-#if RTC
+#if _RTC
 /* DS1307: Real Time Clock over I2C */
 #define DS1307_I2C_ADDRESS 0x68
 #endif
 
-#if RF24
+#if _RF24
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
 RF24 radio(12,13); /* CE, CS */
 
@@ -369,7 +371,7 @@ byte bcdToDec(byte val)
 	return ( (val/16*10) + (val%16) );
 }
 
-#if RTC
+#if _RTC
 // Stops the DS1307, but it has the side effect of setting seconds to 0
 // Probably only want to use this for testing
 /*void stopDs1307()
@@ -581,20 +583,27 @@ int freeRam () {
 
 void setup_peripherals()
 {
-#if RTC
+#if _RTC
 	rtc_init();
 #endif
-#if RF12
+#if _RF24
 	radio_init();
 #endif
-#if LCD
+#if _RF12
+	//radio_init();
+#endif
+#if _LCD
 	i2c_lcd_init();
 	i2c_lcd_start();
 	lcd.print(F("Cassette328P"));
 #endif
-#if DHT_PIN
-	dht = DHT(DHT_PIN, DHT11);
+#if _DHT
  	dht.begin();
+#if DEBUG 
+	Serial.println("Initialized DHT");
+	float t = dht.readTemperature();
+	Serial.println(t);
+#endif
 #endif
 	blink(LED_GREEN, 4, 100);
 }
@@ -603,27 +612,51 @@ static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+	int ctemp = internalTemp();
+	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("AVR T new/avg ");
+	Serial.print(ctemp);
+	Serial.print(' ');
+	Serial.println(payload.ctemp);
+#endif
 
 	payload.lobat = rf12_lowbat();
+#if SERIAL && DEBUG_MEASURE
+	if (payload.lobat) {
+		Serial.println("Low battery");
+	}
+#endif
 
-#if DHT_PIN
+#if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
-#if SERIAL | DEBUG
+#if SERIAL || DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
 		int rh = h * 10;
 		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT RH new/avg "));
+		Serial.print(rh);
+		Serial.print(' ');
+		Serial.println(payload.rhum);
+#endif
 	}
 	if (isnan(t)) {
-#if SERIAL | DEBUG
+#if SERIAL || DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
 		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT T new/avg "));
+		Serial.print(t);
+		Serial.print(' ');
+		Serial.println(payload.temp);
+#endif
 	}
 #endif
 
@@ -632,10 +665,20 @@ static void doMeasure()
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.print(F("LDR new/avg "));
+	Serial.print(light);
+	Serial.print(' ');
+	Serial.println(payload.light);
+#endif
 #endif
 
-#if MEMREPORT
+#if _MEM
 	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
 #endif
 }    
 
@@ -649,7 +692,7 @@ static void doReport()
 	blink(LED_YELLOW, 2, 25);
 	rtc_run();
 #endif
-#if RF24
+#if _RF24
 	blink(LED_YELLOW, 2, 25);
 	radio_run();
 #endif
@@ -662,7 +705,7 @@ static void doReport()
 #endif
 //  Serial.print((int) payload.moved);
 //  Serial.print(' ');
-#if DHT_PIN
+#if _DHT
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
@@ -670,7 +713,7 @@ static void doReport()
 #endif
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
-#if MEMREPORT
+#if _MEM
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
 #endif
@@ -767,7 +810,9 @@ void setup(void)
 #endif
 	myNodeID = 4;
 	rf12_initialize(myNodeID, RF12_868MHZ, 5);
-    
+   	rf12_control(0x9485); // Receiver Control: Max LNA, 200kHz RX bw, DRSSI -73dB
+  	rf12_control(0x9850); // Transmission Control: Pos, 90kHz
+  	rf12_control(0xC606); // Data Rate 6
 	rf12_sleep(RF12_SLEEP); // power down
 
 	/* Read config from memory, or initialize with defaults */

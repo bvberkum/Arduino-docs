@@ -49,6 +49,9 @@ void setup() {
     rf12_initialize(6, RF12_868MHZ, 5);
     // see http://tools.jeelabs.org/rfm12b
     //rf12_control(0xC040); // set low-battery level to 2.2V i.s.o. 3.1V
+	  rf12_control(0x949C); // Receiver Control: LNA -20, RX @ 200Mhz, DRSSI-97
+	  rf12_control(0x9850); // Transmission Control: Pos, 90kHz
+	  rf12_control(0xC606); // Data Rate 6
     Serial.println("initialized");
     serialFlush();
     serialFlush();
