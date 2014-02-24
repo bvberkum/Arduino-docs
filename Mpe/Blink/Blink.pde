@@ -30,16 +30,17 @@
  * - Marked '*' has PWM.
  */
 int pin = 3;
-int count = 6;
-int length = 96;
-int loop_delay = 1470;
+int count = 4;
+int delay_low = 20;
+int delay_high = 10;
+long delay_loop = 200;
 
-void blink(int led, int count, int length) {
+void blink(int led, int count) {
   for (int i=0;i<count;i++) {
     digitalWrite (led, HIGH);
-    delay(length);
+    delay(delay_high);
     digitalWrite (led, LOW);
-    delay(length);
+    delay(delay_low);
   }
 }
 
@@ -51,14 +52,15 @@ void setup()
 #endif
   pinMode(pin, OUTPUT);
   digitalWrite(pin, LOW);
-  blink(pin, 5, 25);
-  delay(1500);
+//  delay(5);
+//  blink(pin, 5);
+//  delay(1500);
 }
 
 void loop() 
 {
-  blink(pin, count, length);
-  delay(loop_delay);
+  blink(pin, count);
+  delay(delay_loop);
 }
 /*
 	TQFP:
@@ -77,8 +79,5 @@ void loop()
 	       9       12        16 
 	       PD5 6 7 PB0 1 2 3 4  
 
-	- ports/signals same as PDIP, except:
-
-	* denotes extra ADC pins on TQFP
-
-*/
+	- ports/signals same as PDIP, except: 
+	* denotes extra ADC pins on TQFP */

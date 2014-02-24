@@ -645,12 +645,24 @@ avrtransistortester: _flash
 
 at85blink: M:=usbasp
 at85blink: BRD:=t85
+at85blink: LF:=0x62
+at85blink: HF:=0xD9
 at85blink: C:=t85
 at85blink: X:=-B 3
 at85blink: P:=Mpe/Blink
 at85blink: I:=Mpe/Blink/Blink.hex
 at85blink: TARGETS:= clean all
-at85blink: _arduino _upload
+at85blink: _arduino _flash
+
+# micronucleas allows v-usb uploads
+at85mn: M:=usbasp
+at85mn: C:=t85
+at85mn: LF:=0xE1
+at85mn: HF:=0xDD
+at85mn: EF:=0xFE
+at85mn: X:=-B 3
+at85mn: I:=firmware/attiny85-micronucleus-bootloader.hex
+at85mn: _flash
 
 at85usb: D:=sudo
 at85usb: M:=usbasp
