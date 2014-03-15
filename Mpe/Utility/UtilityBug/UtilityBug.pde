@@ -1,10 +1,10 @@
-/**
- * Base on JeeLabs' p1scanner
- */
-/// Parse P1 data from smart meter and send as compressed packet over RF12.
-/// @see http://jeelabs.org/2013/01/02/encoding-p1-data/
-// 2012-12-31 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
+/*
+After JeeLabs' p1scanner. 
 
+Parse P1 data from smart meter and send as compressed packet over RF12.
+@see http://jeelabs.org/2013/01/02/encoding-p1-data/
+2012-12-31 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
+*/
 #include <JeeLib.h>
 #include <SoftwareSerial.h>
 
@@ -47,13 +47,7 @@ SoftwareSerial mySerial (7, 17, true); // inverted logic
 byte type;
 uint32_t value;
 uint32_t readings[NTYPES+1];
-
-struct {
-	char msgtype;
-	byte buffer[5*NTYPES];
-} payload;
-
-byte *fill;
+byte payload[5*NTYPES], *fill;
 
 static bool p1_scanner (char c) {
   switch (c) {
@@ -86,22 +80,22 @@ static void addValue (uint32_t v, byte mask =0x80) {
 }
 
 static void collectData (bool empty =false) {
-  fill = payload.buffer;
+  fill = payload;
   addValue(FORMAT);
   if (!empty)
     for (byte i = 0; i < NTYPES; ++i)
       addValue(readings[i]);
-  byte n = fill - payload.buffer;
+  byte n = fill - payload;
   
   if (DEBUG) {
     for (byte i = 0; i < n; ++i) {
       Serial.print(' ');
-      Serial.print(payload.buffer[i], HEX);
+      Serial.print(payload[i], HEX);
     }
     Serial.println();
   }
   
-  rf12_sendNow(0, &payload, sizeof payload);
+  rf12_sendNow(0, payload, n);
   rf12_sendWait(1);
 }
 
@@ -119,9 +113,6 @@ void setup () {
   }
 
   rf12_initialize(18, RF12_868MHZ, 5);
-  rf12_control(0x949C); // Receiver Control: LNA -20, RX @ 200Mhz, DRSSI-97
-  rf12_control(0x9850); // Transmission Control: Pos, 90kHz
-  rf12_control(0xC606); // Data Rate 6
   collectData(true); // empty packet on power-up
 }
 
