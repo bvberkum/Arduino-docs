@@ -9,6 +9,7 @@ include Rules.old.mk
 else
 include Rules.new.mk
 endif
+include Rules.attiny.mk
 
 #
 #DIR                 := $/mydir

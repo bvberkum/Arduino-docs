@@ -424,7 +424,8 @@ m1284p:
 # 
 # Integrating with another makefile for easy builds
 
-ARDUINODIR := /home/berend/Application/arduino-1.0.3
+#ARDUINODIR := /home/berend/Application/arduino-1.0.3
+#ARDUINODIR := ./tmp/arduino-1.0.4
 #ARDUINODIR := /usr/share/arduino/
 #ARDUINODIR := /home/berend/Application/arduino-1.0.3
 #ARDUINODIR := /usr/share/arduino/
@@ -654,7 +655,7 @@ at85blink: I:=Mpe/Blink/Blink.hex
 at85blink: TARGETS:= clean all
 at85blink: _arduino _flash
 
-# micronucleas allows v-usb uploads
+# micronucleus allows v-usb uploads
 at85mn: M:=usbasp
 at85mn: C:=t85
 at85mn: LF:=0xE1
