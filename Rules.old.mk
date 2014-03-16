@@ -1,6 +1,5 @@
 # Arduino-mpe/Rules.mk
-MK_$d               := $/Rules.old.mk
-MK                  += $(MK_$d)
+$(module-header,old,$/Rules.old.mk)
 #
 #      ------------ -- 
 

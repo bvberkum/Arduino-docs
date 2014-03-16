@@ -1,5 +1,4 @@
-MK_$d               := $/Rules.new.mk
-MK                  += $(MK_$d)
+$(module-header,new,$/Rules.new.mk)
 #
 #      ------------ --
 

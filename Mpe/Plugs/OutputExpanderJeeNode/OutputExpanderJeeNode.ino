@@ -3,6 +3,13 @@
  */
 #define SERIAL 0
 
+#include <JeeLib.h>
+#include <avr/sleep.h>
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { 
+  Sleepy::watchdogEvent(); 
+}
 
 //Pin connected to ST_CP of 74HC595
 int latchPin = 1;
@@ -24,7 +31,11 @@ void shift(int q)
 }
 
 void setup() 
-{   
+{
+#if SERIAL
+  Serial.begin( 57600 );
+#endif
+
   pinMode(outputEnable, OUTPUT);
   digitalWrite(outputEnable, LOW);
   //set pins to output so you can control the shift register
@@ -35,13 +46,18 @@ void setup()
 
 void loop() 
 {
-  for (int pinNumber = 0; pinNumber <= maxPins; pinNumber++) 
+  for (int pinNumber = 0; pinNumber < maxPins; pinNumber++) 
   {
     shift(pinNumber);
+
 #if SERIAL
     Serial.println(pinNumber);
-#endif  
-    delay(80);
+#endif
+
+    //Sleepy::loseSomeTime(300);
   }
-  delay(800);
+  Sleepy::loseSomeTime(300);
 }
+
+
+
