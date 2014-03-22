@@ -14,7 +14,7 @@ int dataPin = 4;
 int outputEnable = 0;
 
 // Testing on 5 pins (MSB, so starting at 
-int maxPins = 8;
+int maxPins = 9;
 
 void shift(int q)
 {
@@ -32,16 +32,30 @@ void setup()
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
 }
-
+int x = 0;
 void loop() 
-{
+{/*
   for (int pinNumber = 0; pinNumber <= maxPins; pinNumber++) 
   {
     shift(pinNumber);
 #if SERIAL
     Serial.println(pinNumber);
 #endif  
-    delay(80);
+    delay(120);
   }
   delay(800);
+*/
+//delay(100);
+  delay(x);
+  digitalWrite(latchPin, LOW);
+
+
+  shiftOut(dataPin, clockPin, MSBFIRST, 0b11001100);
+  
+  delay(10);
+  digitalWrite(latchPin, HIGH);
+
+  
+  x += 10;
+  if (x==0xf) x = 0;
 }
