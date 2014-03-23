@@ -29,17 +29,18 @@
  *
  * - Marked '*' has PWM.
  */
-int pin = 3;
-int count = 4;
-int delay_low = 20;
-int delay_high = 10;
-long delay_loop = 200;
+int blinkPin = 2;
+int blinkCount = 1;
+int delay_low = 1000;
+int delay_high = 1000;
+long delay_loop = 0;
 
 void blink(int led, int count) {
+  unsigned long currentMillis = millis();
   for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
+    digitalWrite(led, HIGH);
     delay(delay_high);
-    digitalWrite (led, LOW);
+    digitalWrite(led, LOW);
     delay(delay_low);
   }
 }
@@ -48,10 +49,10 @@ void setup()
 {
 #if !defined(__AVR_ATtiny85__)
   Serial.begin(57600);
-  Serial.println("Atmega328 Blink");
+  Serial.println("BlinkNoDelay");
 #endif
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, LOW);
+  pinMode(blinkPin, OUTPUT);
+  digitalWrite(blinkPin, LOW);
 //  delay(5);
 //  blink(pin, 5);
 //  delay(1500);
@@ -59,9 +60,10 @@ void setup()
 
 void loop() 
 {
-  blink(pin, count);
+  blink(blinkPin, blinkCount);
   delay(delay_loop);
 }
+
 /*
 	TQFP:
            PD2 1 0 PC6 5 4 3 2  

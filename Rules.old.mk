@@ -37,7 +37,7 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
-ifeq ($(shell uname),"Linux")
+ifneq ($(shell uname),"Linux")
 PORT := /dev/tty.usbserial-A900TTH0
 else
 PORT := /dev/ttyUSB0
@@ -64,11 +64,18 @@ upload: M := arduino
 upload: X := -D
 upload: _upload
 
+ifeq ($(shell uname -s),Darwin)
+avrdude=$(ARDUINODIR)/hardware/tools/avr/bin/avrdude \
+		-C/Users/berend/Downloads/DigisparkArduino-MacOSX-1.0.4-May19/DigisparkArduino-MacOSX-1.0.4-May19/DigisparkArduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf 
+else
+avrdude=avrdude
+endif
+
 _upload:
 	@\
 	$(ll) attention $@ "Starting flash upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
-	$(D) $${sudo}avrdude \
+	$(D) $${sudo}$(avrdude) \
 		$(call key,METHODS,$(M))\
 		-p $(C) \
 		-U flash:w:$(I) \
@@ -96,7 +103,7 @@ _uctest:
 	@\
 	$(ll) attention $@ "Testing for $(C) using $(M).." $(PORT);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
-	$(D) $${sudo}avrdude \
+	$(D) $${sudo}$(avrdude) \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		$(X)
@@ -122,7 +129,7 @@ erase: M := arduinoisp
 erase:
 	@\
 	$(ll) attention $@ "Starting erase of $(C) using $(M)..";\
-	avrdude \
+	$(avrdude) \
 		-p $(C) $(call key,METHODS,$(M)) -D;\
 	$(ll) OK $@ 
 
@@ -147,7 +154,7 @@ _flash:
 	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 1; } ) && ( \
 		[ -n "$(UB)" ] && { \
 			$(ll) attention $@ "Unlocking & erasing.." && \
-			$(D) $${sudo}avrdude \
+			$(D) $${sudo}$(avrdude) \
 				-p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U lock:w:$(UB):m \
@@ -155,7 +162,7 @@ _flash:
 		}; \
 		$(ll) attention $@ "Writing new fuses.." && \
 		([ -n "$(EF)" ] && { \
-			$(D) $${sudo}avrdude \
+			$(D) $${sudo}$(avrdude) \
 				-p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
@@ -164,7 +171,7 @@ _flash:
 				&& $(ll) info $@ OK \
 				|| exit 3;\
 		} || { \
-			$(D) $${sudo}avrdude -p $(C) -e $$X \
+			$(D) $${sudo}$(avrdude) -p $(C) -e $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
@@ -173,7 +180,7 @@ _flash:
 		});\
 		([ -n "$(E)" ] && { \
 			$(ll) attention $@ "Writing EEPROM.." && \
-			$(D) $${sudo}avrdude -p $(C) -D $$X \
+			$(D) $${sudo}$(avrdude) -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
 				-U eeprom:w:$(E) \
 				&& $(ll) info $@ OK \
@@ -181,7 +188,7 @@ _flash:
 		});\
 		([ -n "$(I)" ] && { \
 			$(ll) attention $@ "Writing Flash.." && \
-			$(D) $${sudo}avrdude -p $(C) -D $$X \
+			$(D) $${sudo}$(avrdude) -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
 				-U flash:w:$(I) \
 				&& $(ll) info $@ OK \
@@ -189,7 +196,7 @@ _flash:
 		});\
 		([ -n "$(LB)" ] && { \
 			$(ll) attention $@ "Locking.." && \
-				$(D) $${sudo}avrdude $$X \
+				$(D) $${sudo}$(avrdude) $$X \
 					-p $(C) -D \
 					$(call key,METHODS,$(M)) \
 					-U lock:w:$(LB):m \
@@ -240,19 +247,19 @@ flash-betemcu: _flash
 upload-betemcu-usbasploader: M := usbasp
 upload-betemcu-usbasploader: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
 upload-betemcu-usbasploader:
-	avrdude \
+	$(avrdude) \
 		-p m8 -e \
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x3F:m
-	avrdude \
+	$(avrdude) \
 		-p m8 \
 		$(call key,METHODS,$(M)) \
 		-U hfuse:w:0xC8:m -U lfuse:w:0xBF:m
-	avrdude \
+	$(avrdude) \
 		-p m8 \
 		$(call key,METHODS,$(M)) \
 		-U flash:w:$(I)
-	avrdude \
+	$(avrdude) \
 		-p m8 \
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
@@ -534,6 +541,11 @@ blink: P := Mpe/Blink
 blink: I := Mpe/Blink/Blink.hex
 blink: jeenode _upload
 
+blinknodelay: C := m328p
+blinknodelay: P := Mpe/BlinkNodelay
+blinknodelay: I := Mpe/BlinkNodelay/BlinkNodelay.hex
+blinknodelay: jeenode _upload
+
 blinkall: C := m328p
 blinkall: P := Mpe/BlinkAll
 blinkall: I := Mpe/BlinkAll/BlinkAll.hex
@@ -749,6 +761,23 @@ adadht: C := m328p
 adadht: P := Mpe/DHT11Test/AdafruitDHT/
 adadht: I := Mpe/DHT11Test/AdafruitDHT/AdafruitDHT.hex
 adadht: jeenode upload
+
+m8guard: C := m8
+m8guard: BRD := atmega8
+m8guard: M := usbasp
+m8guard: X := -B3
+m8guard: P := Mpe/Prototype/TempGuard/Atmega8TempGuard/
+m8guard: I := Mpe/Prototype/TempGuard/Atmega8TempGuard/Atmega8TempGuard.hex
+#m8guard: TARGETS := clean all
+m8guard: arduino _upload
+
+dstbus: C := m8
+dstbus: BRD := atmega8
+dstbus: M := usbasp
+dstbus: X := -B3
+dstbus: P := Mpe/Prototype/DallasTempBus/
+dstbus: I := Mpe/Prototype/DallasTempBus/DallasTempBus.hex
+dstbus: arduino _upload
 
 # Leonardo mega32u4 / teensy 2.0?
 

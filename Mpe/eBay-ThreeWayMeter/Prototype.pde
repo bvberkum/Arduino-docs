@@ -209,10 +209,12 @@ struct {
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 static void serialFlush () {
+#if SERIAL
 #if ARDUINO >= 100
 	Serial.flush();
 #endif  
 	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
 }
 
 void blink(int led, int count, int length) {
