@@ -601,6 +601,11 @@ utilitybug: P := Mpe/Utility/UtilityBug/
 utilitybug: I := Mpe/Utility/UtilityBug/UtilityBug.hex
 utilitybug: jeenode upload
 
+gastest: C := m328p
+gastest: P := Mpe/GasDetector/Test/
+gastest: I := Mpe/GasDetector/Test/Test.hex
+gastest: jeenode upload
+
 gasdetector: C := m328p
 gasdetector: P := Mpe/GasDetector/
 gasdetector: I := Mpe/GasDetector/GasDetector.hex

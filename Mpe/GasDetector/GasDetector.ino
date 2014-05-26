@@ -1,5 +1,8 @@
 /*
-  Lots to do, must hook up PWM power first
+  Lots to do
+  
+  - must hook up PWM power
+  
   
   For now, working on RF24 using LDR and SHT11, see RoomNodeRF24
 */
@@ -8,7 +11,7 @@
 
 #include <JeeLib.h>
 #include <avr/sleep.h>
-#include <CS_MQ7.h>
+//#include <CS_MQ7.h>
 #include <OneWire.h>
 #include <EEPROM.h>
 // include EEPROMEx.h
@@ -358,7 +361,7 @@ static void doMeasure() {
 #if DHT_PIN
 	int t, h;
 	if (dht.reading(t, h)) {
-		payload.rhum = smoothedAverage(payload.rhum, h, firstTime);
+		payload.rhum = smoothedAverage(payload.rhum, h/10, firstTime);
 		payload.temp = smoothedAverage(payload.temp, t, firstTime);
 	}
 #endif
@@ -366,18 +369,22 @@ static void doMeasure() {
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport() {
-	/* no working radio */
+	/* XXX no working radio */
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(" ");
+#if LDR_PORT
 	Serial.print((int) payload.light);
 	Serial.print(' ');
+#endif
 	//        Serial.print((int) payload.moved);
 	//        Serial.print(' ');
+#if DHT_PIN
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
 	Serial.print(' ');
+#endif
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
 	Serial.print((int) payload.mq4);
@@ -460,8 +467,18 @@ void setup()
 //#endif
 //		doConfig();
 //	}
-
-	Serial.println("REG GAS ldr dht11-rhum dht11-temp attemp mq4 mq7");// ds-1 ds-2 ds-3");
+	Serial.print("[GAS-1]");
+#if LDR_PORT
+	Serial.print(" ldr");
+#endif
+#if DHT_PIN
+	Serial.print(" dht11-rhum dht11-temp");
+#endif
+	Serial.print(" attemp");
+	Serial.println(" mq4 mq7");
+#if DS 
+	//");// ds-1 ds-2 ds-3");
+#endif
 	serialFlush();
 	node_id = "GAS-1";
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
