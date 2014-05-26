@@ -3,12 +3,18 @@
 
 #define DEBUG   1
 #define DEBUG_DS   1
-#define FIND_DS    1
+//#define FIND_DS    1
 
 #define SERIAL 1
 
+#define DS  8
+
+
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-OneWire ds(10);
+OneWire ds(DS);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
 
 // TODO; autoconf and make usable for CarrierCase, RoomNode etc.
 //const int ds_count = 1;
@@ -118,6 +124,34 @@ static int readDS18B20(uint8_t addr[8]) {
 	}
 }
 
+static uint8_t readDSCount() {
+	uint8_t ds_count = EEPROM.read(3);
+	if (ds_count == 0xFF) return 0;
+	return ds_count;
+}
+
+static void updateDSCount(uint8_t new_count) {
+	if (new_count != ds_count) {
+		EEPROM.write(3, new_count);
+		ds_count = new_count;
+	}
+}
+
+static void writeDSAddr(uint8_t addr[8]) {
+	int l = 4 + ( ( ds_search-1 ) * 8 );
+	for (int i=0;i<8;i++) {
+		EEPROM.write(l+i, addr[i]);
+	}
+}
+
+static void readDSAddr(int a, uint8_t addr[8]) {
+	int l = 4 + ( a * 8 );
+	for (int i=0;i<8;i++) {
+		addr[i] = EEPROM.read(l+i);
+	}
+}
+
+
 static void printDS18B20s(void) {
 	byte i;
 	byte data[8];
@@ -202,13 +236,30 @@ void setup()
 {
 #if SERIAL
 	Serial.begin(57600);
-	Serial.println("DallasTempBus");
-	serialFlush();
 #endif
 #if FIND_DS
 	printDS18B20s();
 #endif
+	Serial.print("[X-DallasTempBus.0]");
+#if DS 
+	ds_count = readDSCount();
+	for ( int i = 0; i < ds_count; i++) {
+		Serial.print(" ds-");
+		Serial.print(i+1);
+	}
+#endif
+	serialFlush();
 }
 
-void loop() {
+void loop() 
+{
+	bool ds_reset = digitalRead(7);
+	if (ds_search || ds_reset) {
+		if (reset) {
+			Serial.println("Reset triggered");
+		}
+		findDS18B20s();
+	} else if (ds_count) {
+		printDSAddrs();
+	}
 }

@@ -85,12 +85,12 @@ ToDo
 #define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
 //#define SERIAL  1   // set to 1 to enable serial interface
 
-#define _DHT        1    // defined if DHTxx data is connected to a DIO pin
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT    1
-#define DS_PIN      A5
+#define DS      A5
 #define _MEM 1
+#define _BAT 1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -144,17 +144,14 @@ const int memBase          = 0;
 enum { ANNOUNCE_MSG, REPORT_MSG };
 
 
-#if DS_PIN
+#if DS
 /* Dallas bus for DS18S20 temperature */
-OneWire ds(DS_PIN);  // on pin 10
+OneWire ds(DS);  // on pin 10
 
-const int ds_count = 3;
-uint8_t ds_addr[ds_count][8] = {
-	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
-	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
-};
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
 volatile int ds_value[ds_count];
+volatile int ds_value[8]; // take on 8 DS sensors in report
 #endif
 
 // The scheduler makes it easy to perform various tasks at various times:
@@ -179,7 +176,7 @@ struct {
 #if PIR_PORT
 	byte moved  :1;  // motion detector: 0..1
 #endif
-#if _DHT
+#if DHT_PIN
 	int rhum    :7;   // rhumdity: 0..100 (4 or 5% resolution?)
 	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
@@ -187,18 +184,21 @@ struct {
 #if _MEM
 	int memfree :16;
 #endif
+#if _BAT
 	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
 } payload;
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
 
-#if _DHT
+#if DHT_PIN
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
 #define DHTTYPE DHT11   // DHT 11 
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
+
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 
 #endif
@@ -439,7 +439,7 @@ static void writeConfig() {
     serialFlush();
 }
 
-#if DS_PIN
+#if DS
 enum { DS_OK, DS_ERR_CRC };
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
@@ -459,14 +459,14 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.select(addr);    
 	ds.write(0xBE);         // Read Scratchpad
 
-#if DEBUG
+#if DEBUG_DS
 	Serial.print(F("Data="));
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
 	for ( i = 0; i < 9; i++) {           // we need 9 bytes
 		data[i] = ds.read();
-#if DEBUG
+#if DEBUG_DS
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(data[i], HEX);
@@ -476,7 +476,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
-#if DEBUG
+#if DEBUG_DS
 	Serial.print(F(" CRC="));
 	Serial.print( crc8, HEX);
 	Serial.println();
@@ -503,13 +503,14 @@ static int ds_conv_temp_c(uint8_t data[8], int SignBit) {
 	return Tc_100;
 }
 
+// FIXME: returns 8500 value at times, drained parasitic power?
 static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
 	int result = ds_readdata(addr, data);	
 	
-	if (result != 0) {
+	if (result != DS_OK) {
 		Serial.println(F("CRC error in ds_readdata"));
 		return 0;
 	}
@@ -522,6 +523,97 @@ static int readDS18B20(uint8_t addr[8]) {
 		return Tc_100;
 	}
 }
+
+static uint8_t readDSCount() {
+	uint8_t ds_count = EEPROM.read(3);
+	if (ds_count == 0xFF) return 0;
+	return ds_count;
+}
+
+static void updateDSCount(uint8_t new_count) {
+	if (new_count != ds_count) {
+		EEPROM.write(3, new_count);
+		ds_count = new_count;
+	}
+}
+
+static void writeDSAddr(uint8_t addr[8]) {
+	int l = 4 + ( ( ds_search-1 ) * 8 );
+	for (int i=0;i<8;i++) {
+		EEPROM.write(l+i, addr[i]);
+	}
+}
+
+static void readDSAddr(int a, uint8_t addr[8]) {
+	int l = 4 + ( a * 8 );
+	for (int i=0;i<8;i++) {
+		addr[i] = EEPROM.read(l+i);
+	}
+}
+
+static void printDSAddrs() {
+	for (int q=0;q<ds_count;q++) {
+		Serial.print("Mem Address=");
+		int l = 4 + ( q * 8 );
+		int r[8];
+		for (int i=0;i<8;i++) {
+			r[i] = EEPROM.read(l+i);
+			Serial.print(i);
+			Serial.print(':');
+			Serial.print(r[i], HEX);
+			Serial.print(' ');
+		}
+		Serial.println();
+	}
+}
+
+static void findDS18B20s(void) {
+	byte i;
+	byte addr[8];
+
+	if (!ds.search(addr)) {
+#if DEBUG || DEBUG_DS
+		Serial.println("No more addresses.");
+#endif
+		ds.reset_search();
+		if (ds_search != ds_count) {
+#if DEBUG || DEBUG_DS
+			Serial.print("Found ");
+			Serial.print(ds_search );
+			Serial.println(" addresses.");
+			Serial.print("Previous search found ");
+			Serial.print(ds_count);
+			Serial.println(" addresses.");
+#endif
+		}
+		updateDSCount(ds_search);
+		ds_search = 0;
+		return;
+	}
+
+	if ( OneWire::crc8( addr, 7) != addr[7]) {
+#if DEBUG || DEBUG_DS
+		Serial.println("CRC is not valid!");
+#endif
+		return;
+	}
+
+	ds_search++;
+
+#if DEBUG || DEBUG_DS
+	Serial.print("New Address=");
+	for( i = 0; i < 8; i++) {
+		Serial.print(i);
+		Serial.print(':');
+		Serial.print(addr[i], HEX);
+		Serial.print(" ");
+	}
+	Serial.println();
+#endif
+
+	writeDSAddr(addr);
+}
+
 /*
 
 static byte* findDS(bool do_read=false) {
@@ -587,35 +679,7 @@ static byte* findDS(bool do_read=false) {
 }
 */
 
-/*
-void printDS18B20(bool do_read=false) {
-	int Tc_100 = ds_conv_temp_c(data, SignBit);
-
-	int Whole, Fract;
-	Whole = Tc_100 / 100;  // separate off the whole and fractional portions
-	Fract = Tc_100 % 100;
-
-	// XXX: add value to payload
-#if DEBUG
-	if (SignBit) // If its negative
-	{
-		Serial.print("-");
-	}
-	Serial.print(Whole);
-	Serial.print(".");
-	if (Fract < 10)
-	{
-		Serial.print("0");
-	}
-	Serial.print(Fract);
-
-	Serial.println("");
-
-	serialFlush();
-#endif
-}
-*/
-#endif
+#endif // _DS
 
 static void doConfig() {
 	// JeeLib RF12_EEPROM_ADDR is at 20
@@ -675,7 +739,8 @@ static void doConfig() {
 	}
 }
 
-static bool doAnnounce() {
+static bool doAnnounce() 
+{
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(' ');
@@ -710,7 +775,7 @@ static bool doAnnounce() {
 	Serial.print("moved ");
 #endif
 #endif
-#if _DHT
+#if DHT_PIN
 	payload_spec.startList();
 	payload_spec.push("dht11-rhum");
 	payload_spec.push(7);
@@ -718,7 +783,7 @@ static bool doAnnounce() {
 #if SERIAL
 	Serial.print(F(" dht11-rhum dht11-temp"));
 #endif
-#endif
+#endif // _DHT
 	payload_spec.startList();
 	payload_spec.push("ctemp");
 	payload_spec.push(10);
@@ -784,7 +849,7 @@ static bool doAnnounce() {
 	rf12_sleep(RF12_SLEEP);
 	return acked;
 
-#if DS_PIN
+#if DS
 			// report a new node or reinitialize node with central link node
 //			for ( int x=0; x<ds_count; x++) {
 //				Serial.print("SEN ");
@@ -805,15 +870,32 @@ static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
+#if DS
+	uint8_t addr[8];
+	for ( int i = 0; i < ds_count; i++) {
+		readDSAddr(i, addr);
+		ds_value[i] = readDS18B20(addr);
+	}
+#endif
+
 	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
 
+#if _BAT
 	payload.lobat = rf12_lowbat();
+#endif
 
 #if PIR_PORT
 	payload.moved = pir.state();
 #endif
 
-#if _DHT
+#if LDR_PORT
+	//ldr.digiWrite2(1);  // enable AIO pull-up
+	byte light = ~ ldr.anaRead() >> 2;
+	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	payload.light = smoothedAverage(payload.light, light, firstTime);
+#endif //LDR
+
+#if DHT_PIN
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
@@ -831,13 +913,6 @@ static void doMeasure()
 		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
 	}
 #endif // _DHT
-
-#if _LDR
-	//ldr.digiWrite2(1);  // enable AIO pull-up
-	byte light = ~ ldr.anaRead() >> 2;
-	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
-	payload.light = smoothedAverage(payload.light, light, firstTime);
-#endif //LDR
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -871,19 +946,19 @@ static void doReport() {
 #endif
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
-#if DS_PIN
-//	Serial.print((int) ds_value[0]);
-//	Serial.print(' ');
-//	Serial.print((int) ds_value[1]);
-//	Serial.print(' ');
-//	Serial.print((int) ds_value[2]);
-//	Serial.print(' ');
+#if DS
+	for (int i=0;i<ds_count;i++) {
+		Serial.print((int) ds_value[i]);
+		Serial.print(' ');
+	}
 #endif
 #if _MEM
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
 #endif
+#if _BAT
 	Serial.print((int) payload.lobat);
+#endif
 	Serial.println();
 	serialFlush();
 #endif//SERIAL
@@ -919,7 +994,6 @@ void setup()
 {
 #if SERIAL || DEBUG
 	Serial.begin(57600);
-	Serial.println(F("\n[CarrierCase]"));
 #if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -964,11 +1038,29 @@ void setup()
 //#endif
 		doConfig();
 //	}
-  
-#if DHT_PIN
- 	dht.begin();
-#endif
+	Serial.print("[");
+	Serial.print(node_id);
+	Serial.print('.0');
+	Serial.println(']');
 
+#if LDR_PORT
+	Serial.print(" ldr");
+#endif
+#if DHT_PIN
+	dht.begin();
+	Serial.print(" dht11-rhum dht11-temp");
+#endif
+	Serial.print(" attemp");
+
+#if DS 
+	ds_count = readDSCount();
+	for ( int i = 0; i < ds_count; i++) {
+		Serial.print(" ds-");
+		Serial.print(i+1);
+	}
+#endif
+	Serial.println();
+	serialFlush();
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, 0);
 }
@@ -976,6 +1068,20 @@ void setup()
 int line = 0;
 void loop(void)
 {
+#if DS
+	bool ds_reset = digitalRead(7);
+	if (ds_search || ds_reset) {
+		if (ds_reset) {
+			Serial.println("Reset triggered");
+		}
+		findDS18B20s();
+		return;
+	}
+#endif
+
+	doMeasure();
+	doReport();
+	delay(15000);
 	return;
 #if DEBUG
 	line++;

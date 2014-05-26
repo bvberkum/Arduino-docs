@@ -36,6 +36,7 @@ Hardware
 #define FIND_DS    0
 
 #define SERIAL  1   // set to 1 to enable serial interface
+#define DS  4
 
 #define MEASURE_PERIOD  60 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
@@ -59,21 +60,14 @@ const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
 
-OneWire ds(4);
-
-const int ds_count = 1;
-uint8_t ds_addr[ds_count][8] = {
-//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D },
-//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 }
-//	{ 0x28, 0x8, 0x76, 0xF4, 0x3, 0x0, 0x0, 0xD5 },
-	{ 0x28, 0x82, 0x27, 0xDD, 0x3, 0x0, 0x0, 0x4B },
-};
-#if DEBUG_DS
-volatile int ds_value[ds_count];
-#endif
-
+#if DS
+/* Dallas bus for DS18S20 temperature */
+OneWire ds(DS);
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
+volatile int ds_value[8]; // take on 8 DS sensors in report
 enum { DS_OK, DS_ERR_CRC };
+#endif
 
 
 String node_id = "";
@@ -158,6 +152,7 @@ double internalTemp(void)
 	return (t);
 }
 
+#if DS
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -175,14 +170,14 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.select(addr);    
 	ds.write(0xBE);         // Read Scratchpad
 
-#if DEBUG
+#if DEBUG_DS
 	Serial.print("Data=");
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
 	for ( i = 0; i < 9; i++) {           // we need 9 bytes
 		data[i] = ds.read();
-#if DEBUG
+#if DEBUG_DS
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(data[i], HEX);
@@ -192,7 +187,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
-#if DEBUG
+#if DEBUG_DS
 	Serial.print(" CRC=");
 	Serial.print( crc8, HEX);
 	Serial.println();
@@ -219,13 +214,14 @@ static int ds_conv_temp_c(uint8_t data[8], int SignBit) {
 	return Tc_100;
 }
 
+// FIXME: returns 8500 value at times, drained parasitic power?
 static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
 	int result = ds_readdata(addr, data);	
 	
-	if (result != 0) {
+	if (result != DS_OK) {
 #if DEBUG || DEBUG_DS
 		Serial.println("CRC error in ds_readdata");
 #endif
@@ -241,87 +237,98 @@ static int readDS18B20(uint8_t addr[8]) {
 	}
 }
 
-static void printDS18B20s(void) {
-	byte i;
-	byte data[8];
-	byte addr[8];
-	int SignBit;
+static uint8_t readDSCount() {
+	uint8_t ds_count = EEPROM.read(3);
+	if (ds_count == 0xFF) return 0;
+	return ds_count;
+}
 
-	if ( !ds.search(addr)) {
+static void updateDSCount(uint8_t new_count) {
+	if (new_count != ds_count) {
+		EEPROM.write(3, new_count);
+		ds_count = new_count;
+	}
+}
+
+static void writeDSAddr(uint8_t addr[8]) {
+	int l = 4 + ( ( ds_search-1 ) * 8 );
+	for (int i=0;i<8;i++) {
+		EEPROM.write(l+i, addr[i]);
+	}
+}
+
+static void readDSAddr(int a, uint8_t addr[8]) {
+	int l = 4 + ( a * 8 );
+	for (int i=0;i<8;i++) {
+		addr[i] = EEPROM.read(l+i);
+	}
+}
+
+static void printDSAddrs() {
+	for (int q=0;q<ds_count;q++) {
+		Serial.print("Mem Address=");
+		int l = 4 + ( q * 8 );
+		int r[8];
+		for (int i=0;i<8;i++) {
+			r[i] = EEPROM.read(l+i);
+			Serial.print(i);
+			Serial.print(':');
+			Serial.print(r[i], HEX);
+			Serial.print(' ');
+		}
+		Serial.println();
+	}
+}
+
+static void findDS18B20s(void) {
+	byte i;
+	byte addr[8];
+
+	if (!ds.search(addr)) {
 #if DEBUG || DEBUG_DS
 		Serial.println("No more addresses.");
 #endif
 		ds.reset_search();
+		if (ds_search != ds_count) {
+#if DEBUG || DEBUG_DS
+			Serial.print("Found ");
+			Serial.print(ds_search );
+			Serial.println(" addresses.");
+			Serial.print("Previous search found ");
+			Serial.print(ds_count);
+			Serial.println(" addresses.");
+#endif
+		}
+		updateDSCount(ds_search);
+		ds_search = 0;
 		return;
 	}
 
+	if ( OneWire::crc8( addr, 7) != addr[7]) {
 #if DEBUG || DEBUG_DS
-	Serial.print("Address=");
+		Serial.println("CRC is not valid!");
+#endif
+		return;
+	}
+
+	ds_search++;
+
+#if DEBUG || DEBUG_DS
+	Serial.print("New Address=");
 	for( i = 0; i < 8; i++) {
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(addr[i], HEX);
 		Serial.print(" ");
 	}
+	Serial.println();
 #endif
 
-	if ( OneWire::crc8( addr, 7) != addr[7]) {
-#if DEBUG || DEBUG_DS
-		Serial.println("CRC for address is not valid!");
-#endif
-		return;
-	}
-
-#if DEBUG || DEBUG_DS
-	if ( addr[0] == 0x10) {
-		Serial.println("Device is a DS18S20 family device.");
-	}
-	else if ( addr[0] == 0x28) {
-		Serial.println("Device is a DS18B20 family device.");
-	}
-	else {
-		Serial.print("Device family is not recognized: 0x");
-		Serial.println(addr[0],HEX);
-		return;
-	}
-#endif
-
-	int result = ds_readdata(addr, data);	
-	
-	if (result != 0) {
-#if DEBUG || DEBUG_DS
-		Serial.println("CRC error in ds_readdata");
-#endif
-		return;
-	}
-
-	int Tc_100 = ds_conv_temp_c(data, SignBit);
-
-	int Whole, Fract;
-	Whole = Tc_100 / 100;  // separate off the whole and fractional portions
-	Fract = Tc_100 % 100;
-
-	// XXX: add value to payload
-#if DEBUG || DEBUG_DS
-	if (SignBit) // If its negative
-	{
-		Serial.print("-");
-	}
-	Serial.print(Whole);
-	Serial.print(".");
-	if (Fract < 10)
-	{
-		Serial.print("0");
-	}
-	Serial.print(Fract);
-
-	Serial.println("");
-
-	serialFlush();
-#endif
+	writeDSAddr(addr);
 }
 
-static void doConfig() {
+static void doConfig() 
+{
 }
 
 void setSensorPolarity(int flip)
@@ -358,14 +365,11 @@ int readProbe() {
 }
 
 // readout all the sensors and other values
-static void doMeasure() {
-#if DEBUG_DS
+static void doMeasure() 
+{
+#if DS
 	for ( int i = 0; i < ds_count; i++) {
 		ds_value[i] = readDS18B20(ds_addr[i]);
-		Serial.print("Debug DS: ");
-		Serial.print(i);
-		Serial.print('=');
-		Serial.println(ds_value[i]);
 	}
 #endif
 
