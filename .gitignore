@@ -10,8 +10,10 @@
 *.bz
 *.bz2
 *.rar
-#.lib
-#.dep
+.lib
+.dep
+*.o
+*.hex
 libraries/RF24_gitbub
 arduinodir
 arduino-*
