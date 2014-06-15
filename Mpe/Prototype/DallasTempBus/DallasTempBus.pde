@@ -1,14 +1,15 @@
-/**/
+/* Dallas OneWire Temperature Bus with autodetect and eeprom config */
 #include <OneWire.h>
 
-#define DEBUG   1
-#define DEBUG_DS   1
+#define DEBUG       1 /* Enable trace statements */
+#define SERIAL      1 /* Enable serial */
+#define DS          8
+#define DEBUG_DS    1
 //#define FIND_DS    1
 
-#define SERIAL 1
 
-#define DS  8
-
+static String sketch = "X-DallasTempBus";
+static String vesion = "0";
 
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 OneWire ds(DS);
@@ -16,8 +17,6 @@ OneWire ds(DS);
 uint8_t ds_count = 0;
 uint8_t ds_search = 0;
 
-// TODO; autoconf and make usable for CarrierCase, RoomNode etc.
-//const int ds_count = 1;
 //uint8_t ds_addr[ds_count][8] = {
 //	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
 //	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
@@ -26,16 +25,17 @@ uint8_t ds_search = 0;
 //	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
 //};
 #if DEBUG_DS
+//volatile int ds_value[8]; // take on 8 DS sensors in report
 //volatile int ds_value[ds_count];
 #endif
-
 enum { DS_OK, DS_ERR_CRC };
 
+
 static void serialFlush () {
-#if SERIAL || DEBUG
+#if SERIAL
 #if ARDUINO >= 100
 	Serial.flush();
-#endif  
+#endif
 	delay(2); // make sure tx buf is empty before going back to sleep
 #endif
 }
@@ -53,7 +53,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	// we might do a ds.depower() here, but the reset will take care of it.
 
 	present = ds.reset();
-	ds.select(addr);    
+	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
 #if SERIAL && DEBUG_DS
@@ -74,7 +74,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
 #if SERIAL && DEBUG_DS
-	Serial.print(" CRC=");
+	Serial.print(F(" CRC="));
 	Serial.print( crc8, HEX);
 	Serial.println();
 	serialFlush();
@@ -101,13 +101,14 @@ static int ds_conv_temp_c(uint8_t data[8], int SignBit) {
 	return Tc_100;
 }
 
+// FIXME: returns 8500 value at times, drained parasitic power?
 static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
 	int result = ds_readdata(addr, data);	
 	
-	if (result != 0) {
+	if (result != DS_OK) {
 #if SERIAL
 		Serial.println("CRC error in ds_readdata");
 		serialFlush();
@@ -236,11 +237,16 @@ void setup()
 {
 #if SERIAL
 	Serial.begin(57600);
+	Serial.println();
+	Serial.print("[");
+	Serial.print(sketch);
+	Serial.print(".");
+	Serial.print(version);
+	Serial.print("]");
 #endif
 #if FIND_DS
 	printDS18B20s();
 #endif
-	Serial.print("[X-DallasTempBus.0]");
 #if DS 
 	ds_count = readDSCount();
 	for ( int i = 0; i < ds_count; i++) {
@@ -251,15 +257,33 @@ void setup()
 	serialFlush();
 }
 
-void loop() 
+int col = 0;
+
+void loop(void)
 {
+#if DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {
-		if (reset) {
+		if (ds_reset) {
 			Serial.println("Reset triggered");
 		}
 		findDS18B20s();
-	} else if (ds_count) {
-		printDSAddrs();
+		return;
 	}
+#endif
+
+	doMeasure();
+	doReport();
+
+#if DEBUG
+	col++;
+	Serial.print('.');
+	if (col > 79) {
+		col = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+
+	delay(15000);
 }

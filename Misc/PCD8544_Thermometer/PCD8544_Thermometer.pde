@@ -29,10 +29,20 @@
 #include <JeeLib.h>
 #include <avr/sleep.h>
 
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
+#define DEBUG_MEASURE   1
+
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
+
+static String sketch = "PCD8544_Thermometer";
+static String node = "";
+static String version = "0";
 
 static const byte sensorPin = A3;
 static const byte ledPin = 13;
@@ -57,11 +67,46 @@ static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 static DHT dht(sensorPin, DHT11);
 
+// Result: 2k (m328) - 1561 free = 487 bytes SRAM used by this pogram
+int memfree;
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+static void doMeasure()
+{
+	memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print(" MEM free ");
+	Serial.println(memfree);
+#endif
+}
+
 void setup() {
+#if SERIAL
+	Serial.begin(57600);
+	Serial.println();
+	Serial.print("[");
+	Serial.print(sketch);
+	Serial.print(".");
+	Serial.print(version);
+	Serial.print("]");
+#endif
+	doMeasure();
+
 	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
 
 	// Register the custom symbol...
 	lcd.createChar(DEGREES_CHAR, degrees_glyph);
+
+    lcd.send( LOW, 0x21 );  // LCD Extended Commands on
+    lcd.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
+//    lcd.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
+//    lcd.send( LOW, 0x0C );  // LCD in normal mode.
+    lcd.send( LOW, 0x20 );  // LCD Extended Commands toggle off
 
 	pinMode(ledPin, OUTPUT);
 	pinMode(sensorPin, INPUT);
@@ -69,8 +114,9 @@ void setup() {
 	dht.begin();
 }
 
-
-void loop() {
+void loop(void)
+{
+	doMeasure();
 	// Start beyond the edge of the screen...
 	static byte xChart = LCD_WIDTH;
 

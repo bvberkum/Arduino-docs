@@ -5,10 +5,13 @@
 
 #include <OneWire.h>
 
-#define DEBUG   1
+#define DEBUG       1 /* Enable trace statements */
+#define SERIAL      1 /* Enable serial */
 #define DEBUG_DS   0
 
-#define SERIAL 1
+
+static String sketch = "X-Atmega8TempGuard";
+static String vesion = "0";
 
 byte seven_seg_digits[12][7] = { 
 /*	  b c d e f a g */
@@ -45,7 +48,7 @@ static void serialFlush () {
 #if SERIAL
 #if ARDUINO >= 100
 	Serial.flush();
-#endif  
+#endif
 	delay(2); // make sure tx buf is empty before going back to sleep
 #endif
 }
@@ -149,7 +152,7 @@ static int readDS18B20(uint8_t addr[8]) {
 
 	int result = ds_readdata(addr, data);	
 	
-	if (result != 0) {
+	if (result != DS_OK) {
 #if SERIAL
 		Serial.println("CRC error in ds_readdata");
 		serialFlush();
@@ -224,11 +227,16 @@ void displayDoubleDigit(int count) {
 	activeDemuxPrintDigits(count / 10, count % 10);
 }
 
-void setup() {
+void setup()
+{
 #if SERIAL
 	Serial.begin(57600);
-	Serial.println("Atmega8TempGuard");
-	serialFlush();
+	Serial.println();
+	Serial.print("[");
+	Serial.print(sketch);
+	Serial.print(".");
+	Serial.print(version);
+	Serial.print("]");
 #endif
 //	DDRD = 0b11111111; // pin 0-7 to output mode
 	pinMode(0, OUTPUT); 
@@ -247,12 +255,14 @@ void setup() {
 	digitOne();
 	sevenSegClear();
 	sevenSegWrite(3);
+	serialFlush();
 }
 
 /**
 	The delayed implementation blinks during sensor read.
   */
-void loop() {
+void loop(void)
+{
 	sevenSegClear();
 	noDigit();
 	int temp = readDS18B20(dsProbe);

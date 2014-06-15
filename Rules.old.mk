@@ -767,6 +767,11 @@ adadht: P := Mpe/DHT11Test/AdafruitDHT/
 adadht: I := Mpe/DHT11Test/AdafruitDHT/AdafruitDHT.hex
 adadht: jeenode upload
 
+pcdthermotest: C := m328p
+pcdthermotest: P := Misc/PCD8544_Thermometer/
+pcdthermotest: I := Misc/PCD8544_Thermometer/PCD8544_Thermometer.hex
+pcdthermotest: jeenode upload
+
 m8guard: C := m8
 m8guard: BRD := atmega8
 m8guard: M := usbasp

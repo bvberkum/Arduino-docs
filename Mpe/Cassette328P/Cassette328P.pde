@@ -1,4 +1,5 @@
 /*
+Cassette328P
 
 An atmega328p TQFP chip with various peripherals:
 
@@ -31,13 +32,15 @@ Free pins
 */
 
 #include <avr/io.h>
-#include <JeeLib.h>
 #include <avr/sleep.h>
 #include <util/atomic.h>
+
+#include <DHT.h> // Adafruit DHT
+#include <JeeLib.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <EEPROM.h>
 //include <RF24.h>
-#include <DHT.h> // Adafruit DHT
 //include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
 
@@ -45,22 +48,26 @@ Free pins
 
 
 /** Globals and sketch configuration  */
-#define DEBUG           1   // set to 1 to report each loop() run and trigger on serial, and enable serial protocol
-#define SERIAL          1   // set to 1 to also report readings on the serial port
-#define DEBUG_MEASURE   1
+#define DEBUG           1
+#define SERIAL          1
+							
 #define LED_RED         5
 #define LED_YELLOW      6
 #define LED_GREEN       7
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
-
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define DEBUG_MEASURE   1
+							
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-
+							
 #define RADIO_SYNC_MODE 2
+							
+#define _MEM        1
+#define _BAT        1
 
 //#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
 #define _DHT        1   // defined if _DHTxx data is connected to a DIO pin
@@ -68,8 +75,11 @@ Free pins
 #define _RTC        0
 //#define LCD
 #define _RF24       0
-#define _MEM        1
-# 					----	
+
+
+static String sketch = "Cassette328P";
+static String node = "";
+static String vesion = "0";
 
 /**
  * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
@@ -78,7 +88,6 @@ Free pins
 //#define USART_BAUDRATE 38400
 //#define BAUD_PRESCALE ((( F_CPU / ( USART_BAUDRATE * 16UL ))) - 1 )
 
-#include <EEPROM.h>
 #define CONFIG_VERSION "ls1"
 #define CONFIG_START 32
 
@@ -96,7 +105,7 @@ struct Config {
 
 Config config;
 
-static byte myNodeID;       // node ID used for this unit
+static byte node;       // node ID used for this unit
 
 enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
@@ -149,18 +158,22 @@ Role role;// = role_logger;
 /* Data reported by this sketch */
 struct {
 #if LDR_PORT
-	byte light;     // light sensor: 0..255
+	byte light      :8;     // light sensor: 0..255
 #endif
-//    byte moved :1;  // motion detector: 0..1
+#if PIR_PORT
+	byte moved      :1;  // motion detector: 0..1
+#endif
 #if _DHT
-	byte rhum    :7;  // humidity: 0..100
-	int temp     :10; // temperature: -500..+500 (tenths)
+	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
+	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
-	int ctemp    :10; // temperature: -500..+500 (tenths)
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree;
+	int memfree     :16;
 #endif
-	byte lobat    :1;  // supply voltage dropped under 3.1V: 0..1
+#if _BAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
 //#if _RTC
 // XXX: datetime?
 //#endif
@@ -182,6 +195,51 @@ DHT dht(DHT_PIN, DHTTYPE);
 /* DS1307: Real Time Clock over I2C */
 #define DS1307_I2C_ADDRESS 0x68
 #endif
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
+}
+
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
 
 #if _RF24
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
@@ -292,14 +350,14 @@ void saveRF24Config(Config &c) {
 
 /** Generic routines */
 
-#if SERIAL || DEBUG
 static void serialFlush () {
-    #if ARDUINO >= 100
-        Serial.flush();
-    #endif  
-    delay(2); // make sure tx buf is empty before going back to sleep
-}
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
 #endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
 
 void blink(int led, int count, int length, int length_off=0) {
   for (int i=0;i<count;i++) {
@@ -517,6 +575,9 @@ int serviceMode(void)
 }
 
 /* Configuration is persisted to EEPROM */
+static void doConfig(void)
+{
+}
 
 bool loadConfig(Config &c) 
 {
@@ -537,49 +598,6 @@ bool loadConfig(Config &c)
 	}
 }
 
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
 
 void setup_peripherals()
 {
@@ -608,6 +626,10 @@ void setup_peripherals()
 	blink(LED_GREEN, 4, 100);
 }
 
+static bool doAnnounce() 
+{
+}
+
 static void doMeasure() 
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
@@ -621,7 +643,9 @@ static void doMeasure()
 	Serial.println(payload.ctemp);
 #endif
 
+#if _BAT
 	payload.lobat = rf12_lowbat();
+#endif
 #if SERIAL && DEBUG_MEASURE
 	if (payload.lobat) {
 		Serial.println("Low battery");
@@ -632,7 +656,7 @@ static void doMeasure()
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
-#if SERIAL || DEBUG
+#if SERIAL | DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
@@ -646,7 +670,7 @@ static void doMeasure()
 #endif
 	}
 	if (isnan(t)) {
-#if SERIAL || DEBUG
+#if SERIAL | DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
@@ -658,7 +682,7 @@ static void doMeasure()
 		Serial.println(payload.temp);
 #endif
 	}
-#endif
+#endif // _DHT
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -680,9 +704,12 @@ static void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
-}    
 
-static void doReport()
+	serialFlush();
+}
+
+// periodic report, i.e. send out a packet and optionally report on serial port
+static void doReport(void)
 {
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
@@ -697,7 +724,7 @@ static void doReport()
 	radio_run();
 #endif
 #if SERIAL
-	Serial.print(myNodeID);
+	Serial.print(node);
 	Serial.print(" ");
 #if LDR_PORT
 	Serial.print((int) payload.light);
@@ -720,12 +747,12 @@ static void doReport()
 	Serial.print((int) payload.lobat);
 	Serial.println();
 	serialFlush();
-#endif
+#endif//SERIAL
 }
 
-/*
 static void runCommand()
 {
+/*
 	blink(LED_YELLOW, 20, 1 );
 	uint8_t cmd = cmdseq.dequeue();
 	switch (cmd) {
@@ -784,35 +811,33 @@ static void runCommand()
 	cmdseq.flush();
 	Serial.println(".");
 	blink(LED_GREEN, 2, 75 );
-}
 */
+}
+
 /* Main */
 
 void setup(void)
 {
-	pinMode( LED_GREEN, OUTPUT );
-	pinMode( LED_YELLOW, OUTPUT );
-	pinMode( LED_RED, OUTPUT );
-
-	//blink(LED_YELLOW, 1, 100);
-	digitalWrite( LED_RED, HIGH );
-	digitalWrite( LED_YELLOW, HIGH );
-
-#if SERIAL || DEBUG
+#if SERIAL
 	Serial.begin(57600);
-	Serial.println(F("\nCassette328p"));
+	Serial.println();
+	Serial.print("[");
+	Serial.print(sketch);
+	Serial.print(".");
+	Serial.print(version);
+	Serial.print("]");
+#if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
-	serialFlush();
 	byte rf12_show = 1;
 #else
 	byte rf12_show = 0;
 #endif
-	myNodeID = 4;
-	rf12_initialize(myNodeID, RF12_868MHZ, 5);
-   	rf12_control(0x9485); // Receiver Control: Max LNA, 200kHz RX bw, DRSSI -73dB
-  	rf12_control(0x9850); // Transmission Control: Pos, 90kHz
-  	rf12_control(0xC606); // Data Rate 6
+	//node= 4;
+	rf12_initialize(node, RF12_868MHZ, 5);
+	rf12_control(0x9485); // Receiver Control: Max LNA, 200kHz RX bw, DRSSI -73dB
+	rf12_control(0x9850); // Transmission Control: Pos, 90kHz
+	rf12_control(0xC606); // Data Rate 6
 	rf12_sleep(RF12_SLEEP); // power down
 
 	/* Read config from memory, or initialize with defaults */
@@ -821,6 +846,14 @@ void setup(void)
 //		saveRF24Config(static_config);
 //		config = static_config;
 //	}
+	pinMode( LED_GREEN, OUTPUT );
+	pinMode( LED_YELLOW, OUTPUT );
+	pinMode( LED_RED, OUTPUT );
+
+	//blink(LED_YELLOW, 1, 100);
+	digitalWrite( LED_RED, HIGH );
+	digitalWrite( LED_YELLOW, HIGH );
+
 
 	digitalWrite( LED_RED, LOW );
 
@@ -828,16 +861,25 @@ void setup(void)
 
 	digitalWrite( LED_YELLOW, LOW );
 
+	serialFlush();
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
+int col = 0;
+
 void loop(void)
 {
 #if DEBUG
+	col++;
 	Serial.print('.');
+	if (col > 79) {
+		col = 0;
+		Serial.println();
+	}
 	serialFlush();
 #endif
+
 	if (rx_overflow) {
 		blink(LED_RED, 1, 75 );
 		rx_overflow = false;
@@ -873,8 +915,8 @@ void loop(void)
 			doMeasure();
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
-					reportCount = 0;
-					scheduler.timer(REPORT, 0);
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
 			}
 			break;
 

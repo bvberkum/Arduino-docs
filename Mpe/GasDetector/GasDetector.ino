@@ -2,7 +2,9 @@
   Lots to do
   
   - must hook up PWM power
-  
+
+  - PN2907A: EBC (TO-92)
+  	
   
   For now, working on RF24 using LDR and SHT11, see RoomNodeRF24
 */
@@ -16,17 +18,18 @@
 #include <EEPROM.h>
 // include EEPROMEx.h
 
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
+#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
 #define DEBUG_DS   0
 
 #define SERIAL  1   // set to 1 to enable serial interface
-//#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
+#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 //#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define DS  8
+//#define DS  8
 //#define MQ4
 #define _MEM 0
 #define LED 11
 #define _BAT 0
+#define _VCC 1
 
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
@@ -43,8 +46,8 @@ String node_id = "";
 #if DS
 /* Dallas bus for DS18S20 temperature */
 OneWire ds(DS);
-uint8_t ds_count = 0;
-uint8_t ds_search = 0;
+static uint8_t ds_count = 0;
+static uint8_t ds_search = 0;
 volatile int ds_value[8]; // take on 8 DS sensors in report
 enum { DS_OK, DS_ERR_CRC };
 #endif
@@ -56,7 +59,8 @@ enum { DS_OK, DS_ERR_CRC };
 int CoSensorPower = 5; // digital power feed/indicator pin
 int MthSensorPower = 6; 
 int CoSensorData = 0; // measure pin (analog) for CO sensor
-int MthSensorData = 1; 
+int MthSensorData = A1; 
+int VccADC = A2;
 
 const int PREHEAT_PERIOD = 600;
 const int HEATING_PERIOD = 900; 
@@ -81,7 +85,6 @@ struct {
 #endif
 	byte moved :1;  // motion detector: 0..1
 	int mq4; // methane
-	int mq7; // co
 #if DHT_PIN
 	byte rhum  :7;  // rhumdity: 0..100
 	int temp   :10; // temperature: -500..+500 (tenths)
@@ -89,6 +92,9 @@ struct {
 	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
 	int memfree :16;
+#endif
+#if _VCC
+	int vcc :10;
 #endif
 #if _BAT
 	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
@@ -159,7 +165,7 @@ double internalTemp(void)
 	wADC = ADCW;
 
 	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
+	t = (wADC - 331) / 1.22;
 
 	// The returned temperature is in degrees Celcius.
 	return (t);
@@ -347,19 +353,43 @@ static void doConfig()
 
 static bool doAnnounce() 
 {
+	Serial.print("[");
+	Serial.print(node_id);
+	Serial.print(".0");
+	Serial.print("]");
+
+#if LDR_PORT
+	Serial.print(" ldr");
+#endif
+#if DHT_PIN
+	Serial.print(" dht11-rhum dht11-temp");
+#endif
+	Serial.print(" attemp");
+	Serial.print(" mq4");
+#if DS 
+	ds_count = readDSCount();
+	for ( int i = 0; i < ds_count; i++) {
+		Serial.print(" ds-");
+		Serial.print(i+1);
+	}
+#endif
+#if _MEM
+	Serial.print(" memfree");
+#endif
+#if _VCC
+	Serial.print(" vcc");
+#endif
+#if _BAT
+	Serial.print(" lobat");
+#endif
+	Serial.println();
+	serialFlush();
+	return false;
 }
 
 // readout all the sensors and other values
 static void doMeasure() 
 {
-#if DS
-	uint8_t addr[8];
-	for ( int i = 0; i < ds_count; i++) {
-		readDSAddr(i, addr);
-		ds_value[i] = readDS18B20(addr);
-	}
-#endif
-
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
 	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
@@ -368,15 +398,19 @@ static void doMeasure()
 	payload.lobat = rf12_lowbat();
 #endif
 
-#if PIR_PORT
-	payload.moved = pir.state();
+#if _VCC
+	payload.vcc = analogRead(VccADC);
 #endif
 
 	int mq4 = analogRead(MthSensorData);
-	payload.mq4 = smoothedAverage(payload.mq4, mq4, firstTime);
+	payload.mq4 = mq4;//smoothedAverage(payload.mq4, mq4, firstTime);
 	
-	int mq7 = analogRead(CoSensorData);
-	payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
+	//int mq7 = analogRead(CoSensorData);
+	//payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
+
+#if PIR_PORT
+	payload.moved = pir.state();
+#endif
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -392,6 +426,14 @@ static void doMeasure()
 		payload.temp = smoothedAverage(payload.temp, t, firstTime);
 	}
 #endif
+
+#if DS
+	uint8_t addr[8];
+	for ( int i = 0; i < ds_count; i++) {
+		readDSAddr(i, addr);
+		ds_value[i] = readDS18B20(addr);
+	}
+#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -399,6 +441,7 @@ static void doReport() {
 	/* XXX no working radio */
 #if SERIAL
 	Serial.print(node_id);
+	Serial.print(".0");
 	Serial.print(" ");
 #if LDR_PORT
 	Serial.print((int) payload.light);
@@ -416,8 +459,6 @@ static void doReport() {
 	Serial.print(' ');
 	Serial.print((int) payload.mq4);
 	Serial.print(' ');
-	Serial.print((int) payload.mq7);
-	Serial.print(' ');
 #if DS
 	for (int i=0;i<ds_count;i++) {
 		Serial.print((int) ds_value[i]);
@@ -426,6 +467,10 @@ static void doReport() {
 #endif
 #if _MEM
 	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+#if _VCC
+	Serial.print((int) payload.vcc);
 	Serial.print(' ');
 #endif
 #if _BAT
@@ -471,15 +516,6 @@ void setup()
 
 	node_id = "GAS";
 
-	pinMode(LED, OUTPUT);
-
-	pinMode(CoSensorData, INPUT);
-	pinMode(MthSensorData, INPUT);
-
-	pinMode(CoSensorPower, OUTPUT);
-	pinMode(MthSensorPower, OUTPUT);
-	
-
 	// Set up PWM, the compare registers work with output compare pins 2A and
 	// 2B (OC2A and OC2B), which are Arduino pins 11 and 3 resp.		
 	//	pinMode(3, OUTPUT);
@@ -507,51 +543,30 @@ void setup()
 //#endif
 //		doConfig();
 //	}
-	Serial.print("[");
-	Serial.print(node_id);
-	Serial.print(".0");
-	Serial.println("]");
 
-#if LDR_PORT
-	Serial.print(" ldr");
-#endif
-#if DHT_PIN
-	Serial.print(" dht11-rhum dht11-temp");
-#endif
-	Serial.print(" attemp");
-	Serial.print(" mq4 mq7");
-#if DS 
-	ds_count = readDSCount();
-	for ( int i = 0; i < ds_count; i++) {
-		Serial.print(" ds-");
-		Serial.print(i+1);
-	}
-#endif
-#if _MEM
-	Serial.print(" memfree");
-#endif
-#if _BAT
-	Serial.print(" lobat");
-#endif
-	Serial.println();
-	serialFlush();
+	doAnnounce();
+
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(PREHEAT, 0);    // start the measurement loop going
+	//scheduler.timer(HEAT, 0);    // start the measurement loop going
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+
+	pinMode(LED, OUTPUT);
+
+	pinMode(CoSensorData, INPUT);
+	pinMode(MthSensorData, INPUT);
+
+	pinMode(CoSensorPower, OUTPUT);
+	pinMode(MthSensorPower, OUTPUT);
+	digitalWrite(MthSensorPower, HIGH);
+
+	pinMode(VccADC, INPUT);
 }
 
 void loop(){
-	bool ds_reset = digitalRead(7);
-	if (ds_search || ds_reset) {
-		if (ds_reset) {
-			Serial.println("Reset triggered");
-		}
-		findDS18B20s();
-		return;
-	}
-	doMeasure();
-	doReport();
-	delay(5000);
-	return;
+	//doMeasure();
+	//doReport();
+	//delay(200);
+	//return;
 
 #if DEBUG
 	Serial.print('.');
@@ -572,15 +587,17 @@ void loop(){
 			Serial.println("HEAT");
 			analogWrite(CoSensorPower, 0x10);
 			analogWrite(LED, 0x10);
-			scheduler.timer(MEASURE, HEATING_PERIOD);
+			//scheduler.timer(MEASURE, HEATING_PERIOD);
+			//scheduler.timer(MEASURE, HEATING_PERIOD);
 			serialFlush();
 			break;
 
 		case MEASURE:
-			Serial.println("MEASURE");
-			digitalWrite(CoSensorPower, LOW);
-			analogWrite(LED, LOW);
-			scheduler.timer(PREHEAT, MEASURE_PERIOD);
+			//Serial.println("MEASURE");
+			//digitalWrite(CoSensorPower, LOW);
+			//analogWrite(LED, LOW);
+			//scheduler.timer(HEAT, MEASURE_PERIOD);
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;

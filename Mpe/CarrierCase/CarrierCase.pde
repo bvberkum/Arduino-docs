@@ -70,40 +70,181 @@ ToDo
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
 #include <stdlib.h>
-#include <avr/sleep.h>
-#include <avr/pgmspace.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
+#include <avr/sleep.h>
 #include <util/atomic.h>
 
+#include <DHT.h> // Adafruit DHT
 #include <JeeLib.h>
 #include <OneWire.h>
-#include <DHT.h>
 //#include <EEPROM.h>
 // include EEPROMEx.h
+
 #include "EmBencode.h"
 
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
-//#define SERIAL  1   // set to 1 to enable serial interface
-
-#define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
-#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define PIR_PORT    1
-#define DS      A5
-#define _MEM 1
-#define _BAT 1
-
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
-
-#define RETRY_PERIOD    10   // how soon to retry if ACK didn't come in
+							
+#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-
+							
 #define RADIO_SYNC_MODE 2
+							
+#define _MEM            1
+#define _BAT            1
+#define _DHT            1
+#define DHT_PIN         7   // defined if DHTxx data is connected to a DIO pin
+#define _DS             1
+#define DS_PIN          A5
+#define DEBUG_DS        1
+//#define FIND_DS    1
+#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
+#define PIR_PORT        1
 
 
-static String node_id = "";
+static String sketch = "CarrierCase";
+static String node = "";
+static String version = "0";
+
+
+/* RF12 message types */
+enum { ANNOUNCE_MSG, REPORT_MSG };
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+
+/* Atmega EEPROM stuff */
+const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
+should have at least 100,000 writes */
+const int memBase          = 0;
+//const int memCeiling       = EEPROMSizeATmega328;
+
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+OneWire ds(DS_PIN);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
+volatile int ds_value[ds_count];
+volatile int ds_value[8]; // take on 8 DS sensors in report
+
+enum { DS_OK, DS_ERR_CRC };
+#endif
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+//DHTxx dht (DHT_PIN); // JeeLib DHT
+
+#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT22   // DHT 22  (AM2302)
+
+DHT dht (DHT_PIN, DHTTYPE); // DHT lib
+
+#endif
+// The scheduler makes it easy to perform various tasks at various times:
+
+enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
+
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+
+// Other variables used in various places in the code:
+
+static byte reportCount;    // count up until next report, i.e. packet send
+static byte rf12_id;       // node ID used for this unit
+
+// This defines the structure of the packets which get sent out by wireless:
+
+struct {
+	int msgtype     :8; // XXX: incorporated, but not the right place..
+#if LDR_PORT
+	byte light      :8;     // light sensor: 0..255
+#endif
+#if PIR_PORT
+	byte moved      :1;  // motion detector: 0..1
+#endif
+#if _DHT
+	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
+	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
+#endif
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+#if _BAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
+} payload;
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
+}
+
+
+String serialBuffer = "";         // a string to hold incoming data
+
+void serialEvent() {
+	while (Serial.available()) {
+		// get the new byte:
+		char inchar = (char)Serial.read(); 
+		// add it to the serialBuffer:
+		if (inchar == '\n') {
+			serialBuffer = "";
+		} 
+		else if (serialBuffer == "new ") {
+			node_id += inchar;
+		} 
+		else {
+			serialBuffer += inchar;
+		}
+	}
+}
+
 
 /* embenc for storage and xfer proto */
 
@@ -133,79 +274,7 @@ void freeEmbencBuff() {
 	embencBuffLen = 0;
 }
 
-
-/* Atmega EEPROM stuff */
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
-should have at least 100,000 writes */
-const int memBase          = 0;
-//const int memCeiling       = EEPROMSizeATmega328;
-
-/* RF12 message types */
-enum { ANNOUNCE_MSG, REPORT_MSG };
-
-
-#if DS
-/* Dallas bus for DS18S20 temperature */
-OneWire ds(DS);  // on pin 10
-
-uint8_t ds_count = 0;
-uint8_t ds_search = 0;
-volatile int ds_value[ds_count];
-volatile int ds_value[8]; // take on 8 DS sensors in report
-#endif
-
-// The scheduler makes it easy to perform various tasks at various times:
-
-enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
-
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
-
-// Other variables used in various places in the code:
-
-static byte reportCount;    // count up until next report, i.e. packet send
-static byte rf12_id;       // node ID used for this unit
-
-// This defines the structure of the packets which get sent out by wireless:
-
-struct {
-	int msgtype :8; // XXX: incorporated, but not the right place..
-#if LDR_PORT
-	byte light  :8;     // light sensor: 0..255
-#endif
-#if PIR_PORT
-	byte moved  :1;  // motion detector: 0..1
-#endif
-#if DHT_PIN
-	int rhum    :7;   // rhumdity: 0..100 (4 or 5% resolution?)
-	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
-#endif
-	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree :16;
-#endif
-#if _BAT
-	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
-#endif
-} payload;
-
-#if LDR_PORT
-Port ldr (LDR_PORT);
-#endif
-
-#if DHT_PIN
-//DHTxx dht (DHT_PIN); // JeeLib DHT
-
-#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
-
-DHT dht (DHT_PIN, DHTTYPE); // DHT lib
-
-#endif
-
-/**
- l
- */
+/** RF12 routines */
 static bool waitForAck() {
     MilliTimer ackTimer;
     while (!ackTimer.poll(ACK_TIME)) {
@@ -218,14 +287,6 @@ static bool waitForAck() {
     }
     return 0;
 }
-
-static void serialFlush () {
-#if ARDUINO >= 100
-	Serial.flush();
-#endif  
-	delay(2); // make sure tx buf is empty before going back to sleep
-}
-
 
 #if PIR_PORT
 
@@ -276,9 +337,6 @@ PIR pir (PIR_PORT);
 
 ISR(PCINT2_vect) { pir.poll(); }
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
 // send packet and wait for ack when there is a motion trigger
 static void doTrigger() {
     #if DEBUG
@@ -317,6 +375,17 @@ static void doTrigger() {
     #endif
 }
 #endif
+
+/** Generic routines */
+
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
 
 void blink(int led, int count, int length) {
   for (int i=0;i<count;i++) {
@@ -357,42 +426,6 @@ static void lpDelay () {
 	Sleepy::loseSomeTime(32); // must wait at least 20 ms
 }
 
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
 
 // XXX: just an example, not actually used 
 static void sendSomeData () {
@@ -427,21 +460,19 @@ static void sendSomeData () {
 static void writeConfig() {
 	eeprom_write_byte(RF12_EEPROM_ADDR, 4);
 	eeprom_write_byte(RF12_EEPROM_ADDR+1, 5);
-//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
+	//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
 	// JeeLib RF12_EEPROM_ADDR is at 20
-    int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
-    int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
 
-    Serial.print("nodeId: ");
-    Serial.println(nodeId);
-    Serial.print("group: ");
-    Serial.println(group);
-    serialFlush();
+	Serial.print("nodeId: ");
+	Serial.println(nodeId);
+	Serial.print("group: ");
+	Serial.println(group);
+	serialFlush();
 }
 
-#if DS
-enum { DS_OK, DS_ERR_CRC };
-
+#if _DS
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -476,10 +507,11 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
-#if DEBUG_DS
+#if SERIAL && DEBUG_DS
 	Serial.print(F(" CRC="));
 	Serial.print( crc8, HEX);
 	Serial.println();
+	serialFlush();
 #endif
 
 	if (crc8 != data[8]) {
@@ -511,7 +543,10 @@ static int readDS18B20(uint8_t addr[8]) {
 	int result = ds_readdata(addr, data);	
 	
 	if (result != DS_OK) {
+#if SERIAL
 		Serial.println(F("CRC error in ds_readdata"));
+		serialFlush();
+#endif
 		return 0;
 	}
 
@@ -681,10 +716,11 @@ static byte* findDS(bool do_read=false) {
 
 #endif // _DS
 
-static void doConfig() {
+static void doConfig(void)
+{
 	// JeeLib RF12_EEPROM_ADDR is at 20
-    int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
-    int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
 
 	// Read embencoded from eeprom
 	int specByteCnt= eeprom_read_byte(RF12_EEPROM_ADDR + 2);
@@ -739,7 +775,11 @@ static void doConfig() {
 	}
 }
 
-static bool doAnnounce() 
+void setup_peripherals()
+{
+}
+
+static bool doAnnounce()
 {
 #if SERIAL
 	Serial.print(node_id);
@@ -775,7 +815,7 @@ static bool doAnnounce()
 	Serial.print("moved ");
 #endif
 #endif
-#if DHT_PIN
+#if _DHT
 	payload_spec.startList();
 	payload_spec.push("dht11-rhum");
 	payload_spec.push(7);
@@ -849,7 +889,7 @@ static bool doAnnounce()
 	rf12_sleep(RF12_SLEEP);
 	return acked;
 
-#if DS
+#if _DS
 			// report a new node or reinitialize node with central link node
 //			for ( int x=0; x<ds_count; x++) {
 //				Serial.print("SEN ");
@@ -865,12 +905,11 @@ static bool doAnnounce()
 #endif
 }
 
-// readout all the sensors and other values
-static void doMeasure() 
+static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-#if DS
+#if _DS
 	uint8_t addr[8];
 	for ( int i = 0; i < ds_count; i++) {
 		readDSAddr(i, addr);
@@ -895,7 +934,7 @@ static void doMeasure()
 	payload.light = smoothedAverage(payload.light, light, firstTime);
 #endif //LDR
 
-#if DHT_PIN
+#if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
@@ -903,7 +942,14 @@ static void doMeasure()
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		payload.rhum = smoothedAverage(payload.rhum, (int)h, firstTime);
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT RH new/avg "));
+		Serial.print(rh);
+		Serial.print(' ');
+		Serial.println(payload.rhum);
+#endif
 	}
 	if (isnan(t)) {
 #if SERIAL | DEBUG
@@ -911,18 +957,29 @@ static void doMeasure()
 #endif
 	} else {
 		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT T new/avg "));
+		Serial.print(t);
+		Serial.print(' ');
+		Serial.println(payload.temp);
+#endif
 	}
 #endif // _DHT
 
 #if _MEM
 	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
 #endif
 
 	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport() {
+static void doReport(void)
+{
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
@@ -938,7 +995,7 @@ static void doReport() {
 	Serial.print((int) payload.moved);
 	Serial.print(' ');
 #endif
-#if DHT_PIN
+#if _DHT
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
@@ -946,7 +1003,7 @@ static void doReport() {
 #endif
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
-#if DS
+#if _DS
 	for (int i=0;i<ds_count;i++) {
 		Serial.print((int) ds_value[i]);
 		Serial.print(' ');
@@ -964,36 +1021,22 @@ static void doReport() {
 #endif//SERIAL
 }
 
-
-String inputString = "";         // a string to hold incoming data
-
-void serialEvent() {
-	while (Serial.available()) {
-		// get the new byte:
-		char inChar = (char)Serial.read(); 
-		// add it to the inputString:
-		if (inChar == '\n') {
-			inputString = "";
-		} 
-		else if (inputString == "NEW ") {
-			node_id += inChar;
-		} 
-		else {
-			inputString += inChar;
-		}
-	}
+static void runCommand()
+{
 }
 
-/*
-  *
-  * Main
-  *
-   */
+/* Main */
 
-void setup()
+void setup(void)
 {
-#if SERIAL || DEBUG
+#if SERIAL
 	Serial.begin(57600);
+	Serial.println();
+	Serial.print("[");
+	Serial.print(sketch);
+	Serial.print(".");
+	Serial.print(version);
+	Serial.print("]");
 #if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -1001,13 +1044,11 @@ void setup()
 #else
 	byte rf12_show = 0;
 #endif
-	serialFlush();
 #endif
 
 	writeConfig();
 	//doConfig();
 	return;
-
 
 	// Reported on serial?
 	node_id = "CarrierCase.0-2-RF12-5-23";
@@ -1046,13 +1087,13 @@ void setup()
 #if LDR_PORT
 	Serial.print(" ldr");
 #endif
-#if DHT_PIN
+#if _DHT
 	dht.begin();
 	Serial.print(" dht11-rhum dht11-temp");
 #endif
 	Serial.print(" attemp");
 
-#if DS 
+#if _DS 
 	ds_count = readDSCount();
 	for ( int i = 0; i < ds_count; i++) {
 		Serial.print(" ds-");
@@ -1060,15 +1101,17 @@ void setup()
 	}
 #endif
 	Serial.println();
+	setup_peripherals();
 	serialFlush();
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, 0);
 }
 
-int line = 0;
+int col = 0;
+
 void loop(void)
 {
-#if DS
+#if _DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {
 		if (ds_reset) {
@@ -1079,19 +1122,20 @@ void loop(void)
 	}
 #endif
 
-	doMeasure();
-	doReport();
-	delay(15000);
-	return;
 #if DEBUG
-	line++;
+	col++;
 	Serial.print('.');
-	if (line > 79) {
-		line = 0;
+	if (col > 79) {
+		col = 0;
 		Serial.println();
 	}
 	serialFlush();
 #endif
+
+	doMeasure();
+	doReport();
+	delay(15000);
+	return;
 
 #if PIR_PORT
 	if (pir.triggered()) {
