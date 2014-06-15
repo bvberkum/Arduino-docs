@@ -113,12 +113,15 @@ static String sketch = "CarrierCase";
 static String node = "";
 static String version = "0";
 
+// The scheduler makes it easy to perform various tasks at various times:
+enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* RF12 message types */
 enum { ANNOUNCE_MSG, REPORT_MSG };
-
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
 /* Atmega EEPROM stuff */
@@ -153,12 +156,6 @@ Port ldr (LDR_PORT);
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 
 #endif
-// The scheduler makes it easy to perform various tasks at various times:
-
-enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
-
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
 
 // Other variables used in various places in the code:
 

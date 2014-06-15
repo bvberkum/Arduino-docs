@@ -91,7 +91,7 @@ download:
 	$(ll) attention $@ "Starting flash/eeprom download using $(M).." $(I);\
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
-	avrdude \
+	$(avrdude) \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
 		-U eeprom:r:$$I-eeprom.hex:i \
@@ -788,6 +788,11 @@ dstbus: X := -B3
 dstbus: P := Mpe/Prototype/DallasTempBus/
 dstbus: I := Mpe/Prototype/DallasTempBus/DallasTempBus.hex
 dstbus: arduino _upload
+
+log5110: C := m328p
+log5110: P := Mpe/Prototype/LogReader84x48/
+log5110: I := Mpe/Prototype/LogReader84x48/LogReader84x48.hex
+log5110: jeenode upload
 
 # Leonardo mega32u4 / teensy 2.0?
 

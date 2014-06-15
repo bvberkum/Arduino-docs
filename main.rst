@@ -41,8 +41,8 @@ Duemilanove "2009"
 UNO
   - USB board. Now at rev3. PDIP.
 JeeNode
-  - Comes in various editions and versions, but all targetted at 3.3v
-    peripherals. The mainline is compatible with Duemilanove, and later 
+  - Six versions, all 3.3v.
+    The mainline is compatible with Duemilanove, and later 
     with Uno (OptiBoot 0.44). [#]_
 
 As usual, 8, 168 and 328 are interchangeable with notes on implementation

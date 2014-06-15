@@ -1,4 +1,5 @@
-/* Atmega EEPROM routines */
+/* 
+Atmega EEPROM routines */
 #include <OneWire.h>
 
 #define DEBUG       1 /* Enable trace statements */
@@ -61,7 +62,6 @@ int col = 0;
 
 void loop(void)
 {
-
 #if DEBUG
 	col++;
 	Serial.print('.');
