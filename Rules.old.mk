@@ -794,6 +794,11 @@ log5110: P := Mpe/Prototype/LogReader84x48/
 log5110: I := Mpe/Prototype/LogReader84x48/LogReader84x48.hex
 log5110: jeenode upload
 
+thermo5110: C := m328p
+thermo5110: P := Mpe/Prototype/ThermoLog84x48/
+thermo5110: I := Mpe/Prototype/ThermoLog84x48/ThermoLog84x48.hex
+thermo5110: jeenode upload
+
 # Leonardo mega32u4 / teensy 2.0?
 
 

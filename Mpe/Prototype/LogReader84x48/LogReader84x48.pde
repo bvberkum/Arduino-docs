@@ -1,4 +1,5 @@
 /* 
+
 SD Card log reader with 84x48 display.
 
 2014-07-15
@@ -8,24 +9,25 @@ Current targets:
 	- SD card file log
 	- Serial mpe-bus slave version
  */
-#include <OneWire.h>
-#include <JeeLib.h>
-#include <DotmpeLib.h>
 // Definition of interrupt names
 #include < avr/io.h >
 // ISR interrupt service routine
 #include < avr/interrupt.h >
 
+#include <DotmpeLib.h>
+#include <JeeLib.h>
+#include <OneWire.h>
+
 #define DEBUG       1 /* Enable trace statements */
 #define SERIAL      1 /* Enable serial */
 
-#define SCHEDULER_DELAY 1000
-#define UI_DELAY        1
-#define UI_STDBY        20  // tenths of seconds idle time, before user-interface 
-							// polling shuts down
+#define SCHEDULER_DELAY 100 //ms
+#define UI_DELAY        10
+#define UI_IDLE         40  // tenths of seconds idle time, ...
+#define UI_STDBY        3000  // ms
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  5  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
 							
 #define _MEM            1
 
@@ -36,7 +38,7 @@ static String version = "0";
 
 MpeSerial mpeser (57600);
 
-enum { USER, USER_POLL, USER_IDLE, MEASURE, REPORT, TASK_END };
+enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 // has to be defined because we're using the watchdog for low-power waiting
@@ -49,6 +51,7 @@ byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
 byte backlight = 9;
+int out=20;
 
 struct {
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
@@ -57,49 +60,13 @@ struct {
 #endif
 } payload;
 
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
 volatile bool ui_irq;
 
 //ISR(INT0_vect) 
 void irq0()
 {
 	ui_irq = true;
+	Sleepy::watchdogInterrupts(0);
 }
 
 byte SAMPLES = 0x1f;
@@ -139,8 +106,44 @@ void printKeys(void) {
 }
 
 
-
 /** Generic routines */
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
+}
 
 static void serialFlush () {
 #if SERIAL
@@ -256,6 +259,8 @@ void setup(void)
 	attachInterrupt(INT0, irq0, RISING);
 }
 
+byte level = 0xff;
+
 void loop(void)
 {
 	blink(13, 1, 15);
@@ -265,9 +270,10 @@ void loop(void)
 	switch (scheduler.poll()) {
 		case USER:
 			Serial.println("USER");
+			level = 0xff;
 			digitalWrite(backlight, HIGH);
 			scheduler.cancel(USER_IDLE);
-			scheduler.timer(USER_IDLE, UI_STDBY);
+			scheduler.timer(USER_IDLE, UI_IDLE);
 			//parser.poll();
 			//if (keyActive()) {
 			//	printKeys();
@@ -286,9 +292,18 @@ void loop(void)
 			break;
 		case USER_IDLE:
 			Serial.println("IDLE");
-			scheduler.cancel(USER);
-			scheduler.cancel(USER_POLL);
+			while (level > 0x1f) {
+				analogWrite(backlight, level);
+				delay(10);
+				level--;
+			}
 			digitalWrite(backlight, LOW);
+			scheduler.cancel(USER_STDBY);
+			scheduler.timer(USER_STDBY, UI_STDBY/10);
+			serialFlush();
+			break;
+		case USER_STDBY:
+			Serial.println("STDBY");
 			serialFlush();
 			break;
 		case MEASURE:
@@ -314,24 +329,38 @@ void loop(void)
 			Serial.print(";");
 			serialFlush();
 			Sleepy::loseSomeTime(SCHEDULER_DELAY);
-			Sleepy::powerDown();
 		default:
-			Serial.print(".");
+			out--;
+			if (out == 0) {
+				out=20;
+				Serial.print(".");
 			//Serial.print(scheduler.idle(USER));
 			//Serial.print(' ');
+			//Serial.print(scheduler.idle(USER_POLL));
+			//Serial.print(' ');
 			//Serial.print(scheduler.idle(USER_IDLE));
+			//Serial.print(' ');
+			//Serial.print(scheduler.idle(USER_STDBY));
 			//Serial.print(' ');
 			//Serial.print(scheduler.idle(MEASURE));
 			//Serial.print(' ');
 			//Serial.print(scheduler.idle(REPORT));
 			//Serial.print(' ');
 			//Serial.println(scheduler.idle(TASK_END));
-			serialFlush();
-			Sleepy::loseSomeTime(SCHEDULER_DELAY);
-			serialFlush();
-			//if (scheduler.idle(USER)) {
-			//	Sleepy::loseSomeTime(100);
-			//}
+				serialFlush();
+			}
+			if (scheduler.idle(USER_IDLE) && scheduler.idle(USER_STDBY)) {
+				serialFlush();
+				//scheduler.cancel(MEASURE);
+				Sleepy::powerDown();
+				//Sleepy::loseSomeTime(60000);
+				//scheduler.timer(MEASURE, 0);
+			}
+			if (scheduler.idle(USER)) {
+				Sleepy::loseSomeTime(UI_DELAY);
+			} else {
+				Sleepy::loseSomeTime(SCHEDULER_DELAY);
+			}
 			if (ui_irq) {
 				ui_irq = false;
 				scheduler.timer(USER, 0);

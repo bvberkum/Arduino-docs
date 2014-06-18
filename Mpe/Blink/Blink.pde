@@ -6,16 +6,16 @@
  *          (TXD)  D0 PD0 | 2    27 | PC4 A4  (ADC4/SDA)
  *          (RXD)  D1 PD1 | 3    26 | PC3 A3  (ADC3)
  *         (INT0)  D2 PD2 | 4    25 | PC2 A2  (ADC2)
- *         (INT1)  D3 PD3 | 5    24 | PC1 A1  (ADC1)
+ *         (INT1) *D3 PD3 | 5    24 | PC1 A1  (ADC1)
  *       (XCK/T0)  D4 PD4 | 6    23 | PC0 A0  (ADC0)
  *                    VCC | 7    22 | GND
  *                    GND | 8    21 | AREF
  *  (XTAL1/TOSC1)     PB6 | 9    20 | AVCC
  *  (XTAL2/TOSC2)     PB7 | 10   19 | PB5 D13 (SCK)
- *           (T1)  D5 PD5 | 11   18 | PB4 D12 (MISO)
- *         (AIN0)  D6 PD6 | 12   17 | PB3 D11 (MOSI/OC2)
- *         (AIN1)  D7 PD7 | 13   16 | PB2 D10 (SS/OC1B)
- *         (ICP1)  D8 PB0 | 14   15 | PB1 D9  (OC1A)
+ *           (T1) *D5 PD5 | 11   18 | PB4 D12 (MISO)
+ *         (AIN0) *D6 PD6 | 12   17 | PB3 D11* (MOSI/OC2)
+ *         (AIN1)  D7 PD7 | 13   16 | PB2 D10* (SS/OC1B)
+ *         (ICP1)  D8 PB0 | 14   15 | PB1 D9 * (OC1A)
  *                        +---------+
  *
  * ATTiny25/45/85

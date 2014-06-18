@@ -23,11 +23,12 @@
  * THE SOFTWARE.
  */
 
-
-#include <PCD8544.h>
-#include <DHT.h>
-#include <JeeLib.h>
 #include <avr/sleep.h>
+
+#include <DHT.h> // Adafruit DHT
+#include <DotmpeLib.h>
+#include <JeeLib.h>
+#include <PCD8544.h>
 
 /** Globals and sketch configuration  */
 #define DEBUG           1 /* Enable trace statements */
@@ -36,16 +37,22 @@
 #define DEBUG_MEASURE   1
 
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-
 static String sketch = "PCD8544_Thermometer";
 static String node = "";
 static String version = "0";
 
+static const byte backlight = 9;
 static const byte sensorPin = A3;
 static const byte ledPin = 13;
+
+
+MpeSerial mpeser (57600);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+static DHT dht(sensorPin, DHT11);
+
 
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
@@ -65,16 +72,29 @@ static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x
 	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
 
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
-static DHT dht(sensorPin, DHT11);
 
 // Result: 2k (m328) - 1561 free = 487 bytes SRAM used by this pogram
 int memfree;
+
+/** Generic routines */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+volatile bool ui_irq;
+
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
+
 
 static void doMeasure()
 {
@@ -85,17 +105,21 @@ static void doMeasure()
 #endif
 }
 
-void setup() {
-#if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
-#endif
-	doMeasure();
+//ISR(INT0_vect) 
+void irq0()
+{
+	ui_irq = true;
+	Sleepy::watchdogInterrupts(0);
+}
+
+
+/* Main */
+
+void setup(void)
+{
+	mpeser.begin(sketch, version);
+	serialFlush();
+	attachInterrupt(INT0, irq0, RISING);
 
 	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
 
@@ -112,17 +136,21 @@ void setup() {
 	pinMode(sensorPin, INPUT);
 
 	dht.begin();
+
+	pinMode(backlight, OUTPUT);
+	analogWrite(backlight, 0xaf);
 }
 
 void loop(void)
 {
+	digitalWrite(ledPin, HIGH);
 	doMeasure();
+	digitalWrite(ledPin, LOW);
+
 	// Start beyond the edge of the screen...
 	static byte xChart = LCD_WIDTH;
 
 	//lcd.begin();
-
-	digitalWrite(ledPin, HIGH);
 
 	// Read the temperature (in celsius)...
 	float temp = dht.readTemperature();

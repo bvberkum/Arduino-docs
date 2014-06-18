@@ -157,7 +157,7 @@ DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 
 #endif
 
-// Other variables used in various places in the code:
+/* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
 static byte rf12_id;       // node ID used for this unit
@@ -184,6 +184,8 @@ struct {
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
+
+/** Generic routines */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
@@ -1173,6 +1175,9 @@ void loop(void)
 
 		case TASK_END:
 			Serial.print("task? ");
+			break;
+
+		default:
 			break;
 	}
 }
