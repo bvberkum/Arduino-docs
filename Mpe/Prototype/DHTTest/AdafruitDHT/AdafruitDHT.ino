@@ -1,3 +1,9 @@
+/*
+
+	AdafruitDHT 
+	based on 
+		- ThermoLog84x48 but doesnt use Lcd84x48
+
 #include <DotmpeLib.h>
 #include <JeeLib.h>
 #include <DHT.h> // Adafruit DHT
@@ -8,13 +14,11 @@
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 							
-#define _RF12           1
+#define _RFM12           1
 #define _MEM            1   // Report free memory 
 #define _DHT            1
-#define DHT_PIN         7   // DIO for DHTxx
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
-#define _BAT 0
-#define _RF12LOBAT      1   // Use JeeNode lowbat measurement
+#define _RFM12LOBAT      1   // Use JeeNode lowbat measurement
 							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -22,9 +26,8 @@
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-							
 #define RADIO_SYNC_MODE 2
-#define MAXLENLINE      12
+#define MAXLENLINE      79
 							
 
 static String sketch = "AdafruitDHT";
@@ -34,21 +37,23 @@ static String node = "adadht";
 // determined upon handshake 
 char node_id[7];
 
+static int tick = 0;
 static int pos = 0;
+
+static const byte ledPin = 13;
+#if _DHT
+static const byte DHT_PIN = 7;
+#endif
 
 MpeSerial mpeser (57600);
 
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
-// The scheduler makes it easy to perform various tasks at various times:
-
-enum { HANDSHAKE, DISCOVERY, MEASURE, REPORT, TASK_END };
-
+/* Scheduled tasks */
+enum { HANDSHAKE, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
-
-// has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _DHT
@@ -61,7 +66,10 @@ DHT dht (DHT_PIN, DHT22);
 #else
 DHT dht (DHT_PIN, DHT11);
 #endif
-#endif
+#endif //_DHT
+
+#if _LCD84x48
+#endif //_LCD84x48
 
 /* Report variables */
 
@@ -83,7 +91,7 @@ struct {
 #if _MEM
 	int memfree :16;
 #endif
-#if _BAT
+#if _RFM12LOBAT
 	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
@@ -140,11 +148,27 @@ static void serialFlush () {
 #endif
 }
 
+void blink(int led, int count, int length, int length_off=0) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
+	}
+}
+
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	if (firstTime)
 		return next;
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debug(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
 }
 
 /* InputParser handlers */
@@ -169,6 +193,17 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
+void setup_peripherals()
+{
+#if _DHT
+	dht.begin();
+#endif
+
+#if _RFM12
+	rf12_initialize(1, RF12_868MHZ, 4);
+#endif
+}
+
 static bool doAnnounce()
 {
 /* see CarrierCase */
@@ -185,7 +220,9 @@ static bool doAnnounce()
 #if _MEM
 	Serial.print("memfree ");
 #endif
+#if _RFM12LOBAT
 	Serial.print("lobat ");
+#endif
 	
 	serialFlush();
 
@@ -219,7 +256,7 @@ static void doMeasure()
 	Serial.println(payload.ctemp);
 #endif
 
-#if _RF12LOBAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #if SERIAL && DEBUG_MEASURE
 	if (payload.lobat) {
@@ -232,7 +269,7 @@ static void doMeasure()
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
-#if SERIAL || DEBUG
+#if SERIAL && DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
@@ -245,7 +282,7 @@ static void doMeasure()
 #endif
 	}
 	if (isnan(t)) {
-#if SERIAL || DEBUG
+#if SERIAL && DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
@@ -257,7 +294,7 @@ static void doMeasure()
 		Serial.println(payload.temp);
 #endif
 	}
-#endif
+#endif // _DHT
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -266,14 +303,12 @@ static void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
-
-	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport(void)
 {
-#if _RF12
+#if _RFM12
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
@@ -293,47 +328,17 @@ static void doReport(void)
 	Serial.print(' ');
 	Serial.print((int) payload.memfree);
 #endif
-#if _RF12LOBAT
+#if _RFM12LOBAT
 	Serial.print(' ');
 	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
-	serialFlush();
 #endif // SERIAL || DEBUG
 }
 
-
-/* Main */
-
-void setup(void)
+void runScheduler(char task)
 {
-	mpeser.begin();
-
-#if _DHT
- 	dht.begin();
-#endif
-
-#if _RF12
-	rf12_initialize(1, RF12_868MHZ, 4);
-#endif
-
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(HANDSHAKE, 0);
-}
-
-void loop(void)
-{
-#if SERIAL && DEBUG
-	pos++;
-	Serial.print('.');
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-
-	switch (scheduler.pollWaiting()) {
+	switch (task) {
 
 		case HANDSHAKE:
 			Serial.println("HANDSHAKE");
@@ -351,29 +356,89 @@ void loop(void)
 			break;
 
 		case MEASURE:
-			Serial.println("MEASURE");
 			// reschedule these measurements periodically
+			debug("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
-			serialFlush();
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
+			serialFlush();
 			break;
 
 		case REPORT:
+			debug("REPORT");
 //			payload.msgtype = REPORT_MSG;
 			doReport();
+			serialFlush();
 			break;
 
-		case DISCOVERY:
-			Serial.print("discovery? ");
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
 			break;
 
-		case TASK_END:
-			Serial.print("task? ");
-			break;
+	}
+}
+
+static void reset(void)
+{
+	ui_irq = false;
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(HANDSHAKE, 0);
+	//scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
+/* Main */
+
+void setup(void)
+{
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
+	serialFlush();
+
+	setup_peripherals();
+
+	reset();
+}
+
+void loop(void)
+{
+	//doMeasure();
+	//doReport();
+	//delay(15000);
+	//return;
+	debug_ticks();
+	char task = scheduler.poll();
+	if (0 < task && task < 0xFF) {
+		runScheduler(task);
+	} else {
+		blink(ledPin, 1, 15);
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		if (0 < task && task < 0xFF) {
+			runScheduler(task);
+		}
 	}
 }

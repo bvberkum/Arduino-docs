@@ -1,5 +1,8 @@
-
 /*
+
+	ThermoLog84x48
+	based on Lcd84x48
+
  - Experimenting with Scheduler vs. MilliTimer.
  - Running key-scan code, interrupts.	
  */
@@ -20,35 +23,58 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define IDLE_DELAY      50  // 
-#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
-							
-#define _MEM            1
+#define _MEM            1   // Report free memory 
 #define _DHT            1
-
+#define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
+#define _LCD            0
+#define _LCD84x48       1
+							
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  600  // how often to measure, in tenths of seconds
+#define UI_IDLE         2000  // tenths of seconds idle time, ...
+#define UI_STDBY        4000  // ms
+#define MAXLENLINE      79
+							
 
 static String sketch = "X-ThermoLog84x48";
-static String node = "thermolog-1";
 static String version = "0";
+static String node = "templg";
 
-static const byte backlightPin = 9;
-static const byte sensorPin = A3;
+// determined upon handshake 
+char node_id[7];
+
+static int tick = 0;
+static int pos = 0;
+
 static const byte ledPin = 13;
+static const byte backlightPin = 9;
+#if _DHT
+static const byte DHT_PIN = A3;
+#endif
 
 MpeSerial mpeser (57600);
 
+MilliTimer debounce, idle, stdby;
+
 /* Scheduled tasks */
-enum { WAKE, IDLE, STDBY, POWERDOWN, MEASURE, REPORT };
+enum { MEASURE, REPORT };
 static word schedbuf[REPORT];
 Scheduler scheduler (schedbuf, REPORT);
-// has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-#if _DHT
-static DHT dht(sensorPin, DHT11);
-#endif
+volatile bool ui_irq;
+static bool ui;
 
+#if _DHT
+#if DHT_HIGH
+DHT dht (DHT_PIN, DHT22);
+#else
+DHT dht (DHT_PIN, DHT11);
+#endif
+#endif //_DHT
+
+#if _LCD84x48
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
 static const byte LCD_HEIGHT = 48;
@@ -68,18 +94,26 @@ static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x
 
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
+#endif //_LCD84x48
+
 /* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
 struct {
 #if _DHT
-	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
-	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
+	int rhum    :7;  // 0..100 (avg'd)
+#if DHT_HIGH
+/* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
+	int temp    :10; // -500..+500 (int value of tenths avg)
+#else
+/* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
+	int temp    :10; // -500..+500 (tenths, .5 resolution)
 #endif
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#endif
+	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree     :16;
+	int memfree :16;
 #endif
 } payload;
 
@@ -124,6 +158,9 @@ double internalTemp(void)
 	return (t);
 }
 
+#if _NRF24
+#endif // RF24 funcs
+
 /** Generic routines */
 
 static void serialFlush () {
@@ -135,14 +172,22 @@ static void serialFlush () {
 #endif
 }
 
-void blink (int led, int count, int length) {
+void blink(int led, int count, int length, int length_off=0) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
 		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
 	}
 }
+
+#if defined(ARDUINO) && ARDUINO >= 100
+#define printByte(args)  write(args);
+#else
+#define printByte(args)  print(args,BYTE);
+#endif
+
 
 static void showNibble (byte nibble) {
 	char c = '0' + (nibble & 0x0F);
@@ -162,13 +207,45 @@ static void showByte (byte value) {
 	}
 }
 
-volatile bool ui_irq;
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debug(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
 
 //ISR(INT0_vect) 
 void irq0()
 {
 	ui_irq = true;
 	//Sleepy::watchdogInterrupts(0);
+}
+
+static void doConfig(void)
+{
+}
+
+
+void setup_peripherals()
+{
+#if _DHT
+	dht.begin();
+#endif
+
+	buttons_start();
 }
 
 static bool doAnnounce()
@@ -185,24 +262,24 @@ static void doMeasure()
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
-#if SERIAL | DEBUG
+#if SERIAL && DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		payload.rhum = (int) h;
+		payload.rhum = smoothedAverage(payload.rhum, round(h), firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
-		Serial.print(rh);
+		Serial.print(h);
 		Serial.print(' ');
 		Serial.println(payload.rhum);
 #endif
 	}
 	if (isnan(t)) {
-#if SERIAL | DEBUG
+#if SERIAL && DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
-		payload.temp = (int) t*10;
+		payload.temp = smoothedAverage(payload.temp, (int)(t * 10), firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT T new/avg "));
 		Serial.print(t);
@@ -219,8 +296,6 @@ static void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
-
-	serialFlush();
 }
 
 static void doReport(void)
@@ -241,11 +316,11 @@ static void doReport(void)
 	Serial.print(' ');
 #endif
 	Serial.println();
-	serialFlush();
 #endif//SERIAL
 }
 
-void lcd_start() 
+#if _LCD84x48
+void lcd_start()
 {
 	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
 
@@ -262,6 +337,14 @@ void lcd_start()
 	analogWrite(backlightPin, 0xaf);
 }
 
+void lcd_printWelcome(void)
+{
+	lcd.setCursor(6, 0);
+	lcd.print(node);
+	lcd.setCursor(0, 5);
+	lcd.print(sketch);
+}
+
 void lcd_printDHT()
 {
 	lcd.setCursor(12, 2);
@@ -271,6 +354,7 @@ void lcd_printDHT()
 	lcd.print(payload.rhum, 1);
 	lcd.print("%");
 }
+#endif //_LCD84x48
 
 /* Button detect using PCINT for ADC port */
 void buttons_start()
@@ -297,104 +381,135 @@ ISR(PCINT1_vect) {
 	else if (digitalRead(A2) == 1)  Serial.println("A2");
 }
 
-/* Main */
-
-void setup(void)
+void start_ui() 
 {
-	mpeser.begin();
-	pinMode(ledPin, OUTPUT);
-	dht.begin();
-	lcd_start();
-	buttons_start();
-	serialFlush();
-	attachInterrupt(INT0, irq0, RISING);
-	scheduler.timer(MEASURE, 0);
+	debug("Irq");
+	ui_irq = false;
+	idle.set(UI_IDLE);
+	if (!ui) {
+		ui = true;
+		digitalWrite(backlightPin, HIGH);
+		lcd_start();
+		lcd_printWelcome();
+	}
 }
 
-MilliTimer debounce, timer1, timer2;
-
-bool ui;
-
-void loop(void)
-{/*
-	if (timer1.poll(5000)) {
-		scheduler.cancel(MEASURE);
-		Serial.println("cancel");
-	} else if (timer2.poll(7000)) {
-		scheduler.timer(MEASURE, 0);
-		Serial.println("schedule");
-	}
-	*/
-		
-	mpeser.startAnnounce(sketch, version);
-	if (ui_irq) {
-		//schedule.timer(WAKE, 0)
-		debounce.set(100);
-	}
-	if (debounce.poll()) {
-		ui_irq = false;
-	}
-	//if (ui) {
-	//	noInterrupts();
-	//	interrupts()
-	//} else {
-	char x = scheduler.poll();
-	switch (x) {
-		case WAKE:
-			ui = true;
-			scheduler.timer(IDLE, IDLE_DELAY);
-			break;
+void runScheduler(char task)
+{
+	switch (task) {
 		case MEASURE:
-#if DEBUG
-			Serial.println("MEASURE");
-#endif
+			// reschedule these measurements periodically
+			debug("MEASURE");
 			blink(ledPin, 1, 15);
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 			lcd_printDHT();
+			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
 			serialFlush();
 			break;
+
 		case REPORT:
-#if DEBUG
-			Serial.println("REPORT");
-#endif
-			break;
-		case STDBY:
-#if DEBUG
-			Serial.println("STDBY");
-#endif
-			break;
-		case POWERDOWN:
-#if DEBUG
-			Serial.println("POWERDOWN");
-#endif
-			break;
-		case -1: // waiting
-			Serial.println('&');
+			debug("REPORT");
+			doReport();
 			serialFlush();
-			delay(100);
 			break;
-		case -2: // nothing
-			Serial.println('.');
-			//Sleepy::loseSomeTime(MEASURE_PERIOD);
-			serialFlush();
-			delay(100);
-			break;
-			/**/
-		case 0xFF: //Scheduler keeps returning this, not sure why
-			break;
+
 		default:
 			Serial.print("0x");
-			Serial.print(x, HEX);
+			Serial.print(task, HEX);
 			Serial.println(" ?");
 			serialFlush();
-			Sleepy::loseSomeTime(1500);
-			//delay(4000);
 			break;
+
 	}
-	//}
+}
+
+static void runCommand()
+{
+}
+
+static void reset(void)
+{
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	ui_irq = false;
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
+/* Main */
+
+void setup(void)
+{
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
+	serialFlush();
+	delay(500);
+
+	setup_peripherals();
+
+	reset();
+
+	attachInterrupt(INT0, irq0, RISING);
+	ui_irq = true;
+}
+
+void loop(void)
+{
+	//doMeasure();
+	//doReport();
+	//delay(15000);
+	//return;
+	if (ui_irq) {
+		start_ui();
+	}
+	debug_ticks();
+	char task = scheduler.poll();
+	if (0 < task && task < 0xFF) {
+		runScheduler(task);
+	} else if (ui) {
+		if (idle.poll()) {
+			debug("Idle");
+			digitalWrite(backlightPin, 0);
+			analogWrite(backlightPin, 0x1f);
+			stdby.set(UI_STDBY);
+		} else if (stdby.poll()) {
+			debug("StdBy");
+			digitalWrite(backlightPin, LOW);
+			lcd.clear();
+			lcd.stop();
+			ui = false;
+		}
+	} else {
+		blink(ledPin, 1, 15);
+		debug("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debug("WakeUp");
+		if (0 < task && task < 0xFF) {
+			runScheduler(task);
+		}
+	}
 }

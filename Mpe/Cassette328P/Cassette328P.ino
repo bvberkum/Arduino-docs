@@ -48,13 +48,20 @@ Free pins
 
 
 /** Globals and sketch configuration  */
-#define DEBUG           1
-#define SERIAL          1
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
 							
-#define LED_RED         5
-#define LED_YELLOW      6
-#define LED_GREEN       7
-
+#define _MEM            1   // Report free memory 
+//#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
+#define _DHT            1
+#define DHT_PIN         14
+#define _BAT            1
+#define _LCD            1
+#define _LCD84x48       0
+#define _RTC            0
+#define _RFM12          0
+#define _NRF24          0
+							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
@@ -65,21 +72,18 @@ Free pins
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 							
 #define RADIO_SYNC_MODE 2
-							
-#define _MEM        1
-#define _BAT        1
-
-//#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
-#define _DHT        1   // defined if _DHTxx data is connected to a DIO pin
-#define DHT_PIN     14
-#define _RTC        0
-//#define LCD
-#define _RF24       0
 
 
 static String sketch = "Cassette328P";
-static String node = "";
 static String vesion = "0";
+
+static String node = "";
+
+
+static const int LED_RED       =  5;
+static const int LED_YELLOW    =  6;
+static const int LED_GREEN     =  7;
+
 
 /**
  * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
@@ -196,11 +200,15 @@ DHT dht(DHT_PIN, DHTTYPE);
 #define DS1307_I2C_ADDRESS 0x68
 #endif
 
+/** AVR routines */
+
 int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+/** ATmega routines */
 
 double internalTemp(void)
 {
@@ -233,15 +241,7 @@ double internalTemp(void)
 	return (t);
 }
 
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-
-#if _RF24
+#if _NRF24
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
 RF24 radio(12,13); /* CE, CS */
 
@@ -346,7 +346,7 @@ void saveRF24Config(Config &c) {
 		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
 	}
 }
-#endif
+#endif // RF24 funcs
 
 /** Generic routines */
 
@@ -360,13 +360,13 @@ static void serialFlush () {
 }
 
 void blink(int led, int count, int length, int length_off=0) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-    (length_off > 0) ? delay(length_off) : delay(length);
-  }
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
+	}
 }
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -375,7 +375,21 @@ void blink(int led, int count, int length, int length_off=0) {
 #define printByte(args)  print(args,BYTE);
 #endif
 
-#if LCD
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debug(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
+
+#if _LCD
 //uint8_t bell[8]  = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
 
 /* I2C LCD 1602 parameters */
@@ -415,7 +429,7 @@ void i2c_lcd_start()
 	lcd.on();
 	lcd.home();
 }
-#endif
+#endif //_LCD
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -523,7 +537,7 @@ void rtc_run(void)
 	byte second, minute, hour, dayOfWeek, dayOfMonth, month, year;
 	getDateDs1307(&second, &minute, &hour, &dayOfWeek, &dayOfMonth, &month, &year);
 
-#if LCD
+#if _LCD
 	if (config.display) {
 		lcd.setCursor(0, 1);
 		lcd.print(year, DEC);
@@ -538,9 +552,9 @@ void rtc_run(void)
 		lcd.print(":");
 		lcd.print(second, DEC);
 	}
-#endif
+#endif //_LCD
 }
-#endif
+#endif //_RTC
 
 uint8_t cmd;
 
@@ -604,7 +618,7 @@ void setup_peripherals()
 #if _RTC
 	rtc_init();
 #endif
-#if _RF24
+#if _NRF24
 	radio_init();
 #endif
 #if _RF12
@@ -626,11 +640,11 @@ void setup_peripherals()
 	blink(LED_GREEN, 4, 100);
 }
 
-static bool doAnnounce() 
+static bool doAnnounce()
 {
 }
 
-static void doMeasure() 
+static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -704,8 +718,6 @@ static void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
-
-	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -719,7 +731,7 @@ static void doReport(void)
 	blink(LED_YELLOW, 2, 25);
 	rtc_run();
 #endif
-#if _RF24
+#if _NRF24
 	blink(LED_YELLOW, 2, 25);
 	radio_run();
 #endif
@@ -746,8 +758,41 @@ static void doReport(void)
 #endif
 	Serial.print((int) payload.lobat);
 	Serial.println();
-	serialFlush();
 #endif//SERIAL
+}
+
+#if _LCD84x48
+#endif //_LCD84x48
+
+void runScheduler(char task)
+{
+	switch (task) {
+
+		case DISCOVERY:
+			break;
+
+		case ANNOUNCE:
+			break;
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+			serialFlush();
+			break;
+
+		case REPORT:
+			debug("REPORT");
+			doReport();
+			serialFlush();
+			break;
+
+	}
 }
 
 static void runCommand()
@@ -814,18 +859,44 @@ static void runCommand()
 */
 }
 
+static void reset(void)
+{
+	setup_peripherals();
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	pinMode( LED_GREEN, OUTPUT );
+	pinMode( LED_YELLOW, OUTPUT );
+	pinMode( LED_RED, OUTPUT );
+	ui_irq = false;
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
 /* Main */
 
 void setup(void)
 {
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
 #if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
 #if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -846,40 +917,20 @@ void setup(void)
 //		saveRF24Config(static_config);
 //		config = static_config;
 //	}
-	pinMode( LED_GREEN, OUTPUT );
-	pinMode( LED_YELLOW, OUTPUT );
-	pinMode( LED_RED, OUTPUT );
-
-	//blink(LED_YELLOW, 1, 100);
+	serialFlush();
 	digitalWrite( LED_RED, HIGH );
 	digitalWrite( LED_YELLOW, HIGH );
-
-
+	reset();
 	digitalWrite( LED_RED, LOW );
-
-	setup_peripherals();
-
 	digitalWrite( LED_YELLOW, LOW );
-
-	serialFlush();
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
-
-int col = 0;
 
 void loop(void)
 {
-#if DEBUG
-	col++;
-	Serial.print('.');
-	if (col > 79) {
-		col = 0;
-		Serial.println();
+	if (ui_irq) {
+		start_ui();
 	}
-	serialFlush();
-#endif
-
+	debug_ticks();
 	if (rx_overflow) {
 		blink(LED_RED, 1, 75 );
 		rx_overflow = false;
@@ -901,28 +952,18 @@ void loop(void)
 	//} else {
 	//	service_mode = NULL;
 	//}
-	switch (scheduler.pollWaiting()) {
-
-		case DISCOVERY:
-			break;
-
-		case ANNOUNCE:
-			break;
-
-		case MEASURE:
-			// reschedule these measurements periodically
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
-			doMeasure();
-			// every so often, a report needs to be sent out
-			if (++reportCount >= REPORT_EVERY) {
-				reportCount = 0;
-				scheduler.timer(REPORT, 0);
-			}
-			break;
-
-		case REPORT:
-			doReport();
-			break;
-
+	char task = scheduler.poll();
+	if (0 < task && task < 0xFF) {
+		runScheduler(task);
+	} else if (ui) {
+	} else {
+		blink(ledPin, 1, 15);
+		debug("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debug("WakeUp");
+		if (0 < task && task < 0xFF) {
+			runScheduler(task);
+		}
 	}
 }

@@ -83,16 +83,6 @@ ToDo
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
-							
-#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
-#define RETRY_LIMIT     2   // maximum number of times to retry
-#define ACK_TIME        10  // number of milliseconds to wait for an ack
-							
-#define RADIO_SYNC_MODE 2
-							
 #define _MEM            1   // Report free memory 
 #define _RF12LOBAT      1   // Use JeeNode lowbat measurement
 #define _DHT            1
@@ -103,7 +93,15 @@ ToDo
 //#define FIND_DS    1
 #define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT        1
+							
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT     2   // maximum number of times to retry
+#define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define MAXLENLINE      12
+#define RADIO_SYNC_MODE 2
 							
 
 static String sketch = "CarrierCase";
@@ -114,10 +112,10 @@ static String node = "";
 int pos = 0;
 
 // The scheduler makes it easy to perform various tasks at various times:
-enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
+enum { ANNOUNCE, MEASURE, REPORT };
 
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
+static word schedbuf[REPORT];
+Scheduler scheduler (schedbuf, REPORT);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
@@ -186,6 +184,47 @@ struct {
 #endif
 } payload;
 
+/** AVR routines */
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v; 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+/** ATmega routines */
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
+}
+
 /** Generic routines */
 
 static void serialFlush () {
@@ -234,47 +273,6 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 // spend a little time in power down mode while the SHT11 does a measurement
 static void lpDelay () {
 	Sleepy::loseSomeTime(32); // must wait at least 20 ms
-}
-
-/** AVR routines */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-/** Atmega routines */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
 }
 
 
@@ -716,6 +714,10 @@ static void doConfig(void)
 	}
 }
 
+void setup_peripherals()
+{
+}
+
 static bool doAnnounce()
 {
 #if SERIAL
@@ -916,8 +918,6 @@ static void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
-
-	serialFlush();
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -960,12 +960,78 @@ static void doReport(void)
 	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
-	serialFlush();
 #endif // SERIAL || DEBUG
+}
+
+void runScheduler(char task)
+{
+	switch (task) {
+
+		case ANNOUNCE:
+			if (doAnnounce()) {
+				scheduler.timer(MEASURE, 0);
+			} else {
+				scheduler.timer(ANNOUNCE, 100);
+			}
+			break;
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+			serialFlush();
+			break;
+
+		case REPORT:
+			payload.msgtype = REPORT_MSG;
+			doReport();
+			serialFlush();
+			break;
+
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			break;
+
+	}
 }
 
 static void runCommand()
 {
+}
+
+static void reset(void)
+{
+	setup_peripherals();
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
 }
 
 /* Main */
@@ -973,13 +1039,9 @@ static void runCommand()
 void setup(void)
 {
 #if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
+	serialFlush();
 #if DEBUG
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -1051,6 +1113,10 @@ void setup(void)
 
 void loop(void)
 {
+	//doMeasure();
+	//doReport();
+	//delay(15000);
+	//return;
 #if _DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {
@@ -1062,20 +1128,11 @@ void loop(void)
 	}
 #endif
 
-#if DEBUG
-	pos++;
-	Serial.print('.');
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
+	debug_ticks();
+	char task = scheduler.poll();
+	if (0 < task && task < 0xFF) {
+		runScheduler(task);
 	}
-	serialFlush();
-#endif
-
-	doMeasure();
-	doReport();
-	delay(15000);
-	return;
 
 #if PIR_PORT
 	if (pir.triggered()) {
@@ -1083,44 +1140,4 @@ void loop(void)
 		doTrigger();
 	}
 #endif
-
-	switch (scheduler.pollWaiting()) {
-
-		case ANNOUNCE:
-			if (doAnnounce()) {
-				scheduler.timer(MEASURE, 0);
-			} else {
-				scheduler.timer(ANNOUNCE, 100);
-			}
-			break;
-
-		case MEASURE:
-			// reschedule these measurements periodically
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
-			doMeasure();
-			// every so often, a report needs to be sent out
-			if (++reportCount >= REPORT_EVERY) {
-				reportCount = 0;
-				scheduler.timer(REPORT, 0);
-			}
-			break;
-
-		case REPORT:
-			payload.msgtype = REPORT_MSG;
-			doReport();
-			break;
-
-		case DISCOVERY:
-			Serial.print("discovery? ");
-			break;
-
-		case TASK_END:
-			Serial.print("task? ");
-			break;
-
-		default:
-			break;
-	}
 }
-
-//#endif

@@ -535,18 +535,18 @@ jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
 jeenodeisp-repair: upload
 
 blink: C := m328p
-blink: P := Mpe/Blink
-blink: I := Mpe/Blink/Blink.hex
+blink: P := Mpe/Prototype/Blink
+blink: I := Mpe/Prototype/Blink/Blink.hex
 blink: jeenode _upload
 
-blinknodelay: C := m328p
-blinknodelay: P := Mpe/BlinkNodelay
-blinknodelay: I := Mpe/BlinkNodelay/BlinkNodelay.hex
-blinknodelay: jeenode _upload
+blinknodelayJeelib: C := m328p
+blinknodelayJeelib: P := Mpe/Prototype/Blink/BlinkNodelayJeelib
+blinknodelayJeelib: I := Mpe/Prototype/Blink/BlinkNodelayJeelib/BlinkNodelayJeelib.hex
+blinknodelayJeelib: jeenode upload
 
 blinkall: C := m328p
-blinkall: P := Mpe/BlinkAll
-blinkall: I := Mpe/BlinkAll/BlinkAll.hex
+blinkall: P := Mpe/Prototype/Blink/BlinkAll
+blinkall: I := Mpe/Prototype/Blink/BlinkAll/BlinkAll.hex
 blinkall: jeenode upload
 
 3way: C := m328p

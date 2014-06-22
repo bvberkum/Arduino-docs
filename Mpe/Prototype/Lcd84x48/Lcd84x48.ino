@@ -1,5 +1,7 @@
 /*
 
+	Lcd84x48
+
 =Features
 - Using Nokia 5110 display board and Arduino pro mini clone.
 - Using to about 30mA with background fully lit.
@@ -48,7 +50,6 @@ depends on the used hardware etc.
 #include <JeeLib.h>
 #include <OneWire.h>
 #include <PCD8544.h>
-#include <printf.h>
 
 
 /** Globals and sketch configuration  */
@@ -60,10 +61,8 @@ depends on the used hardware etc.
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  300  // how often to measure, in tenths of seconds
-#define SCHEDULER_DELAY 100 //ms
-#define UI_DELAY        10000
-#define UI_IDLE         2000  // tenths of seconds idle time, ...
-#define UI_STDBY        4000  // ms
+#define UI_IDLE         3000  // tenths of seconds idle time, ...
+#define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
 
 
@@ -82,18 +81,16 @@ extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, PING, TASK_END };
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
+/* Scheduled tasks */
+enum { MEASURE, REPORT, PING };
+static word schedbuf[PING];
+Scheduler scheduler (schedbuf, PING);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-int tick = 0;
-int pos = 0;
-
 bool printSchedRunning()
 {
-	for (int i=0;i<TASK_END;i++) {
+	for (int i=0;i<PING;i++) {
 		Serial.print(i);
 		Serial.print(' ');
 		Serial.print(schedbuf[i]);
@@ -102,7 +99,7 @@ bool printSchedRunning()
 }
 bool schedRunning()
 {
-	for (int i=0;i<TASK_END;i++) {/*
+	for (int i=0;i<PING;i++) {/*
 		Serial.print(i);
 		Serial.print(' ');
 		Serial.print(schedbuf[i]);
@@ -113,6 +110,9 @@ bool schedRunning()
 	}
 	return false;
 }
+
+int tick = 0;
+int pos = 0;
 
 volatile bool ui_irq;
 
@@ -337,6 +337,10 @@ void start_ui()
 void runScheduler(char task)
 {
 	switch (task) {
+		//case WAKE:
+		//	ui = true;
+		//	scheduler.timer(IDLE, IDLE_DELAY);
+		//	break;
 		case MEASURE:
 			debug("MEASURE");
 			//printSchedRunning();
@@ -359,16 +363,14 @@ void runScheduler(char task)
 			debug("PING");
 			serialFlush();
 			break;
-		case TASK_END:
-			debug("TASK_END");
-			serialFlush();
-			break;
 		case 0xFF:
 			Serial.print("!");
 			serialFlush();
 			break;
 		default:
-			Serial.print("?");
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
 			serialFlush();
 			break;
 	}
@@ -378,6 +380,7 @@ static void reset(void)
 {
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);
+	pinMode(ledPin, OUTPUT);
 	pinMode(backlightPin, OUTPUT);
 	digitalWrite(backlightPin, LOW);
 	ui_irq = false;
@@ -392,6 +395,22 @@ void debug_task(char task) {
 			Serial.print('w');
 		}
 	//}
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
 }
 
 #if SERIAL
@@ -443,8 +462,8 @@ void setup(void)
 {
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
-	delay(500);
 	serialFlush();
+	delay(500);
 	reset();
 	attachInterrupt(INT0, irq0, RISING);
 	ui_irq = true;
@@ -455,18 +474,7 @@ void loop(void)
 	if (ui_irq) {
 		start_ui();
 	}
-#if DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
+	debug_ticks();
 	char task = scheduler.poll();
 	debug_task(task);
 	if (0 < task && task < 0xFF) {

@@ -1,3 +1,6 @@
+/*
+   BlinkNodelayArduino - use millis for non-blocking blink
+*/
 int blinkPin = 2;
 int blinkCount = 1;
 int blinkDelay = 1000;
