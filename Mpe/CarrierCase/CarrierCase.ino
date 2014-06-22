@@ -1,7 +1,3 @@
-/*
-CarrierCase
-
-- Generally based on roomNode, probably can be made compatible with other environmental sensor nodes.
 - Two moisture probes.
 - Later to have shift register and analog switchting for mre inputs, perhaps.
   Make SDA/SCL free for I2C or other bus?
@@ -97,26 +93,32 @@ ToDo
 							
 #define RADIO_SYNC_MODE 2
 							
-#define _MEM            1
-#define _BAT            1
+#define _MEM            1   // Report free memory 
+#define _RF12LOBAT      1   // Use JeeNode lowbat measurement
 #define _DHT            1
-#define DHT_PIN         7   // defined if DHTxx data is connected to a DIO pin
+#define DHT_PIN         7   // DIO for DHTxx
 #define _DS             1
 #define DS_PIN          A5
 #define DEBUG_DS        1
 //#define FIND_DS    1
 #define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT        1
-
+#define MAXLENLINE      12
+							
 
 static String sketch = "CarrierCase";
-static String node = "";
 static String version = "0";
+
+static String node = "";
+
+int pos = 0;
 
 // The scheduler makes it easy to perform various tasks at various times:
 enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
+
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
+
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
@@ -154,7 +156,6 @@ Port ldr (LDR_PORT);
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
 
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
-
 #endif
 
 /* Report variables */
@@ -180,18 +181,70 @@ struct {
 #if _MEM
 	int memfree     :16;
 #endif
-#if _BAT
+#if _RF12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
 /** Generic routines */
 
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
+
+void blink(int led, int count, int length) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+	}
+}
+
+static void showNibble (byte nibble) {
+	char c = '0' + (nibble & 0x0F);
+	if (c > '9')
+		c += 7;
+	Serial.print(c);
+}
+
+bool useHex = 0;
+
+static void showByte (byte value) {
+	if (useHex) {
+		showNibble(value >> 4);
+		showNibble(value);
+	} else {
+		Serial.print((int) value);
+	}
+}
+
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+// spend a little time in power down mode while the SHT11 does a measurement
+static void lpDelay () {
+	Sleepy::loseSomeTime(32); // must wait at least 20 ms
+}
+
+/** AVR routines */
+
 int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+/** Atmega routines */
 
 double internalTemp(void)
 {
@@ -331,9 +384,9 @@ static bool waitForAck() {
         }
     };
 
-
 PIR pir (PIR_PORT);
 
+// the PIR signal comes in via a pin-change interrupt
 ISR(PCINT2_vect) { pir.poll(); }
 
 // send packet and wait for ack when there is a motion trigger
@@ -374,56 +427,6 @@ static void doTrigger() {
     #endif
 }
 #endif
-
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-  }
-}
-
-static void showNibble (byte nibble) {
-	char c = '0' + (nibble & 0x0F);
-	if (c > '9')
-		c += 7;
-	Serial.print(c);
-}
-
-bool useHex = 0;
-
-static void showByte (byte value) {
-	if (useHex) {
-		showNibble(value >> 4);
-		showNibble(value);
-	} else {
-		Serial.print((int) value);
-	}
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-// spend a little time in power down mode while the SHT11 does a measurement
-static void lpDelay () {
-	Sleepy::loseSomeTime(32); // must wait at least 20 ms
-}
 
 
 // XXX: just an example, not actually used 
@@ -472,6 +475,8 @@ static void writeConfig() {
 }
 
 #if _DS
+/* Dallas DS18B20 thermometer */
+
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -486,17 +491,17 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	// we might do a ds.depower() here, but the reset will take care of it.
 
 	present = ds.reset();
-	ds.select(addr);    
+	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
-#if DEBUG_DS
+#if SERIAL && DEBUG_DS
 	Serial.print(F("Data="));
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
 	for ( i = 0; i < 9; i++) {           // we need 9 bytes
 		data[i] = ds.read();
-#if DEBUG_DS
+#if SERIAL && DEBUG_DS
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(data[i], HEX);
@@ -606,7 +611,7 @@ static void findDS18B20s(void) {
 	byte addr[8];
 
 	if (!ds.search(addr)) {
-#if DEBUG || DEBUG_DS
+#if SERIAL && DEBUG_DS
 		Serial.println("No more addresses.");
 #endif
 		ds.reset_search();
@@ -648,70 +653,7 @@ static void findDS18B20s(void) {
 	writeDSAddr(addr);
 }
 
-/*
 
-static byte* findDS(bool do_read=false) {
-	byte i;
-	byte data[8];
-	byte addr[8];
-	int SignBit;
-
-	if ( !ds.search(addr)) {
-#if DEBUG
-		Serial.println("No more addresses.");
-#endif
-		ds.reset_search();
-		return;
-	}
-
-#if DEBUG
-	Serial.print("Address=");
-	for( i = 0; i < 8; i++) {
-		Serial.print(i);
-		Serial.print(':');
-		Serial.print(addr[i], HEX);
-		Serial.print(" ");
-	}
-#endif
-
-	if ( OneWire::crc8( addr, 7) != addr[7]) {
-#if DEBUG
-		Serial.println("CRC is not valid!");
-#endif
-		return;
-	}
-
-#if DEBUG
-	if ( addr[0] == 0x10) {
-		Serial.println("Device is a DS18S20 family device.");
-	}
-	else if ( addr[0] == 0x28) {
-		Serial.println("Device is a DS18B20 family device.");
-	}
-	else {
-		Serial.print("Device family is not recognized: 0x");
-		Serial.println(addr[0],HEX);
-		return;
-	}
-#endif
-
-//	ds_count += 1;
-//	ds_addr[ds_count] = addr;
-
-	if (!do_read)
-		return;
-
-	int result = ds_readdata(addr, data);	
-
-	if (do_read)
-		return;// result;
-	
-	if (result != 0) {
-		Serial.println("CRC error in ds_readdata");
-		return;
-	}
-}
-*/
 
 #endif // _DS
 
@@ -772,10 +714,6 @@ static void doConfig(void)
 		}
 		decoder.reset();
 	}
-}
-
-void setup_peripherals()
-{
 }
 
 static bool doAnnounce()
@@ -908,6 +846,9 @@ static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
+	int ctemp = internalTemp();
+	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+
 #if _DS
 	uint8_t addr[8];
 	for ( int i = 0; i < ds_count; i++) {
@@ -916,10 +857,13 @@ static void doMeasure()
 	}
 #endif
 
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
-
-#if _BAT
+#if _RF12LOBAT
 	payload.lobat = rf12_lowbat();
+#if SERIAL && DEBUG_MEASURE
+	if (payload.lobat) {
+		Serial.println("Low battery");
+	}
+#endif
 #endif
 
 #if PIR_PORT
@@ -1012,12 +956,12 @@ static void doReport(void)
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
 #endif
-#if _BAT
+#if _RF12LOBAT
 	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
 	serialFlush();
-#endif//SERIAL
+#endif // SERIAL || DEBUG
 }
 
 static void runCommand()
@@ -1100,13 +1044,10 @@ void setup(void)
 	}
 #endif
 	Serial.println();
-	setup_peripherals();
 	serialFlush();
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, 0);
 }
-
-int col = 0;
 
 void loop(void)
 {
@@ -1122,10 +1063,10 @@ void loop(void)
 #endif
 
 #if DEBUG
-	col++;
+	pos++;
 	Serial.print('.');
-	if (col > 79) {
-		col = 0;
+	if (pos > MAXLENLINE) {
+		pos = 0;
 		Serial.println();
 	}
 	serialFlush();

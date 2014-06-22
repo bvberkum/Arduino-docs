@@ -37,11 +37,9 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
-ifneq ($(shell uname),"Linux")
-PORT := /dev/tty.usbserial-A900TTH0
-else
-PORT := /dev/ttyUSB0
-endif
+PORTS := /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0
+PORT := $(wildcard $(PORTS))
+$(info PORT = $(PORT))
 
 listen: D := $(PORT)
 listen: B := 57600
@@ -758,13 +756,13 @@ soarer: X := -D -v
 soarer: _upload
 
 jeedht: C := m328p
-jeedht: P := Mpe/DHT11Test/JeeLibDHT/
-jeedht: I := Mpe/DHT11Test/JeeLibDHT/JeeLibDHT.hex
+jeedht: P := Mpe/Prototype/DHTTest/JeeLibDHT/
+jeedht: I := Mpe/Prototype/DHTTest/JeeLibDHT/JeeLibDHT.hex
 jeedht: jeenode upload
 
 adadht: C := m328p
-adadht: P := Mpe/DHT11Test/AdafruitDHT/
-adadht: I := Mpe/DHT11Test/AdafruitDHT/AdafruitDHT.hex
+adadht: P := Mpe/Prototype/DHTTest/AdafruitDHT/
+adadht: I := Mpe/Prototype/DHTTest/AdafruitDHT/AdafruitDHT.hex
 adadht: jeenode upload
 
 pcdthermotest: C := m328p
@@ -788,6 +786,11 @@ dstbus: X := -B3
 dstbus: P := Mpe/Prototype/DallasTempBus/
 dstbus: I := Mpe/Prototype/DallasTempBus/DallasTempBus.hex
 dstbus: arduino _upload
+
+lcd5110: C := m328p
+lcd5110: P := Mpe/Prototype/Lcd84x48/
+lcd5110: I := Mpe/Prototype/Lcd84x48/Lcd84x48.hex
+lcd5110: jeenode upload
 
 log5110: C := m328p
 log5110: P := Mpe/Prototype/LogReader84x48/

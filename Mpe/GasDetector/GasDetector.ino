@@ -18,30 +18,33 @@
 #include <EEPROM.h>
 // include EEPROMEx.h
 
-#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
 #define DEBUG_DS   0
 
-#define SERIAL  1   // set to 1 to enable serial interface
+#define _MEM            1   // Report free memory 
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 //#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 //#define DS  8
 //#define MQ4
-#define _MEM 0
 #define LED 11
 #define _BAT 0
 #define _VCC 1
-
+							
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+							
+
+String node_id = "";
 
 
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
-
-String node_id = "";
 
 #if DS
 /* Dallas bus for DS18S20 temperature */
@@ -72,7 +75,21 @@ enum { PREHEAT, HEAT, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
 // Other variables used in various places in the code:
+
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if DHT_PIN
+DHTxx dht (DHT_PIN); // JeeLib DHT
+#endif
+
+/* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
 //static byte myNodeID;       // node ID used for this unit
@@ -101,44 +118,10 @@ struct {
 #endif
 } payload;
 
-#if LDR_PORT
-Port ldr (LDR_PORT);
-#endif
+/** AVR routines */
 
-#if DHT_PIN
-DHTxx dht (DHT_PIN);
-#endif
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-static void serialFlush () {
-#if ARDUINO >= 100
-	Serial.flush();
-#endif  
-	delay(2); // make sure tx buf is empty before going back to sleep
-}
-
-void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-  }
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-// spend a little time in power down mode while the SHT11 does a measurement
-static void lpDelay () {
-	Sleepy::loseSomeTime(32); // must wait at least 20 ms
-}
+/** ATmega routines */
 
 double internalTemp(void)
 {
@@ -169,6 +152,38 @@ double internalTemp(void)
 
 	// The returned temperature is in degrees Celcius.
 	return (t);
+}
+
+/** Generic routines */
+
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
+
+void blink(int led, int count, int length) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+	}
+}
+
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+// spend a little time in power down mode while the SHT11 does a measurement
+static void lpDelay () {
+	Sleepy::loseSomeTime(32); // must wait at least 20 ms
 }
 
 #if DS
@@ -351,7 +366,7 @@ static void doConfig()
 {
 }
 
-static bool doAnnounce() 
+static bool doAnnounce()
 {
 	Serial.print("[");
 	Serial.print(node_id);
@@ -500,11 +515,7 @@ void serialEvent() {
 	}
 }
 
-/*
-  *
-  * Main
-  *
-   */
+/* Main */
 
 void setup()
 {
@@ -562,7 +573,8 @@ void setup()
 	pinMode(VccADC, INPUT);
 }
 
-void loop(){
+void loop(void)
+{
 	//doMeasure();
 	//doReport();
 	//delay(200);

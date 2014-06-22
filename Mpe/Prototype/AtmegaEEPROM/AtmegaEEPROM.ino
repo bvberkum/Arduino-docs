@@ -2,18 +2,30 @@
 Atmega EEPROM routines */
 #include <OneWire.h>
 
-#define DEBUG       1 /* Enable trace statements */
-#define SERIAL      1 /* Enable serial */
 
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
 
+static String sketch = "AdafruitDHT";
 static String sketch = "X-AtmegaEEPROM";
 static String vesion = "0";
+
+static int pos = 0;
+
+String inputstring = "";         // a string to hold incoming data
+
+MpeSerial mpeser (57600);
+
 
 /* Atmega EEPROM stuff */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
+
+/** Generic routines */
 
 static void serialFlush () {
 #if SERIAL
@@ -24,12 +36,10 @@ static void serialFlush () {
 #endif
 }
 
-string inputstring = "";         // a string to hold incoming data
-
-void serialevent() {
-	while (serial.available()) {
+void serialEvent() {
+	while (Serial.available()) {
 		// get the new byte:
-		char inchar = (char)serial.read(); 
+		char inchar = (char)Serial.read(); 
 		// add it to the inputstring:
 		if (inchar == '\n') {
 			inputstring = "";
@@ -44,29 +54,23 @@ void serialevent() {
 }
 
 
-void setup()
+
+/* Main */
+
+void setup(void)
 {
-#if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
-#endif
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
 	serialFlush();
 }
 
-int col = 0;
-
 void loop(void)
 {
-#if DEBUG
-	col++;
+#if SERIAL && DEBUG
+	pos++;
 	Serial.print('.');
-	if (col > 79) {
-		col = 0;
+	if (pos > MAXLENLINE) {
+		pos = 0;
 		Serial.println();
 	}
 	serialFlush();

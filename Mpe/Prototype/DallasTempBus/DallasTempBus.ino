@@ -1,18 +1,26 @@
 /* Dallas OneWire Temperature Bus with autodetect and eeprom config */
 #include <OneWire.h>
 
-#define DEBUG       1 /* Enable trace statements */
-#define SERIAL      1 /* Enable serial */
-#define DS          8
-#define DEBUG_DS    1
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
+#define _MEM            1   // Report free memory 
+#define _DS             1
+#define DS_PIN          8
+#define DEBUG_DS        1
 //#define FIND_DS    1
-
+#define MAXLENLINE      12
+							
 
 static String sketch = "X-DallasTempBus";
-static String vesion = "0";
+static String version = "0";
 
+int pos = 0;
+
+#if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-OneWire ds(DS);
+OneWire ds(DS_PIN);
 
 uint8_t ds_count = 0;
 uint8_t ds_search = 0;
@@ -24,12 +32,10 @@ uint8_t ds_search = 0;
 //	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
 //	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
 //};
-#if DEBUG_DS
-//volatile int ds_value[8]; // take on 8 DS sensors in report
-//volatile int ds_value[ds_count];
-#endif
 enum { DS_OK, DS_ERR_CRC };
+#endif
 
+/** Generic routines */
 
 static void serialFlush () {
 #if SERIAL
@@ -41,6 +47,7 @@ static void serialFlush () {
 }
 
 /* Dallas DS18B20 thermometer */
+#if _DS
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -57,7 +64,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0xBE);         // Read Scratchpad
 
 #if SERIAL && DEBUG_DS
-	Serial.print("Data=");
+	Serial.print(F("Data="));
 	Serial.print(present,HEX);
 	Serial.print(" ");
 #endif
@@ -110,7 +117,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	
 	if (result != DS_OK) {
 #if SERIAL
-		Serial.println("CRC error in ds_readdata");
+		Serial.println(F("CRC error in ds_readdata"));
 		serialFlush();
 #endif
 		return 32767;
@@ -159,7 +166,7 @@ static void printDS18B20s(void) {
 	byte addr[8];
 	int SignBit;
 
-	if ( !ds.search(addr)) {
+	if (!ds.search(addr)) {
 #if SERIAL && DEBUG_DS
 		Serial.println("No more addresses.");
 #endif
@@ -233,17 +240,34 @@ static void printDS18B20s(void) {
 #endif
 }
 
-void setup()
+static void doConfig(void)
 {
-#if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
-#endif
+}
+
+static bool doAnnounce()
+{
+}
+
+static void doMeasure()
+{
+}
+
+// periodic report, i.e. send out a packet and optionally report on serial port
+static void doReport(void)
+{
+}
+
+static void runCommand()
+{
+}
+
+
+/* Main */
+
+void setup(void)
+{
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
 #if FIND_DS
 	printDS18B20s();
 #endif
@@ -257,11 +281,9 @@ void setup()
 	serialFlush();
 }
 
-int col = 0;
-
 void loop(void)
 {
-#if DS
+#if _DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {
 		if (ds_reset) {
@@ -276,10 +298,10 @@ void loop(void)
 	doReport();
 
 #if DEBUG
-	col++;
+	pos++;
 	Serial.print('.');
-	if (col > 79) {
-		col = 0;
+	if (pos > MAXLENLINE) {
+		pos = 0;
 		Serial.println();
 	}
 	serialFlush();

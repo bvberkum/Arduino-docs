@@ -18,12 +18,20 @@
 #define WRITE_RESULT void
 #endif
 
+struct SerMsg {
+	byte type;
+	byte value;
+};
+
 class MpeSerial
 {
 public:
 	MpeSerial(word speed);
-	void begin(String sketch, String version);
+	void begin(void);
+	void startAnnounce(String sketch, String version);
 	void read(void);
+	void readHandshake(SerMsg &msg);
+	void readHandshakeWaiting(SerMsg &msg, int wait);
 	//void setCallback(void (*midiInCallback)(MidiMessage));
 private:
 protected:

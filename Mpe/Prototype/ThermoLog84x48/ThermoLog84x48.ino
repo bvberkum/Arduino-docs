@@ -1,5 +1,7 @@
 
 /*
+ - Experimenting with Scheduler vs. MilliTimer.
+ - Running key-scan code, interrupts.	
  */
 
 // Definition of interrupt names
@@ -19,6 +21,7 @@
 #define SERIAL          1 /* Enable serial */
 							
 #define REPORT_EVERY    5   // report every N measurement cycles
+#define IDLE_DELAY      50  // 
 #define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
 							
 #define _MEM            1
@@ -33,13 +36,12 @@ static const byte backlightPin = 9;
 static const byte sensorPin = A3;
 static const byte ledPin = 13;
 
-
 MpeSerial mpeser (57600);
 
 /* Scheduled tasks */
-enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, TASK_END };
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
+enum { WAKE, IDLE, STDBY, POWERDOWN, MEASURE, REPORT };
+static word schedbuf[REPORT];
+Scheduler scheduler (schedbuf, REPORT);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
@@ -81,13 +83,15 @@ struct {
 #endif
 } payload;
 
-/** Generic routines */
+/** AVR routines */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+/** ATmega routines */
 
 double internalTemp(void)
 {
@@ -120,6 +124,8 @@ double internalTemp(void)
 	return (t);
 }
 
+/** Generic routines */
+
 static void serialFlush () {
 #if SERIAL
 #if ARDUINO >= 100
@@ -129,13 +135,13 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-  }
+void blink (int led, int count, int length) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+	}
 }
 
 static void showNibble (byte nibble) {
@@ -156,10 +162,25 @@ static void showByte (byte value) {
 	}
 }
 
+volatile bool ui_irq;
+
+//ISR(INT0_vect) 
+void irq0()
+{
+	ui_irq = true;
+	//Sleepy::watchdogInterrupts(0);
+}
+
+static bool doAnnounce()
+{
+}
+
 static void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
-	payload.ctemp = internalTemp();
+
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+
 #if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
@@ -193,7 +214,12 @@ static void doMeasure()
 
 #if _MEM
 	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
 #endif
+#endif
+
 	serialFlush();
 }
 
@@ -219,26 +245,8 @@ static void doReport(void)
 #endif//SERIAL
 }
 
-
-volatile bool ui_irq;
-
-//ISR(INT0_vect) 
-void irq0()
+void lcd_start() 
 {
-	ui_irq = true;
-	Sleepy::watchdogInterrupts(0);
-}
-
-
-/* Main */
-
-void setup(void)
-{
-	mpeser.begin(sketch, version);
-	serialFlush();
-	attachInterrupt(INT0, irq0, RISING);
-	scheduler.timer(MEASURE, 0);
-
 	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
 
 	// Register the custom symbol...
@@ -250,38 +258,143 @@ void setup(void)
 //    lcd.send( LOW, 0x0C );  // LCD in normal mode.
 	lcd.send( LOW, 0x20 );  // LCD Extended Commands toggle off
 
-	pinMode(ledPin, OUTPUT);
-	pinMode(sensorPin, INPUT);
-
-	dht.begin();
-
 	pinMode(backlightPin, OUTPUT);
 	analogWrite(backlightPin, 0xaf);
 }
 
-void loop(void)
+void lcd_printDHT()
 {
-	switch (scheduler.pollWaiting()) {
+	lcd.setCursor(12, 2);
+	lcd.print((float)payload.temp/10, 1);
+	lcd.print("\001C ");
+	lcd.setCursor(LCD_WIDTH/1.5, 2);
+	lcd.print(payload.rhum, 1);
+	lcd.print("%");
+}
+
+/* Button detect using PCINT for ADC port */
+void buttons_start()
+{
+	pinMode(A0, INPUT);	   // Pin A0 is input to which a switch is connected
+	digitalWrite(A0, LOW);   // Configure internal pull-up resistor
+	pinMode(A1, INPUT);	   // Pin A1 is input to which a switch is connected
+	digitalWrite(A1, LOW);   // Configure internal pull-up resistor
+	pinMode(A2, INPUT);	   // Pin A2 is input to which a switch is connected
+	digitalWrite(A2, LOW);   // Configure internal pull-up resistor
+
+	cli();		// switch interrupts off while messing with their settings  
+	PCICR = 0x02;          // Enable PCINT1 interrupt
+	PCMSK1 = 0b00000111;
+	sei();		// turn interrupts back on
+}
+
+ISR(PCINT1_vect) {
+	// Interrupt service routine. Every single PCINT8..14 (=ADC0..5) change
+	// will generate an interrupt: but this will always be the
+	// same interrupt routine
+	if (digitalRead(A0) == 1)  Serial.println("A0");
+	else if (digitalRead(A1) == 1)  Serial.println("A1");
+	else if (digitalRead(A2) == 1)  Serial.println("A2");
+}
+
+/* Main */
+
+void setup(void)
+{
+	mpeser.begin();
+	pinMode(ledPin, OUTPUT);
+	dht.begin();
+	lcd_start();
+	buttons_start();
+	serialFlush();
+	attachInterrupt(INT0, irq0, RISING);
+	scheduler.timer(MEASURE, 0);
+}
+
+MilliTimer debounce, timer1, timer2;
+
+bool ui;
+
+void loop(void)
+{/*
+	if (timer1.poll(5000)) {
+		scheduler.cancel(MEASURE);
+		Serial.println("cancel");
+	} else if (timer2.poll(7000)) {
+		scheduler.timer(MEASURE, 0);
+		Serial.println("schedule");
+	}
+	*/
+		
+	mpeser.startAnnounce(sketch, version);
+	if (ui_irq) {
+		//schedule.timer(WAKE, 0)
+		debounce.set(100);
+	}
+	if (debounce.poll()) {
+		ui_irq = false;
+	}
+	//if (ui) {
+	//	noInterrupts();
+	//	interrupts()
+	//} else {
+	char x = scheduler.poll();
+	switch (x) {
+		case WAKE:
+			ui = true;
+			scheduler.timer(IDLE, IDLE_DELAY);
+			break;
 		case MEASURE:
+#if DEBUG
+			Serial.println("MEASURE");
+#endif
 			blink(ledPin, 1, 15);
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
-			lcd.setCursor(12, 0);
-			lcd.print((float)payload.temp/10, 1);
-			lcd.print("\001C ");
-			lcd.setCursor(LCD_WIDTH/1.5, 0);
-			lcd.print(payload.rhum, 1);
-			lcd.print("%");
-			//if (++reportCount >= REPORT_EVERY) {
-			//	reportCount = 0;
-			//	scheduler.timer(REPORT, 0);
-			//}
+			lcd_printDHT();
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
 			serialFlush();
 			break;
 		case REPORT:
+#if DEBUG
+			Serial.println("REPORT");
+#endif
+			break;
+		case STDBY:
+#if DEBUG
+			Serial.println("STDBY");
+#endif
+			break;
+		case POWERDOWN:
+#if DEBUG
+			Serial.println("POWERDOWN");
+#endif
+			break;
+		case -1: // waiting
+			Serial.println('&');
+			serialFlush();
+			delay(100);
+			break;
+		case -2: // nothing
+			Serial.println('.');
+			//Sleepy::loseSomeTime(MEASURE_PERIOD);
+			serialFlush();
+			delay(100);
+			break;
+			/**/
+		case 0xFF: //Scheduler keeps returning this, not sure why
 			break;
 		default:
-			//Sleepy::loseSomeTime(MEASURE_PERIOD);
+			Serial.print("0x");
+			Serial.print(x, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			Sleepy::loseSomeTime(1500);
+			//delay(4000);
 			break;
 	}
+	//}
 }

@@ -15,30 +15,35 @@
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
-#define SERIAL  0   // set to 1 to also report readings on the serial port
-#define DEBUG   0   // set to 1 to display each loop() run and PIR trigger
-
-#define SHT11_PORT  1   // defined if SHT11 is connected to a port
-#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-#define PIR_PORT    4   // defined if PIR is connected to a port's DIO pin
-
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          3   // smoothing factor used for running averages
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
+							
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          3   // smoothing factor used for running averages
-
+							
 // set the sync mode to 2 if the fuses are still the Arduino default
 // mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
+							
+#define SHT11_PORT      1   // defined if SHT11 is connected to a port
+#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
+#define PIR_PORT        4   // defined if PIR is connected to a port's DIO pin
+							
 
 // The scheduler makes it easy to perform various tasks at various times:
-
 enum { MEASURE, REPORT, TASK_END };
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 // Other variables used in various places in the code:
 
@@ -48,12 +53,34 @@ static byte myNodeID;       // node ID used for this unit
 // This defines the structure of the packets which get sent out by wireless:
 
 struct {
-    byte light;     // light sensor: 0..255
-    byte moved :1;  // motion detector: 0..1
-    byte humi  :7;  // humidity: 0..100
-    int temp   :10; // temperature: -500..+500 (tenths)
-    byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
+	byte light;     // light sensor: 0..255
+	byte moved :1;  // motion detector: 0..1
+	byte humi  :7;  // humidity: 0..100
+	int temp   :10; // temperature: -500..+500 (tenths)
+	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
 } payload;
+
+/** Generic routines */
+
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
+
+void blink(int led, int count, int length) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+	}
+}
+
+
 
 // Conditional code, depending on which sensors are connected and how:
 
@@ -109,14 +136,11 @@ struct {
         }
     };
 
-    PIR pir (PIR_PORT);
+PIR pir (PIR_PORT);
 
-    // the PIR signal comes in via a pin-change interrupt
-    ISR(PCINT2_vect) { pir.poll(); }
+// the PIR signal comes in via a pin-change interrupt
+ISR(PCINT2_vect) { pir.poll(); }
 #endif
-
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
@@ -173,13 +197,6 @@ static void doMeasure() {
     #if PIR_PORT
         payload.moved = pir.state();
     #endif
-}
-
-static void serialFlush () {
-    #if ARDUINO >= 100
-        Serial.flush();
-    #endif  
-    delay(2); // make sure tx buf is empty before going back to sleep
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -242,14 +259,11 @@ static void doTrigger() {
     #endif
 }
 
-void blink (byte pin) {
-    for (byte i = 0; i < 6; ++i) {
-        delay(100);
-        digitalWrite(pin, !digitalRead(pin));
-    }
-}
 
-void setup () {
+/* Main */
+
+void setup(void)
+{
     #if SERIAL || DEBUG
         Serial.begin(57600);
         Serial.print("\n[roomNode.3]");
@@ -275,7 +289,8 @@ void setup () {
     scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
-void loop () {
+void loop(void)
+{
     #if DEBUG
         Serial.print('.');
         serialFlush();
