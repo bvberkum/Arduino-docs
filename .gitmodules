@@ -19,3 +19,6 @@
 [submodule "libraries/EmBencode"]
 	path = libraries/EmBencode
 	url = git@github.com:jcw/embencode.git
+[submodule "libraries/JeeLib"]
+	path = libraries/JeeLib
+	url = git@github.com:jcw/jeelib.git

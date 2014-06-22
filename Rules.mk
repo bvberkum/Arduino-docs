@@ -11,6 +11,23 @@ include Rules.new.mk
 endif
 include Rules.attiny.mk
 
+arduinodir-libraries-relink::
+	echo find arduinodir/libraries -type l -exec rm {} +
+	for f in libraries/*; do \
+		F=$$(basename $$f); \
+		T=$$(realpath arduinodir/libraries)/$$F; \
+		[ -e "$$T" ] && [ -L "$$T" ] && { \
+			rm -v $$T; \
+		} || { \
+			echo -n; \
+		};\
+		[ ! -e "$$T" ] && { \
+			ln -sv $$(pwd -P)/$$f $$T; \
+		} || { \
+			echo -n; \
+		};\
+	done
+
 #
 #DIR                 := $/mydir
 #include                $(call rules,$(DIR)/)
