@@ -3,6 +3,7 @@
 	AdafruitDHT 
 	based on 
 		- ThermoLog84x48 but doesnt use Lcd84x48
+		- AtmegaEEPROM
 
 #include <DotmpeLib.h>
 #include <JeeLib.h>
@@ -239,7 +240,7 @@ static bool doAnnounce()
 	//serialFlush();
 
 	//return false;
-#endif // SERIAL 
+#endif // SERIAL && DEBUG
 }
 
 static void doMeasure()
@@ -375,12 +376,14 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
+#if DEBUG
 		default:
 			Serial.print("0x");
 			Serial.print(task, HEX);
 			Serial.println(" ?");
 			serialFlush();
 			break;
+#endif
 
 	}
 }
@@ -396,7 +399,7 @@ static void reset(void)
 
 void debug_ticks(void)
 {
-#if DEBUG
+#if SERIAL && DEBUG
 	tick++;
 	if ((tick % 20) == 0) {
 		Serial.print('.');

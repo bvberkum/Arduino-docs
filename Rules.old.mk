@@ -802,6 +802,11 @@ thermo5110: P := Mpe/Prototype/ThermoLog84x48/
 thermo5110: I := Mpe/Prototype/ThermoLog84x48/ThermoLog84x48.hex
 thermo5110: jeenode upload
 
+eeprom: C := m328p
+eeprom: P := Mpe/Prototype/AtmegaEEPROM/
+eeprom: I := Mpe/Prototype/AtmegaEEPROM/AtmegaEEPROM.hex
+eeprom: jeenode upload
+
 # Leonardo mega32u4 / teensy 2.0?
 
 
