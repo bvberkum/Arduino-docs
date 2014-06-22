@@ -1,17 +1,42 @@
 /*
 
-Features
+=Features
 - Using Nokia 5110 display board and Arduino pro mini clone.
 - Using to about 30mA with background fully lit.
 - Low-power about 60 to 70 uA in standby mode.
 
-ToDo
-- Investigate hardware for external interrupts.
+=ToDo
+- Start using a simple statemachine to enter into different power/function
+  states.
+- Investigate hardware for external interrupts. Standard specs do not seem to
+  allow an wake-up from power-off using serial, but look at TWI address-match.
 - Watchdog wakeup could use abit of work to do better scheduling.
 - LCD dims when idle mode kicks in, would like to elaborate using an LDR or
   photov. cel.
 
 2014-06-22 Started
+
+=Description
+Using the scheduler pollWaiting there is a continious measure and report tasks
+cycle running using minimal power. This follows JeeLab's roomNode low power
+sensor node and JeeLib. 
+
+During low power, only INT0 or INT1, WDT, and TWI address-match events will wake
+the Atmega. In this mode, loop halts at scheduler.pollWaiting where the
+scheduler uses the WDT to wake up at some remote time.
+
+One switch generates a RISING event for INTO, making the next loop enter into
+high power mode with no delays. This enables waiting for other serial and button
+events, starts up the LCD and the backlight.
+
+Successive states can trim power-usage a bit in this active mode. Current code uses an
+idle timer (that should be reset on ui/serial events), 
+which on timeout sets a second timer stdby 
+which finally on timeout will turn off the UI mode making next loop return to the
+pollWaiting routines.
+
+During the idle and stdby timers various schemes are possible, 
+depends on the used hardware etc.
 
 */
 // Definition of interrupt names
@@ -23,6 +48,7 @@ ToDo
 #include <JeeLib.h>
 #include <OneWire.h>
 #include <PCD8544.h>
+#include <printf.h>
 
 
 /** Globals and sketch configuration  */
@@ -33,11 +59,11 @@ ToDo
 							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  300  // how often to measure, in tenths of seconds
 #define SCHEDULER_DELAY 100 //ms
 #define UI_DELAY        10000
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
+#define UI_IDLE         2000  // tenths of seconds idle time, ...
+#define UI_STDBY        4000  // ms
 #define MAXLENLINE      79
 
 
@@ -56,7 +82,7 @@ extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, TASK_END };
+enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, PING, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 // has to be defined because we're using the watchdog for low-power waiting
@@ -65,6 +91,15 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 int tick = 0;
 int pos = 0;
 
+bool printSchedRunning()
+{
+	for (int i=0;i<TASK_END;i++) {
+		Serial.print(i);
+		Serial.print(' ');
+		Serial.print(schedbuf[i]);
+		Serial.println();
+	}
+}
 bool schedRunning()
 {
 	for (int i=0;i<TASK_END;i++) {/*
@@ -268,13 +303,46 @@ void lcd_start()
 	analogWrite(backlightPin, 0xaf);
 }
 
-
-void runScheduler()
+void lcd_printWelcome(void)
 {
-	switch (scheduler.pollWaiting()) {
+	lcd.setCursor(6, 0);
+	lcd.print(node);
+	lcd.setCursor(0, 5);
+	lcd.print(sketch);
+}
+
+void lcd_printTicks(void)
+{
+	lcd.setCursor(30, 2);
+	lcd.print(tick);
+	lcd.setCursor(0, 3);
+	lcd.print(idle.remaining());
+	lcd.setCursor(42, 3);
+	lcd.print(stdby.remaining());
+}
+
+void start_ui() 
+{
+	debug("Irq");
+	ui_irq = false;
+	idle.set(UI_IDLE);
+	if (!ui) {
+		ui = true;
+		digitalWrite(backlightPin, HIGH);
+		lcd_start();
+		lcd_printWelcome();
+	}
+}
+
+void runScheduler(char task)
+{
+	switch (task) {
 		case MEASURE:
 			debug("MEASURE");
+			//printSchedRunning();
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			scheduler.timer(PING, 10);
+			//printSchedRunning();
 			doMeasure();
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
@@ -287,7 +355,21 @@ void runScheduler()
 			doReport();
 			serialFlush();
 			break;
+		case PING:
+			debug("PING");
+			serialFlush();
+			break;
+		case TASK_END:
+			debug("TASK_END");
+			serialFlush();
+			break;
 		case 0xFF:
+			Serial.print("!");
+			serialFlush();
+			break;
+		default:
+			Serial.print("?");
+			serialFlush();
 			break;
 	}
 }
@@ -300,6 +382,16 @@ static void reset(void)
 	digitalWrite(backlightPin, LOW);
 	ui_irq = false;
 	tick = 0;
+}
+
+void debug_task(char task) {
+	//if ((tick % 20) == 0) {
+		if (task == -2) { // nothing running
+			Serial.print('n');
+		} else if (task == -1) { // waiting
+			Serial.print('w');
+		}
+	//}
 }
 
 #if SERIAL
@@ -360,17 +452,8 @@ void setup(void)
 
 void loop(void)
 {
-	if (ui_irq) { 
-		debug("Irq");
-		ui_irq = false;
-		ui = true;
-		idle.set(UI_IDLE);
-		digitalWrite(backlightPin, HIGH);
-		lcd_start();
-		lcd.setCursor(6, 0);
-		lcd.print(node);
-		lcd.setCursor(0, 5);
-		lcd.print(sketch);
+	if (ui_irq) {
+		start_ui();
 	}
 #if DEBUG
 	tick++;
@@ -384,7 +467,11 @@ void loop(void)
 	}
 	serialFlush();
 #endif
-	if (ui) {
+	char task = scheduler.poll();
+	debug_task(task);
+	if (0 < task && task < 0xFF) {
+		runScheduler(task);
+	} else if (ui) {
 		parser.poll();
 		if (idle.poll()) {
 			debug("Idle");
@@ -394,20 +481,23 @@ void loop(void)
 		} else if (stdby.poll()) {
 			debug("StdBy");
 			digitalWrite(backlightPin, LOW);
+			lcd.clear();
+			lcd.stop();
 			ui = false;
+		} else if (!stdby.idle()) {
+			// XXX toggle UI stdby Power, got to some lower power mode..
+			delay(30);
 		}
-		lcd.setCursor(12, 2);
-		lcd.print(tick);
+		lcd_printTicks();
 	} else {
 		blink(ledPin, 1, 15);
-		runScheduler();
-		if (!schedRunning()) {
-			debug("Sleep");
-			digitalWrite(backlightPin, LOW);
-			lcd.stop();
-			serialFlush();
-			Sleepy::loseSomeTime(10000);
-			debug("WakeUp");
+		debug("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debug("WakeUp");
+		debug_task(task);
+		if (0 < task && task < 0xFF) {
+			runScheduler(task);
 		}
 	}
 }

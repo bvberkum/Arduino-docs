@@ -44,7 +44,7 @@ Free pins
 //include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
 
-#include "printf.h"
+#include <printf.h>
 
 
 /** Globals and sketch configuration  */
