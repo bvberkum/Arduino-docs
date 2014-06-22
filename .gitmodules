@@ -16,3 +16,6 @@
 #[submodule "VirtualUsbKeyboard"]
 #	path = Misc/VirtualUsbKeyboard
 #	url = git://github.com/practicalarduino/VirtualUsbKeyboard.git
+[submodule "libraries/EmBencode"]
+	path = libraries/EmBencode
+	url = git@github.com:jcw/embencode.git
