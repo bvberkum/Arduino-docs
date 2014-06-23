@@ -28,6 +28,21 @@ WARNINGS = all extra
 ### Output directory
 OBJDIR = obj
 
+# default arduino software directory, check software exists
+ifndef ARDUINODIR
+ARDUINODIR := $(firstword $(wildcard ~/opt/arduino /usr/share/arduino))
+endif
+ifeq "$(wildcard $(ARDUINODIR)/hardware/arduino/boards.txt)" ""
+$(error ARDUINODIR is not set correctly; arduino software not found)
+endif
+
+# default path for avr tools
+ifndef AVRTOOLSPATH
+AVRTOOLSPATH := $(subst :, , $(PATH))
+AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
+AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin
+endif
+
 ### Output file format (hex, bin or both) and debugger type
 OUTPUT	= hex
 HEXFMT  = ihex
@@ -35,11 +50,12 @@ DEBUG	= dwarf-2
 
 
 ### Programs to build porject
-CC      = avr-gcc
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-SIZE    = avr-size
-NM      = avr-nm
+findsoftware = $(firstword $(wildcard $(addsuffix /$(1), $(AVRTOOLSPATH))))
+CC      = $(call findsoftware,avr-gcc)
+OBJCOPY = $(call findsoftware,avr-objcopy)
+OBJDUMP = $(call findsoftware,avr-objdump)
+SIZE    = $(call findsoftware,avr-size)
+NM      = $(call findsoftware,avr-nm)
 
 
 # Define all object files

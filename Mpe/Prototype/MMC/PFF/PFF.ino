@@ -1,7 +1,9 @@
 /*
 
-Have not compiled PFF yet with my toolchain,
-may need to setup avr-gcc first
+Have not compiled PFF yet with my toolchain.
+
+Some complaint about disk_readp definition.
+
 
 */
 

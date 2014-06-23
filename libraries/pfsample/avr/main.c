@@ -6,7 +6,6 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
-
 #include "diskio.h"
 #include "pff.h"
 #include "xitoa.h"
