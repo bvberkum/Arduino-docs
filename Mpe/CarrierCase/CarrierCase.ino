@@ -1,3 +1,7 @@
+/*
+CarrierCase
+
+- Generally based on roomNode, probably can be made compatible with other environmental sensor nodes.
 - Two moisture probes.
 - Later to have shift register and analog switchting for mre inputs, perhaps.
   Make SDA/SCL free for I2C or other bus?
@@ -714,7 +718,7 @@ static void doConfig(void)
 	}
 }
 
-void setup_peripherals()
+void setupLibs()
 {
 }
 
@@ -1009,7 +1013,7 @@ static void runCommand()
 
 static void reset(void)
 {
-	setup_peripherals();
+	setupLibs();
 	pinMode(ledPin, OUTPUT);
 	pinMode(backlightPin, OUTPUT);
 	digitalWrite(backlightPin, LOW);

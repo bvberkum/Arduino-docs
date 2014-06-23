@@ -4,6 +4,7 @@
 	based on 
 		- ThermoLog84x48 but doesnt use Lcd84x48
 		- AtmegaEEPROM
+*/
 
 #include <DotmpeLib.h>
 #include <JeeLib.h>
@@ -15,15 +16,16 @@
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 							
-#define _RFM12           1
+#define _RFM12          0
 #define _MEM            1   // Report free memory 
 #define _DHT            1
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
-#define _RFM12LOBAT      1   // Use JeeNode lowbat measurement
+#define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
 							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define STDBY_PERIOD    60
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
@@ -52,9 +54,13 @@ extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
 /* Scheduled tasks */
-enum { HANDSHAKE, MEASURE, REPORT, TASK_END };
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
+enum { HANDSHAKE, MEASURE, REPORT, STDBY };
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[STDBY];
+Scheduler scheduler (schedbuf, STDBY);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _DHT
@@ -93,7 +99,6 @@ struct {
 	int memfree :16;
 #endif
 #if _RFM12LOBAT
-	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
@@ -101,7 +106,7 @@ struct {
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
-	int v; 
+	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
@@ -194,14 +199,17 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
-void setup_peripherals()
+static void doConfig(void)
+{
+}
+
+void setupLibs()
 {
 #if _DHT
 	dht.begin();
 #endif
 
 #if _RFM12
-	rf12_initialize(1, RF12_868MHZ, 4);
 #endif
 }
 
@@ -222,7 +230,6 @@ static bool doAnnounce()
 	Serial.print("memfree ");
 #endif
 #if _RFM12LOBAT
-	Serial.print("lobat ");
 #endif
 	
 	serialFlush();
@@ -258,12 +265,6 @@ static void doMeasure()
 #endif
 
 #if _RFM12LOBAT
-	payload.lobat = rf12_lowbat();
-#if SERIAL && DEBUG_MEASURE
-	if (payload.lobat) {
-		Serial.println("Low battery");
-	}
-#endif
 #endif
 
 #if _DHT
@@ -309,14 +310,8 @@ static void doMeasure()
 // periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport(void)
 {
-#if _RFM12
-	rf12_sleep(RF12_WAKEUP);
-	rf12_sendNow(0, &payload, sizeof payload);
-	rf12_sendWait(RADIO_SYNC_MODE);
-	rf12_sleep(RF12_SLEEP);
-#endif
 #if SERIAL || DEBUG
-	Serial.println();
+	Serial.print(node);
 #if _DHT
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
@@ -330,8 +325,6 @@ static void doReport(void)
 	Serial.print((int) payload.memfree);
 #endif
 #if _RFM12LOBAT
-	Serial.print(' ');
-	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
 #endif // SERIAL || DEBUG
@@ -348,10 +341,10 @@ void runScheduler(char task)
 			if (strlen(node_id) > 0) {
 				Serial.print("Node: ");
 				Serial.println(node_id);
-				scheduler.timer(MEASURE, 0);
+				//scheduler.timer(MEASURE, 0);
 			} else {
 				doAnnounce();
-				scheduler.timer(HANDSHAKE, 100);
+				//scheduler.timer(HANDSHAKE, 100);
 			}
 			serialFlush();
 			break;
@@ -376,6 +369,19 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
+		case STDBY:
+			debug("STDBY");
+			serialFlush();
+			break;
+
+		case WAITING:
+			scheduler.timer(STDBY, STDBY_PERIOD);
+			break;
+		
+		case IDLE:
+			scheduler.timer(STDBY, STDBY_PERIOD);
+			break;
+		
 #if DEBUG
 		default:
 			Serial.print("0x");
@@ -390,11 +396,10 @@ void runScheduler(char task)
 
 static void reset(void)
 {
-	ui_irq = false;
 	tick = 0;
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(HANDSHAKE, 0);
-	//scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	//scheduler.timer(HANDSHAKE, 0);
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 void debug_ticks(void)
@@ -419,9 +424,9 @@ void setup(void)
 {
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
-	serialFlush();
 
-	setup_peripherals();
+	setupLibs();
+	serialFlush();
 
 	reset();
 }
@@ -430,18 +435,12 @@ void loop(void)
 {
 	//doMeasure();
 	//doReport();
-	//delay(15000);
+	//delay(1500);
 	//return;
+	
+	blink(ledPin, 1, 15);
 	debug_ticks();
-	char task = scheduler.poll();
-	if (0 < task && task < 0xFF) {
-		runScheduler(task);
-	} else {
-		blink(ledPin, 1, 15);
-		serialFlush();
-		char task = scheduler.pollWaiting();
-		if (0 < task && task < 0xFF) {
-			runScheduler(task);
-		}
-	}
+	serialFlush();
+	char task = scheduler.pollWaiting();
+	runScheduler(task);
 }

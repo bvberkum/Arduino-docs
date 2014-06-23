@@ -84,7 +84,7 @@ void runScheduler(char task)
 	}
 }
 
-void setup_peripherals()
+void setupLibs()
 {
 }
 
@@ -119,7 +119,7 @@ void setup(void)
 	mpeser.startAnnounce(sketch, version);
 	serialFlush();
 
-	setup_peripherals();
+	setupLibs();
 
 	reset();
 }

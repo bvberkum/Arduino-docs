@@ -505,8 +505,8 @@ ardnlib:
 	ln -s /srv/project-mpe/Arduino-mpe/libraries/DHT; \
 	ln -s /srv/project-mpe/Arduino-mpe/libraries/OneWire
 
-isp_flash: P := $/libraries/jeelib/examples/Ports/isp_flash/
-isp_flash: I := $/libraries/jeelib/examples/Ports/isp_flash/isp_flash.hex
+isp_flash: P := $/libraries/JeeLib/examples/Ports/isp_flash/
+isp_flash: I := $/libraries/JeeLib/examples/Ports/isp_flash/isp_flash.hex
 isp_flash: BRD := atmega328
 isp_flash: arduino upload
 
@@ -521,12 +521,12 @@ jeenodeisp: I := firmware/isp_flash_m328p.hex
 jeenodeisp: X := -D
 jeenodeisp: upload
 
-#jeenode-isp-repair: P = $/libraries/jeelib/examples/Ports/isp_repair2/
+#jeenode-isp-repair: P = $/libraries/JeeLib/examples/Ports/isp_repair2/
 #jeenode-isp-repair: arduino
 #
 #jeenode-isp-repair-post: DIR := $/
 #jeenode-isp-repair-post:
-#	cp $(DIR)libraries/jeelib/examples/Ports/isp_repair2/isp_repair2.hex firmware/isp_repair_m328p.hex
+#	cp $(DIR)libraries/JeeLib/examples/Ports/isp_repair2/isp_repair2.hex firmware/isp_repair_m328p.hex
 
 jeenodeisp-repair: C := m328p
 jeenodeisp-repair: M := arduino
@@ -537,7 +537,7 @@ jeenodeisp-repair: upload
 blink: C := m328p
 blink: P := Mpe/Prototype/Blink
 blink: I := Mpe/Prototype/Blink/Blink.hex
-blink: jeenode _upload
+blink: jeenode upload
 
 blinknodelayJeelib: C := m328p
 blinknodelayJeelib: P := Mpe/Prototype/Blink/BlinkNodelayJeelib
@@ -555,8 +555,8 @@ blinkall: jeenode upload
 3way: jeenode upload
 
 rf12demo: C := m328p
-rf12demo: P := libraries/jeelib/examples/RF12/RF12demo/
-rf12demo: I := libraries/jeelib/examples/RF12/RF12demo/RF12demo.hex
+rf12demo: P := libraries/JeeLib/examples/RF12/RF12demo/
+rf12demo: I := libraries/JeeLib/examples/RF12/RF12demo/RF12demo.hex
 rf12demo: jeenode upload
 
 radioblip: C := m328p
@@ -565,14 +565,19 @@ radioblip: I := Mpe/RadioBlip/RadioBlip.hex
 radioblip: jeenode upload
 
 jeeblip: C := m328p
-jeeblip: P := libraries/jeelib/examples/RF12/radioBlip/
-jeeblip: I := libraries/jeelib/examples/RF12/radioBlip/radioBlip.hex
+jeeblip: P := libraries/JeeLib/examples/RF12/radioBlip/
+jeeblip: I := libraries/JeeLib/examples/RF12/radioBlip/radioBlip.hex
 jeeblip: jeenode upload
 
 radiolink: C := m328p
 radiolink: P := Mpe/RadioLink/
 radiolink: I := Mpe/RadioLink/RadioLink.hex
 radiolink: jeenode upload
+
+rf24test: C := m328p
+rf24test: P := Mpe/RF24Test
+rf24test: I := Mpe/RF24Test/RF24Test.hex
+rf24test: jeenode upload
 
 carriercase: BRD := uno
 carriercase: P := Mpe/CarrierCase/
@@ -590,8 +595,8 @@ hanrun: I := Misc/HanrunENC28J60/HanrunENC28J60.hex
 hanrun: jeenode upload
 
 fuseboxmon: C := m328p
-fuseboxmon: P := libraries/jeelib/examples/RF12/p1scanner
-fuseboxmon: I := libraries/jeelib/examples/RF12/p1scanner/p1scanner.hex
+fuseboxmon: P := libraries/JeeLib/examples/RF12/p1scanner
+fuseboxmon: I := libraries/JeeLib/examples/RF12/p1scanner/p1scanner.hex
 fuseboxmon: jeenode upload
 
 utilitybug: C := m328p
@@ -806,6 +811,16 @@ eeprom: C := m328p
 eeprom: P := Mpe/Prototype/AtmegaEEPROM/
 eeprom: I := Mpe/Prototype/AtmegaEEPROM/AtmegaEEPROM.hex
 eeprom: jeenode upload
+
+mmcinfo: C := m328p
+mmcinfo: P := Misc/MMC/CardInfo/
+mmcinfo: I := Misc/MMC/CardInfo/CardInfo.hex
+mmcinfo: jeenode upload
+
+mmc: C := m328p
+mmc: P := Mpe/Prototype/MMC/
+mmc: I := Mpe/Prototype/MMC/MMC.hex
+mmc: jeenode upload
 
 # Leonardo mega32u4 / teensy 2.0?
 

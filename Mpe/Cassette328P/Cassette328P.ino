@@ -613,7 +613,7 @@ bool loadConfig(Config &c)
 }
 
 
-void setup_peripherals()
+void setupLibs()
 {
 #if _RTC
 	rtc_init();
@@ -805,7 +805,7 @@ static void runCommand()
 		case cmd_reset_settings:
 			saveRF24Config(static_config);
 			config = static_config;
-			setup_peripherals();
+			setupLibs();
 			break;
 
 		case cmd_print_settings:
@@ -861,7 +861,6 @@ static void runCommand()
 
 static void reset(void)
 {
-	setup_peripherals();
 	pinMode(ledPin, OUTPUT);
 	pinMode(backlightPin, OUTPUT);
 	digitalWrite(backlightPin, LOW);
@@ -920,6 +919,7 @@ void setup(void)
 	serialFlush();
 	digitalWrite( LED_RED, HIGH );
 	digitalWrite( LED_YELLOW, HIGH );
+	setupLibs();
 	reset();
 	digitalWrite( LED_RED, LOW );
 	digitalWrite( LED_YELLOW, LOW );

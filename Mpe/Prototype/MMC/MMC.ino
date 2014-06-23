@@ -1,24 +1,40 @@
-/* Atmega MMC/SD card routines */
+/* 
+   Atmega MMC/SD card routines 
+
+   Need library. See Misc/MMC working but largish?
+
+ */
+#include <DotmpeLib.h>
 
 
 /** Globals and sketch configuration  */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
-
-#define _MEM            1
-#define _BAT            1
-#define _DHT            1
-
+							
+#define MAXLENLINE      79
+							
 
 static String sketch = "X-MMC";
-static String vesion = "0";
+static String version = "0";
 
+static int tick = 0;
+static int pos = 0;
+
+static const byte ledPin = 13;
+
+MpeSerial mpeser (57600);
+
+
+
+/** AVR routines */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+/** ATmega routines */
 
 double internalTemp(void)
 {
@@ -51,28 +67,6 @@ double internalTemp(void)
 	return (t);
 }
 
-
-String serialBuffer = "";         // a string to hold incoming data
-
-void serialEvent() {
-	while (Serial.available()) {
-		// get the new byte:
-		char inchar = (char)Serial.read(); 
-		// add it to the serialBuffer:
-		if (inchar == '\n') {
-			serialBuffer = "";
-		} 
-		else if (serialBuffer == "new ") {
-			node_id += inchar;
-		} 
-		else {
-			serialBuffer += inchar;
-		}
-	}
-}
-
-
-
 /** Generic routines */
 
 static void serialFlush () {
@@ -84,19 +78,55 @@ static void serialFlush () {
 #endif
 }
 
+void blink(int led, int count, int length, int length_off=0) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
+	}
+}
+
+void debug_ticks(void)
+{
+#if SERIAL && DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
+/* Initialization routines */
+
 static void doConfig(void)
 {
 }
 
-void setup_peripherals()
+void setupLibs()
 {
 }
+
+static void reset(void)
+{
+	tick = 0;
+}
+
+
+/* Run-time handlers */
 
 static bool doAnnounce()
 {
 }
 
-static bool doMeasure()
+static void doMeasure()
 {
 }
 
@@ -108,37 +138,28 @@ static void runCommand()
 {
 }
 
+void runScheduler(char task)
+{
+	switch (task) {
+	}
+}
+
 /* Main */
 
 void setup(void)
 {
-#if SERIAL
-	Serial.begin(57600);
-	Serial.println();
-	Serial.print("[");
-	Serial.print(sketch);
-	Serial.print(".");
-	Serial.print(version);
-	Serial.print("]");
-#endif
-	setup_peripherals();
-	serialFlush();
-}
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
 
-int col = 0;
+	setupLibs();
+	serialFlush();
+
+	reset();
+}
 
 void loop(void)
 {
-
-#if DEBUG
-	col++;
-	Serial.print('.');
-	if (col > 79) {
-		col = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-
-	delay(15000);
+	//blink(ledPin, 1, 15);
+	//debug_ticks();
+	//serialFlush();
 }

@@ -12,7 +12,6 @@ endif
 include Rules.attiny.mk
 
 arduinodir-libraries-relink::
-	echo find arduinodir/libraries -type l -exec rm {} +
 	for f in libraries/*; do \
 		F=$$(basename $$f); \
 		T=$$(realpath arduinodir/libraries)/$$F; \

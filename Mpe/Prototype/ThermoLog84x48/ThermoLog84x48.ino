@@ -239,7 +239,7 @@ static void doConfig(void)
 }
 
 
-void setup_peripherals()
+void setupLibs()
 {
 #if _DHT
 	dht.begin();
@@ -468,7 +468,7 @@ void setup(void)
 	serialFlush();
 	delay(500);
 
-	setup_peripherals();
+	setupLibs();
 
 	reset();
 
