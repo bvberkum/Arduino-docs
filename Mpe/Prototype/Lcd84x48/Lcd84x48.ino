@@ -64,6 +64,7 @@ depends on the used hardware etc.
 #define UI_IDLE         3000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
+							
 
 
 static String sketch = "X-LogReader84x48";
@@ -72,6 +73,12 @@ static String node = "logreader-1";
 
 static const byte ledPin = 13;
 static const byte backlightPin = 9;
+
+static int tick = 0;
+static int pos = 0;
+static bool ui;
+
+volatile bool ui_irq;
 
 MpeSerial mpeser (57600);
 
@@ -111,14 +118,9 @@ bool schedRunning()
 	return false;
 }
 
-int tick = 0;
-int pos = 0;
-
-volatile bool ui_irq;
-
-static bool ui;
 
 
+#if _LCD84x48
 
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
@@ -139,6 +141,9 @@ static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x
 
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
+#endif //_LCD84x48
+
+
 /* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
@@ -150,6 +155,7 @@ struct {
 #endif
 } payload;
 
+
 /** AVR routines */
 
 int freeRam () {
@@ -157,6 +163,7 @@ int freeRam () {
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
 
 /** ATmega routines */
 
@@ -190,6 +197,7 @@ double internalTemp(void)
 	// The returned temperature is in degrees Celcius.
 	return (t);
 }
+
 
 /** Generic routines */
 
@@ -249,7 +257,13 @@ void irq0()
 	//Sleepy::watchdogInterrupts(0);
 }
 
-static bool doAnnounce()
+
+/* Initialization routines */
+
+
+/* Run-time handlers */
+
+bool doAnnounce()
 {
 }
 

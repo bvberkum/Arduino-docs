@@ -822,6 +822,11 @@ mmc: P := Mpe/Prototype/MMC/
 mmc: I := Mpe/Prototype/MMC/MMC.hex
 mmc: jeenode upload
 
+pff: C := m328p
+pff: P := Mpe/Prototype/MMC/PFF/
+pff: I := Mpe/Prototype/MMC/PFF/PFF.hex
+pff: jeenode upload
+
 # Leonardo mega32u4 / teensy 2.0?
 
 

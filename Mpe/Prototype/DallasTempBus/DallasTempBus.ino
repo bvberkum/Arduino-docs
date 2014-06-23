@@ -1,4 +1,5 @@
 /* Dallas OneWire Temperature Bus with autodetect and eeprom config */
+#include <DotmpeLib.h>
 #include <OneWire.h>
 
 /** Globals and sketch configuration  */
@@ -10,16 +11,23 @@
 #define DS_PIN          8
 #define DEBUG_DS        1
 //#define FIND_DS    1
-#define MAXLENLINE      12
+							
+#define MAXLENLINE      79
 							
 
 static String sketch = "X-DallasTempBus";
 static String version = "0";
 
-int pos = 0;
+static int tick = 0;
+static int pos = 0;
+
+
+MpeSerial mpeser (57600);
+
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
 OneWire ds(DS_PIN);
 
 uint8_t ds_count = 0;
@@ -33,7 +41,14 @@ uint8_t ds_search = 0;
 //	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
 //};
 enum { DS_OK, DS_ERR_CRC };
-#endif
+#endif // _DS
+
+
+/** AVR routines */
+
+
+/** ATmega routines */
+
 
 /** Generic routines */
 
@@ -46,8 +61,26 @@ static void serialFlush () {
 #endif
 }
 
-/* Dallas DS18B20 thermometer */
+void debug_ticks(void)
+{
+#if SERIAL && DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
+
 #if _DS
+/* Dallas DS18B20 thermometer routines */
+
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -239,25 +272,40 @@ static void printDS18B20s(void) {
 	serialFlush();
 #endif
 }
+#endif //_DS
 
-static void doConfig(void)
+
+/* Initialization routines */
+
+void doConfig(void)
 {
 }
 
-static bool doAnnounce()
+void setupLibs()
 {
 }
 
-static void doMeasure()
+void reset(void)
+{
+}
+
+
+/* Run-time handlers */
+
+bool doAnnounce()
+{
+}
+
+void doMeasure()
 {
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport(void)
+void doReport(void)
 {
 }
 
-static void runCommand()
+void runCommand()
 {
 }
 
@@ -279,6 +327,10 @@ void setup(void)
 	}
 #endif
 	serialFlush();
+
+	setupLibs();
+
+	reset();
 }
 
 void loop(void)
@@ -297,15 +349,7 @@ void loop(void)
 	doMeasure();
 	doReport();
 
-#if DEBUG
-	pos++;
-	Serial.print('.');
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
+	debug_ticks();
 
 	delay(15000);
 }

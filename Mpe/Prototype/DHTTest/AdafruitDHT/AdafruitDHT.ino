@@ -22,9 +22,9 @@
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
 							
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define STDBY_PERIOD    60
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
@@ -64,6 +64,9 @@ Scheduler scheduler (schedbuf, STDBY);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
 //DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 //#define DHTTYPE DHT11   // DHT 11 
@@ -102,6 +105,7 @@ struct {
 #endif
 } payload;
 
+
 /** AVR routines */
 
 int freeRam () {
@@ -109,6 +113,7 @@ int freeRam () {
 	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
 
 /** ATmega routines */
 
@@ -143,6 +148,7 @@ double internalTemp(void)
 	return (t);
 }
 
+
 /** Generic routines */
 
 static void serialFlush () {
@@ -164,6 +170,22 @@ void blink(int led, int count, int length, int length_off=0) {
 	}
 }
 
+void debug_ticks(void)
+{
+#if SERIAL && DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	if (firstTime)
@@ -176,6 +198,32 @@ void debug(String msg) {
 	Serial.println(msg);
 #endif
 }
+
+
+/* Initialization routines */
+
+void doConfig(void)
+{
+}
+
+void setupLibs()
+{
+#if _DHT
+	dht.begin();
+#endif
+
+#if _RFM12
+#endif
+}
+
+void reset(void)
+{
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(HANDSHAKE, 0);
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
 
 /* InputParser handlers */
 
@@ -199,21 +247,10 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
-static void doConfig(void)
-{
-}
 
-void setupLibs()
-{
-#if _DHT
-	dht.begin();
-#endif
+/* Run-time handlers */
 
-#if _RFM12
-#endif
-}
-
-static bool doAnnounce()
+bool doAnnounce()
 {
 /* see CarrierCase */
 #if SERIAL && DEBUG
@@ -250,7 +287,8 @@ static bool doAnnounce()
 #endif // SERIAL && DEBUG
 }
 
-static void doMeasure()
+// readout all the sensors and other values
+void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -308,7 +346,7 @@ static void doMeasure()
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport(void)
+void doReport(void)
 {
 #if SERIAL || DEBUG
 	Serial.print(node);
@@ -394,29 +432,6 @@ void runScheduler(char task)
 	}
 }
 
-static void reset(void)
-{
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
 
 /* Main */
 
@@ -424,9 +439,9 @@ void setup(void)
 {
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
+	serialFlush();
 
 	setupLibs();
-	serialFlush();
 
 	reset();
 }

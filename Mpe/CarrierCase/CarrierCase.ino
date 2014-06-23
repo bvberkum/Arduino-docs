@@ -115,6 +115,8 @@ static String node = "";
 
 int pos = 0;
 
+MpeSerial mpeser (57600);
+
 // The scheduler makes it easy to perform various tasks at various times:
 enum { ANNOUNCE, MEASURE, REPORT };
 
@@ -192,7 +194,7 @@ struct {
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
-	int v; 
+	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
@@ -265,6 +267,22 @@ static void showByte (byte value) {
 	} else {
 		Serial.print((int) value);
 	}
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
 }
 
 // utility code to perform simple smoothing as a running average
@@ -659,7 +677,9 @@ static void findDS18B20s(void) {
 
 #endif // _DS
 
-static void doConfig(void)
+/* Initialization routines */
+
+void doConfig(void)
 {
 	// JeeLib RF12_EEPROM_ADDR is at 20
 	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
@@ -722,14 +742,43 @@ void setupLibs()
 {
 }
 
-static bool doAnnounce()
+void reset(void)
+{
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(ANNOUNCE, 0);
+}
+
+/* Run-time handlers */
+
+bool doAnnounce()
 {
 #if SERIAL
-	Serial.print(node_id);
-	Serial.print(' ');
-	Serial.print(rf12_id);
-	Serial.print(' ');
+
+	//mpeser.startAnnounce(sketch, version);
+
+#if LDR_PORT
+	Serial.print(" ldr");
 #endif
+#if _DHT
+	dht.begin();
+	Serial.print(" dht11-rhum dht11-temp");
+#endif
+	Serial.print(" attemp");
+
+#if _DS 
+	ds_count = readDSCount();
+	for ( int i = 0; i < ds_count; i++) {
+		Serial.print(" ds-");
+		Serial.print(i+1);
+	}
+#endif
+
+#endif //SERIAL
+
 
 	embenc_push(ANNOUNCE_MSG);
 
@@ -848,7 +897,7 @@ static bool doAnnounce()
 #endif
 }
 
-static void doMeasure()
+void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -891,11 +940,10 @@ static void doMeasure()
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		int rh = h * 10;
-		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+		payload.rhum = smoothedAverage(payload.rhum, round(h), firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
-		Serial.print(rh);
+		Serial.print(h);
 		Serial.print(' ');
 		Serial.println(payload.rhum);
 #endif
@@ -905,7 +953,7 @@ static void doMeasure()
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
-		payload.temp = smoothedAverage(payload.temp, (int)t*10, firstTime);
+		payload.temp = smoothedAverage(payload.temp, (int)(t * 10), firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT T new/avg "));
 		Serial.print(t);
@@ -1011,33 +1059,6 @@ static void runCommand()
 {
 }
 
-static void reset(void)
-{
-	setupLibs();
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
-}
-
-void debug_ticks(void)
-{
-#if DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
 /* Main */
 
 void setup(void)
@@ -1088,31 +1109,12 @@ void setup(void)
 //#endif
 		doConfig();
 //	}
-	Serial.print("[");
-	Serial.print(node_id);
-	Serial.print('.0');
-	Serial.println(']');
-
-#if LDR_PORT
-	Serial.print(" ldr");
-#endif
-#if _DHT
-	dht.begin();
-	Serial.print(" dht11-rhum dht11-temp");
-#endif
-	Serial.print(" attemp");
-
-#if _DS 
-	ds_count = readDSCount();
-	for ( int i = 0; i < ds_count; i++) {
-		Serial.print(" ds-");
-		Serial.print(i+1);
-	}
-#endif
 	Serial.println();
 	serialFlush();
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(ANNOUNCE, 0);
+
+	setupLibs();
+
+	reset();
 }
 
 void loop(void)

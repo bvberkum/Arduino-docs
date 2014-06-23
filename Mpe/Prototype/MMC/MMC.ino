@@ -106,7 +106,7 @@ void debug_ticks(void)
 
 /* Initialization routines */
 
-static void doConfig(void)
+void doConfig(void)
 {
 }
 
@@ -114,7 +114,7 @@ void setupLibs()
 {
 }
 
-static void reset(void)
+void reset(void)
 {
 	tick = 0;
 }
@@ -130,6 +130,7 @@ static void doMeasure()
 {
 }
 
+// periodic report, i.e. send out a packet and optionally report on serial port
 static void doReport(void)
 {
 }
@@ -150,9 +151,9 @@ void setup(void)
 {
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
+	serialFlush();
 
 	setupLibs();
-	serialFlush();
 
 	reset();
 }

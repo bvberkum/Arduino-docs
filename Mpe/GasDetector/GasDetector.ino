@@ -22,15 +22,15 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-#define DEBUG_DS   0
-
 #define _MEM            1   // Report free memory 
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 //#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
-//#define DS  8
+#define _DS  0
+#define DEBUG_DS        0
+
 //#define MQ4
 #define LED 11
-#define _BAT 0
+#define _RFM12LOBAT 0
 #define _VCC 1
 							
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
@@ -46,14 +46,16 @@ should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
-#if DS
+#if _DS
 /* Dallas bus for DS18S20 temperature */
-OneWire ds(DS);
-static uint8_t ds_count = 0;
-static uint8_t ds_search = 0;
+const String DS_PIN = 8;
+OneWire ds(DS_PIN);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
 volatile int ds_value[8]; // take on 8 DS sensors in report
 enum { DS_OK, DS_ERR_CRC };
-#endif
+#endif // _DS
 
 // MQ series gas sensors
 //CS_MQ7  MQ7(12, 13);  // 12 = digital Pin connected to "tog" from sensor board
@@ -100,20 +102,20 @@ struct {
 #if LDR_PORT
 	byte light  :8;     // light sensor: 0..255
 #endif
-	byte moved :1;  // motion detector: 0..1
+	byte moved  :1;  // motion detector: 0..1
 	int mq4; // methane
 #if DHT_PIN
-	byte rhum  :7;  // rhumdity: 0..100
-	int temp   :10; // temperature: -500..+500 (tenths)
+	byte rhum   :7;  // rhumdity: 0..100
+	int temp    :10; // temperature: -500..+500 (tenths)
 #endif
-	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
+	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
 	int memfree :16;
 #endif
 #if _VCC
 	int vcc :10;
 #endif
-#if _BAT
+#if _RFM12LOBAT
 	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
@@ -186,7 +188,10 @@ static void lpDelay () {
 	Sleepy::loseSomeTime(32); // must wait at least 20 ms
 }
 
-#if DS
+#if _DS
+
+/* Dallas DS18B20 thermometer */
+
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -360,13 +365,19 @@ static void findDS18B20s(void) {
 
 	writeDSAddr(addr);
 }
-#endif
+#endif //_DS
 
-static void doConfig() 
+
+/* Initialization routines */
+
+void doConfig(void)
 {
 }
 
-static bool doAnnounce()
+
+/* Run-time handlers */
+
+bool doAnnounce()
 {
 	Serial.print("[");
 	Serial.print(node_id);
@@ -381,7 +392,7 @@ static bool doAnnounce()
 #endif
 	Serial.print(" attemp");
 	Serial.print(" mq4");
-#if DS 
+#if _DS 
 	ds_count = readDSCount();
 	for ( int i = 0; i < ds_count; i++) {
 		Serial.print(" ds-");
@@ -394,7 +405,7 @@ static bool doAnnounce()
 #if _VCC
 	Serial.print(" vcc");
 #endif
-#if _BAT
+#if _RFM12LOBAT
 	Serial.print(" lobat");
 #endif
 	Serial.println();
@@ -403,13 +414,13 @@ static bool doAnnounce()
 }
 
 // readout all the sensors and other values
-static void doMeasure() 
+void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
 	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
 
-#if _BAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #endif
 
@@ -442,7 +453,7 @@ static void doMeasure()
 	}
 #endif
 
-#if DS
+#if _DS
 	uint8_t addr[8];
 	for ( int i = 0; i < ds_count; i++) {
 		readDSAddr(i, addr);
@@ -452,7 +463,8 @@ static void doMeasure()
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport() {
+void doReport(void)
+{
 	/* XXX no working radio */
 #if SERIAL
 	Serial.print(node_id);
@@ -474,7 +486,7 @@ static void doReport() {
 	Serial.print(' ');
 	Serial.print((int) payload.mq4);
 	Serial.print(' ');
-#if DS
+#if _DS
 	for (int i=0;i<ds_count;i++) {
 		Serial.print((int) ds_value[i]);
 		Serial.print(' ');
@@ -488,7 +500,7 @@ static void doReport() {
 	Serial.print((int) payload.vcc);
 	Serial.print(' ');
 #endif
-#if _BAT
+#if _RFM12LOBAT
 	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
@@ -496,24 +508,7 @@ static void doReport() {
 #endif
 }
 
-String inputString = "";         // a string to hold incoming data
 
-void serialEvent() {
-	while (Serial.available()) {
-		// get the new byte:
-		char inChar = (char)Serial.read(); 
-		// add it to the inputString:
-		if (inChar == '\n') {
-			inputString = "";
-		} 
-		else if (inputString == "NEW ") {
-			node_id += inChar;
-		} 
-		else {
-			inputString += inChar;
-		}
-	}
-}
 
 /* Main */
 
@@ -622,4 +617,3 @@ void loop(void)
 			break;
 	}
 }
-

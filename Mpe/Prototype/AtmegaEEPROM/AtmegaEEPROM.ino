@@ -45,6 +45,19 @@ void debug(String msg) {
 #endif
 }
 
+/* Initialization routines */
+
+void setupLibs()
+{
+}
+
+void reset(void)
+{
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(HANDSHAKE, 0);
+}
+
 /* InputParser handlers */
 
 static void helpCmd() {
@@ -67,6 +80,8 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
+/* Run-time handlers */
+
 bool doAnnounce()
 {
 /* see CarrierCase */
@@ -84,32 +99,6 @@ void runScheduler(char task)
 	}
 }
 
-void setupLibs()
-{
-}
-
-void reset(void)
-{
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
 
 /* Main */
 
@@ -126,12 +115,7 @@ void setup(void)
 
 void loop(void)
 {
-	debug_ticks();
-	delay(15000);
-	blink(ledPin, 1, 15);
 	serialFlush();
 	char task = scheduler.pollWaiting();
-	if (0 < task && task < 0xFF) {
-		runScheduler(task);
-	}
+	runScheduler(task);
 }
