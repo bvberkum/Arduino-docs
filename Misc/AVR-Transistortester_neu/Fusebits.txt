@@ -1,0 +1,10 @@
+ATMega8:
+
+lfuse = 0xc1
+hfuse = 0xd9
+
+ATMega48:
+
+lfuse = 0x42
+hfuse = 0xdf
+efuse = 0xff
