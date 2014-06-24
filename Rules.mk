@@ -4,6 +4,8 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
+OLD ?= 1
+
 ifeq ($(OLD),1)
 include Rules.old.mk
 else

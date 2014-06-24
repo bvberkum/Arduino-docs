@@ -18,6 +18,7 @@ static String version = "0";
 static int tick = 0;
 static int pos = 0;
 
+/* IO pins */
 static const byte ledPin = 13;
 
 MpeSerial mpeser (57600);
@@ -76,13 +77,13 @@ void setupLibs()
 {
 }
 
-void reset(void)
+
+/* Run-time handlers */
+
+void doReset(void)
 {
 	tick = 0;
 }
-
-
-/* Run-time handlers */
 
 bool doAnnounce()
 {
@@ -99,7 +100,7 @@ void setup(void)
 
 	setupLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)

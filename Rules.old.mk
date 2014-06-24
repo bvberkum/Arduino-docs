@@ -535,18 +535,18 @@ jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
 jeenodeisp-repair: upload
 
 blink: C := m328p
-blink: P := Mpe/Prototype/Blink
-blink: I := Mpe/Prototype/Blink/Blink.hex
+blink: P := Prototype/Blink
+blink: I := Prototype/Blink/Blink.hex
 blink: jeenode upload
 
 blinknodelayJeelib: C := m328p
-blinknodelayJeelib: P := Mpe/Prototype/Blink/BlinkNodelayJeelib
-blinknodelayJeelib: I := Mpe/Prototype/Blink/BlinkNodelayJeelib/BlinkNodelayJeelib.hex
+blinknodelayJeelib: P := Prototype/Blink/BlinkNodelayJeelib
+blinknodelayJeelib: I := Prototype/Blink/BlinkNodelayJeelib/BlinkNodelayJeelib.hex
 blinknodelayJeelib: jeenode upload
 
 blinkall: C := m328p
-blinkall: P := Mpe/Prototype/Blink/BlinkAll
-blinkall: I := Mpe/Prototype/Blink/BlinkAll/BlinkAll.hex
+blinkall: P := Prototype/Blink/BlinkAll
+blinkall: I := Prototype/Blink/BlinkAll/BlinkAll.hex
 blinkall: jeenode upload
 
 3way: C := m328p
@@ -574,10 +574,25 @@ radiolink: P := Mpe/RadioLink/
 radiolink: I := Mpe/RadioLink/RadioLink.hex
 radiolink: jeenode upload
 
+rf24helper: C := m328p
+rf24helper: P := Mpe/RF24Helper
+rf24helper: I := Mpe/RF24Helper/RF24Helper.hex
+rf24helper: jeenode upload
+
 rf24test: C := m328p
 rf24test: P := Mpe/RF24Test
 rf24test: I := Mpe/RF24Test/RF24Test.hex
 rf24test: jeenode upload
+
+rf24scan: C := m328p
+rf24scan: P := libraries/RF24/examples/scanner/
+rf24scan: I := libraries/RF24/examples/scanner/scanner.hex
+rf24scan: jeenode upload
+
+rf24ping: C := m328p
+rf24ping: P := libraries/RF24/examples/pingpair/
+rf24ping: I := libraries/RF24/examples/pingpair/pingpair.hex
+rf24ping: jeenode upload
 
 carriercase: BRD := uno
 carriercase: P := Mpe/CarrierCase/
@@ -761,13 +776,13 @@ soarer: X := -D -v
 soarer: _upload
 
 jeedht: C := m328p
-jeedht: P := Mpe/Prototype/DHTTest/JeeLibDHT/
-jeedht: I := Mpe/Prototype/DHTTest/JeeLibDHT/JeeLibDHT.hex
+jeedht: P := Prototype/DHTTest/JeeLibDHT/
+jeedht: I := Prototype/DHTTest/JeeLibDHT/JeeLibDHT.hex
 jeedht: jeenode upload
 
 adadht: C := m328p
-adadht: P := Mpe/Prototype/DHTTest/AdafruitDHT/
-adadht: I := Mpe/Prototype/DHTTest/AdafruitDHT/AdafruitDHT.hex
+adadht: P := Prototype/DHTTest/AdafruitDHT/
+adadht: I := Prototype/DHTTest/AdafruitDHT/AdafruitDHT.hex
 adadht: jeenode upload
 
 pcdthermotest: C := m328p
@@ -779,8 +794,8 @@ m8guard: C := m8
 m8guard: BRD := atmega8
 m8guard: M := usbasp
 m8guard: X := -B3
-m8guard: P := Mpe/Prototype/TempGuard/Atmega8TempGuard/
-m8guard: I := Mpe/Prototype/TempGuard/Atmega8TempGuard/Atmega8TempGuard.hex
+m8guard: P := Prototype/TempGuard/Atmega8TempGuard/
+m8guard: I := Prototype/TempGuard/Atmega8TempGuard/Atmega8TempGuard.hex
 #m8guard: TARGETS := clean all
 m8guard: arduino _upload
 
@@ -788,28 +803,28 @@ dstbus: C := m8
 dstbus: BRD := atmega8
 dstbus: M := usbasp
 dstbus: X := -B3
-dstbus: P := Mpe/Prototype/DallasTempBus/
-dstbus: I := Mpe/Prototype/DallasTempBus/DallasTempBus.hex
+dstbus: P := Prototype/DallasTempBus/
+dstbus: I := Prototype/DallasTempBus/DallasTempBus.hex
 dstbus: arduino _upload
 
 lcd5110: C := m328p
-lcd5110: P := Mpe/Prototype/Lcd84x48/
-lcd5110: I := Mpe/Prototype/Lcd84x48/Lcd84x48.hex
+lcd5110: P := Prototype/Lcd84x48/
+lcd5110: I := Prototype/Lcd84x48/Lcd84x48.hex
 lcd5110: jeenode upload
 
 log5110: C := m328p
-log5110: P := Mpe/Prototype/LogReader84x48/
-log5110: I := Mpe/Prototype/LogReader84x48/LogReader84x48.hex
+log5110: P := Prototype/LogReader84x48/
+log5110: I := Prototype/LogReader84x48/LogReader84x48.hex
 log5110: jeenode upload
 
 thermo5110: C := m328p
-thermo5110: P := Mpe/Prototype/ThermoLog84x48/
-thermo5110: I := Mpe/Prototype/ThermoLog84x48/ThermoLog84x48.hex
+thermo5110: P := Prototype/ThermoLog84x48/
+thermo5110: I := Prototype/ThermoLog84x48/ThermoLog84x48.hex
 thermo5110: jeenode upload
 
 eeprom: C := m328p
-eeprom: P := Mpe/Prototype/AtmegaEEPROM/
-eeprom: I := Mpe/Prototype/AtmegaEEPROM/AtmegaEEPROM.hex
+eeprom: P := Prototype/AtmegaEEPROM/
+eeprom: I := Prototype/AtmegaEEPROM/AtmegaEEPROM.hex
 eeprom: jeenode upload
 
 mmcinfo: C := m328p
@@ -818,13 +833,14 @@ mmcinfo: I := Misc/MMC/CardInfo/CardInfo.hex
 mmcinfo: jeenode upload
 
 mmc: C := m328p
-mmc: P := Mpe/Prototype/MMC/
-mmc: I := Mpe/Prototype/MMC/MMC.hex
+mmc: P := Prototype/MMC/
+mmc: I := Prototype/MMC/MMC.hex
 mmc: jeenode upload
 
+# this needs some avr-gcc setup, not working
 pff: C := m328p
-pff: P := Mpe/Prototype/MMC/PFF/
-pff: I := Mpe/Prototype/MMC/PFF/PFF.hex
+pff: P := Prototype/MMC/PFF/
+pff: I := Prototype/MMC/PFF/PFF.hex
 pff: jeenode upload
 
 # Leonardo mega32u4 / teensy 2.0?

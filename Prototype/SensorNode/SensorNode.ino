@@ -12,6 +12,7 @@
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             0
 #define _LCD84x48       0
+#define _NRF24          0
 							
 #define MAXLENLINE      79
 							
@@ -22,6 +23,7 @@ static String version = "0";
 static int tick = 0;
 static int pos = 0;
 
+/* IO pins */
 static const byte ledPin = 13;
 
 MpeSerial mpeser (57600);
@@ -39,6 +41,10 @@ MpeSerial mpeser (57600);
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 #endif // _DS
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+#endif //_NRF24
 
 
 /** AVR routines */
@@ -89,6 +95,10 @@ void debug_ticks(void)
 /* Dallas DS18B20 thermometer routines */
 
 #endif //_DS
+#if _NRF24
+/* Nordic nRF24L01+ routines */
+
+#endif //_NRF24
 
 
 /* Initialization routines */
@@ -101,13 +111,13 @@ void setupLibs()
 {
 }
 
-void reset(void)
+
+/* Run-time handlers */
+
+void doReset(void)
 {
 	tick = 0;
 }
-
-
-/* Run-time handlers */
 
 bool doAnnounce()
 {
@@ -124,13 +134,13 @@ void setup(void)
 
 	setupLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)
 {
 	//blink(ledPin, 1, 15);
-	//debug_ticks();
+	debug_ticks();
 	//serialFlush();
 }
 

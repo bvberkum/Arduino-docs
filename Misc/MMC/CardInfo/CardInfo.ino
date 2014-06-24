@@ -26,6 +26,9 @@
 // include the SD library:
 #include <SD.h>
 
+							
+#define SRAM_SIZE       0x800
+
 
 static const String nodeId = "misc-mmc-cardinfo";
 // set up variables using the SD utility library functions:
@@ -47,6 +50,10 @@ int freeRam () {
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
+
 
 /* Main */
 
@@ -63,8 +70,8 @@ void setup()
 	Serial.println("]");
 
 	// RAM use is 2k (m328) - 688b = 1360 bytes
-	Serial.print("SRAM free: ");
-	Serial.println(freeRam());
+	Serial.print("SRAM used: ");
+	Serial.println(usedRam());
 
 	Serial.print("\nInitializing SD card...");
 	// On the Ethernet Shield, CS is pin 4. It's set as an output by default.
@@ -135,6 +142,9 @@ void setup()
 
 	Serial.print("SRAM free: ");
 	Serial.println(freeRam());
+
+	Serial.print("SRAM used: ");
+	Serial.println(usedRam());
 }
 
 
