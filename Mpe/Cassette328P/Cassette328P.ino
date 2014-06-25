@@ -613,7 +613,7 @@ bool loadConfig(Config &c)
 }
 
 
-void setupLibs()
+void initLibs()
 {
 #if _RTC
 	rtc_init();
@@ -805,7 +805,7 @@ static void runCommand()
 		case cmd_reset_settings:
 			saveRF24Config(static_config);
 			config = static_config;
-			setupLibs();
+			initLibs();
 			break;
 
 		case cmd_print_settings:
@@ -919,7 +919,7 @@ void setup(void)
 	serialFlush();
 	digitalWrite( LED_RED, HIGH );
 	digitalWrite( LED_YELLOW, HIGH );
-	setupLibs();
+	initLibs();
 	reset();
 	digitalWrite( LED_RED, LOW );
 	digitalWrite( LED_YELLOW, LOW );

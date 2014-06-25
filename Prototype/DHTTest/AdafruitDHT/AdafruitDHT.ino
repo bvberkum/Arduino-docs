@@ -26,11 +26,8 @@
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define STDBY_PERIOD    60
-#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
-#define RETRY_LIMIT     2   // maximum number of times to retry
-#define ACK_TIME        10  // number of milliseconds to wait for an ack
-#define RADIO_SYNC_MODE 2
 #define MAXLENLINE      79
+#define SRAM_SIZE       0x800 // atmega328, for debugging
 							
 
 static String sketch = "AdafruitDHT";
@@ -43,6 +40,7 @@ char node_id[7];
 static int tick = 0;
 static int pos = 0;
 
+/* IO pins */
 static const byte ledPin = 13;
 #if _DHT
 static const byte DHT_PIN = 7;
@@ -95,8 +93,8 @@ struct {
 #else
 /* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
 	int temp    :10; // -500..+500 (tenths, .5 resolution)
-#endif
-#endif
+#endif // DHT_HIGH
+#endif //_DHT
 	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
 	int memfree :16;
@@ -112,6 +110,10 @@ int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+int usedRam () {
+	return SRAM_SIZE - freeRam();
 }
 
 
@@ -206,7 +208,7 @@ void doConfig(void)
 {
 }
 
-void setupLibs()
+void initLibs()
 {
 #if _DHT
 	dht.begin();
@@ -216,13 +218,6 @@ void setupLibs()
 #endif
 }
 
-void reset(void)
-{
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
-}
 
 
 /* InputParser handlers */
@@ -249,6 +244,19 @@ InputParser::Commands cmdTab[] = {
 
 
 /* Run-time handlers */
+
+void doReset(void)
+{
+	tick = 0;
+
+#if _NRF24
+	rf24_init();
+#endif //_NRF24
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(HANDSHAKE, 0);
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
 
 bool doAnnounce()
 {
@@ -420,15 +428,6 @@ void runScheduler(char task)
 			scheduler.timer(STDBY, STDBY_PERIOD);
 			break;
 		
-#if DEBUG
-		default:
-			Serial.print("0x");
-			Serial.print(task, HEX);
-			Serial.println(" ?");
-			serialFlush();
-			break;
-#endif
-
 	}
 }
 
@@ -437,13 +436,15 @@ void runScheduler(char task)
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 	serialFlush();
+#endif
 
-	setupLibs();
+	initLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)

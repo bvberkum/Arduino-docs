@@ -5,8 +5,8 @@
  * - 
  */
 #include <DotmpeLib.h>
+#include <JeeLib.h>
 #include <SPI.h>
-//#include "nRF24L01.h"
 #include <RF24.h>
 
 #include "printf.h"
@@ -16,37 +16,43 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
+#define _MEM            1   // Report free memory 
 #define _NRF24          1
 							
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
 #define MAXLENLINE      79
+#define SRAM_SIZE       0x800 // atmega328, for debugging
 							
 
-static String sketch = "RF24Test";
-static String version = "0";
+String sketch = "RF24Test";
+String version = "0";
 
-static int tick = 0;
-static int pos = 0;
+String node_id = "rf24tst-1";
+
+int tick = 0;
+int pos = 0;
 
 /* IO pins */
-static const byte ledPin = 13; // XXX shared with nrf24 SCK
-static const byte rf24_ce = 9;
-static const byte rf24_csn = 8;
+const byte ledPin = 13; // XXX shared with nrf24 SCK
+#if _NRF24
+const byte rf24_ce = 9;
+const byte rf24_csn = 8;
+#endif
 
 MpeSerial mpeser (57600);
 
-/* Roles supported by this sketch */
-typedef enum {
-	role_reporter = 1,  /* start enum at 1, 0 is reserved for invalid */
-	role_logger
-} Role;
 
-const char* role_friendly_name[] = { 
-	"invalid", 
-	"Reporter", 
-	"Logger"
-};
+/* Scheduled tasks */
+enum { MEASURE, REPORT, STDBY };
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
 
-Role role;// = role_logger;
+static word schedbuf[STDBY];
+Scheduler scheduler (schedbuf, STDBY);
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -61,6 +67,20 @@ const uint64_t pipes[2] = {
 };
 #endif //_NRF24
 
+/* Report variables */
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+#if _RFM12LOBAT
+#endif
+} payload;
+
 
 /** AVR routines */
 
@@ -71,7 +91,41 @@ int freeRam () {
 }
 
 int usedRam () {
-	return 0x800 - freeRam();
+	return SRAM_SIZE - freeRam();
+}
+
+
+/** ATmega routines */
+
+double internalTemp(void)
+{
+	unsigned int wADC;
+	double t;
+
+	// The internal temperature has to be used
+	// with the internal reference of 1.1V.
+	// Channel 8 can not be selected with
+	// the analogRead function yet.
+
+	// Set the internal reference and mux.
+	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
+	ADCSRA |= _BV(ADEN);  // enable the ADC
+
+	delay(20);            // wait for voltages to become stable.
+
+	ADCSRA |= _BV(ADSC);  // Start the ADC
+
+	// Detect end-of-conversion
+	while (bit_is_set(ADCSRA,ADSC));
+
+	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
+	wADC = ADCW;
+
+	// The offset of 324.31 could be wrong. It is just an indication.
+	t = (wADC - 311 ) / 1.22;
+
+	// The returned temperature is in degrees Celcius.
+	return (t);
 }
 
 
@@ -84,6 +138,16 @@ static void serialFlush () {
 #endif
 	delay(2); // make sure tx buf is empty before going back to sleep
 #endif
+}
+
+void blink(int led, int count, int length, int length_off=0) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
+	}
 }
 
 void debug_ticks(void)
@@ -102,6 +166,19 @@ void debug_ticks(void)
 #endif
 }
 
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debug(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
 #if _NRF24
 /* Nordic nRF24L01+ routines */
 
@@ -109,7 +186,7 @@ void rf24_init()
 {
 	/* Setup and configure rf radio */
 	radio.setRetries(15,15); /* delay, number */
-	radio.setDataRate(RF24_250KBPS);
+	radio.setDataRate(RF24_2MBPS);
 	/* Start radio */
 	radio.openWritingPipe(pipes[0]);
 	radio.openReadingPipe(1,pipes[1]);
@@ -120,7 +197,7 @@ void rf24_init()
 #endif
 }
 
-void radio_run()
+void rf24_run()
 {
 	if (radio.available()) {
 		unsigned long got_time;
@@ -130,7 +207,7 @@ void radio_run()
 			done = radio.read( &got_time, sizeof(unsigned long) );
 			if (!done) {
 #if SERIAL && DEBUG
-				printf("Payload read failed %s...", done);
+				printf("Payload read failed %i...", done);
 #endif
 				return;
 			}
@@ -138,7 +215,7 @@ void radio_run()
 #if SERIAL && DEBUG
 			printf("Got payload %lu...", got_time);
 #endif
-			//delay(20);
+			//delay(10);
 			radio.stopListening();
 			radio.write( &got_time, sizeof(unsigned long) );
 #if SERIAL && DEBUG
@@ -157,7 +234,7 @@ void doConfig(void)
 {
 }
 
-void setupLibs()
+void initLibs()
 {
 #if _NRF24
 	radio.begin();
@@ -171,6 +248,20 @@ void setupLibs()
 
 /* Run-time handlers */
 
+bool doAnnounce()
+{
+#if SERIAL
+	Serial.print(node_id);
+	Serial.print(" ");
+	Serial.print(F(" ctemp"));
+#endif
+#if _MEM
+#if SERIAL
+	Serial.print(F(" memfree"));
+#endif
+#endif
+}
+
 void doReset(void)
 {
 	tick = 0;
@@ -178,6 +269,99 @@ void doReset(void)
 #if _NRF24
 	rf24_init();
 #endif //_NRF24
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+
+// readout all the sensors and other values
+void doMeasure()
+{
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	int ctemp = internalTemp();
+	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.println();
+	Serial.print("AVR T new/avg ");
+	Serial.print(ctemp);
+	Serial.print(' ');
+	Serial.println(payload.ctemp);
+#endif
+
+#if _MEM
+	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
+#endif
+}
+
+// periodic report, i.e. send out a packet and optionally report on serial port
+bool doReport(void)
+{
+	bool ok;
+
+#if _NRF24
+	//rf24_run();
+	ok = radio.write( &payload, sizeof payload );
+#endif //_NRF24
+
+#if SERIAL
+	Serial.print(node_id);
+	Serial.print(" ");
+	Serial.print((int) payload.ctemp);
+	Serial.print(' ');
+#if _MEM
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+	Serial.println();
+#endif // SERIAL || DEBUG
+
+#if _NRF24
+	return ok;
+#endif //_NRF24
+}
+
+void runScheduler(char task)
+{
+	switch (task) {
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			debug("MEASURE");
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+			serialFlush();
+			break;
+
+		case REPORT:
+			debug("REPORT");
+//			payload.msgtype = REPORT_MSG;
+			if (doReport()) {
+				// XXX report again?
+			}
+			serialFlush();
+			break;
+
+#if DEBUG
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			break;
+#endif
+
+	}
 }
 
 
@@ -188,25 +372,27 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
+	doAnnounce();
 	serialFlush();
 
 #if DEBUG
-	Serial.print("SRAM used: ");
+	Serial.print(F("SRAM used: "));
 	Serial.println(usedRam());
 #endif
 #endif
 
-	setupLibs();
+	initLibs();
 
 	doReset();
 }
 
 void loop(void)
 {
+	blink(ledPin, 1, 15);
 	debug_ticks();
-#if _NRF24
-	radio_run();
-#endif //_NRF24
-	delay(10);
+	serialFlush();
+	char task = scheduler.pollWaiting();
+	if (task == 0xFF) return; // -1
+	if (task == 0xFE) return; // -2
+	runScheduler(task);
 }
-

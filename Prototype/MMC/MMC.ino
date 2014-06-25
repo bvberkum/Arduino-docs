@@ -20,6 +20,7 @@ static String version = "0";
 static int tick = 0;
 static int pos = 0;
 
+/* IO pins */
 static const byte ledPin = 13;
 
 MpeSerial mpeser (57600);
@@ -104,38 +105,39 @@ void debug_ticks(void)
 #endif
 }
 
+
 /* Initialization routines */
 
 void doConfig(void)
 {
 }
 
-void setupLibs()
+void initLibs()
 {
-}
-
-void reset(void)
-{
-	tick = 0;
 }
 
 
 /* Run-time handlers */
 
-static bool doAnnounce()
+void doReset(void)
+{
+	tick = 0;
+}
+
+bool doAnnounce()
 {
 }
 
-static void doMeasure()
+void doMeasure()
 {
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport(void)
+void doReport(void)
 {
 }
 
-static void runCommand()
+void runCommand()
 {
 }
 
@@ -149,13 +151,15 @@ void runScheduler(char task)
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 	serialFlush();
+#endif
 
-	setupLibs();
+	initLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)

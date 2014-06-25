@@ -84,7 +84,7 @@ void doConfig(void)
 {
 }
 
-void setupLibs()
+void initLibs()
 {
 #if _NRF24
 	radio.begin();
@@ -120,7 +120,7 @@ void setup(void)
 	Serial.print("SRAM used: ");
 	Serial.println(usedRam());
 
-	setupLibs();
+	initLibs();
 
 	doReset();
 

@@ -88,7 +88,7 @@ ToDo
 #define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
-#define _RF12LOBAT      1   // Use JeeNode lowbat measurement
+#define _RFM12LOBAT      1   // Use JeeNode lowbat measurement
 #define _DHT            1
 #define DHT_PIN         7   // DIO for DHTxx
 #define _DS             1
@@ -98,26 +98,27 @@ ToDo
 #define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT        1
 							
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-#define MAXLENLINE      12
+#define MAXLENLINE      79
+#define SRAM_SIZE       0x800 // atmega328, for debugging
 #define RADIO_SYNC_MODE 2
 							
 
-static String sketch = "CarrierCase";
-static String version = "0";
+String sketch = "CarrierCase";
+String version = "0";
 
-static String node = "";
+String node_id = "cc-1";
 
 int pos = 0;
 
 MpeSerial mpeser (57600);
 
-// The scheduler makes it easy to perform various tasks at various times:
+/* Scheduled tasks */
 enum { ANNOUNCE, MEASURE, REPORT };
 
 static word schedbuf[REPORT];
@@ -185,10 +186,11 @@ struct {
 #if _MEM
 	int memfree     :16;
 #endif
-#if _RF12LOBAT
+#if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
+
 
 /** AVR routines */
 
@@ -197,6 +199,11 @@ int freeRam () {
 	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
+
 
 /** ATmega routines */
 
@@ -230,6 +237,7 @@ double internalTemp(void)
 	// The returned temperature is in degrees Celcius.
 	return (t);
 }
+
 
 /** Generic routines */
 
@@ -271,7 +279,7 @@ static void showByte (byte value) {
 
 void debug_ticks(void)
 {
-#if DEBUG
+#if SERIAL && DEBUG
 	tick++;
 	if ((tick % 20) == 0) {
 		Serial.print('.');
@@ -433,7 +441,7 @@ static void doTrigger() {
                 Serial.println((int) i);
                 serialFlush();
             #endif
-            // reset scheduling to start a fresh measurement cycle
+            // doReset scheduling to start a fresh measurement cycle
             scheduler.timer(MEASURE, MEASURE_PERIOD);
             return;
         }
@@ -501,16 +509,16 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
 
-	ds.reset();
+	ds.doReset();
 	ds.select(addr);
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
 	Sleepy::loseSomeTime(800); 
 	//delay(1000);     // maybe 750ms is enough, maybe not
-	// we might do a ds.depower() here, but the reset will take care of it.
+	// we might do a ds.depower() here, but the doReset will take care of it.
 
-	present = ds.reset();
+	present = ds.doReset();
 	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
@@ -734,15 +742,15 @@ void doConfig(void)
 					break;
 			}
 		}
-		decoder.reset();
+		decoder.doReset();
 	}
 }
 
-void setupLibs()
+void initLibs()
 {
 }
 
-void reset(void)
+void doReset(void)
 {
 	pinMode(ledPin, OUTPUT);
 	pinMode(backlightPin, OUTPUT);
@@ -897,12 +905,20 @@ bool doAnnounce()
 #endif
 }
 
+// readout all the sensors and other values
 void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
 	int ctemp = internalTemp();
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.println();
+	Serial.print("AVR T new/avg ");
+	Serial.print(ctemp);
+	Serial.print(' ');
+	Serial.println(payload.ctemp);
+#endif
 
 #if _DS
 	uint8_t addr[8];
@@ -912,7 +928,7 @@ void doMeasure()
 	}
 #endif
 
-#if _RF12LOBAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #if SERIAL && DEBUG_MEASURE
 	if (payload.lobat) {
@@ -973,7 +989,7 @@ void doMeasure()
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport(void)
+void doReport(void)
 {
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
@@ -1008,7 +1024,7 @@ static void doReport(void)
 	Serial.print((int) payload.memfree);
 	Serial.print(' ');
 #endif
-#if _RF12LOBAT
+#if _RFM12LOBAT
 	Serial.print((int) payload.lobat);
 #endif
 	Serial.println();
@@ -1045,12 +1061,14 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
+#if DEBUG
 		default:
 			Serial.print("0x");
 			Serial.print(task, HEX);
 			Serial.println(" ?");
 			serialFlush();
 			break;
+#endif
 
 	}
 }
@@ -1068,8 +1086,8 @@ void setup(void)
 	mpeser.startAnnounce(sketch, version);
 	serialFlush();
 #if DEBUG
-	Serial.print(F("Free RAM: "));
-	Serial.println(freeRam());
+	Serial.print(F("SRAM used: "));
+	Serial.println(usedRam());
 	byte rf12_show = 1;
 #else
 	byte rf12_show = 0;
@@ -1112,9 +1130,9 @@ void setup(void)
 	Serial.println();
 	serialFlush();
 
-	setupLibs();
+	initLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)
@@ -1136,9 +1154,9 @@ void loop(void)
 
 	debug_ticks();
 	char task = scheduler.poll();
-	if (0 < task && task < 0xFF) {
-		runScheduler(task);
-	}
+	if (task == 0xFF) {} // -1
+	else if (task == 0xFE) {} // -2
+	else runScheduler(task);
 
 #if PIR_PORT
 	if (pir.triggered()) {
