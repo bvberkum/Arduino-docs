@@ -837,6 +837,16 @@ mmc: P := Prototype/MMC/
 mmc: I := Prototype/MMC/MMC.hex
 mmc: jeenode upload
 
+roomnode: C := m328p
+roomnode: P := Mpe/RoomNode/
+roomnode: I := Mpe/RoomNode/RoomNode.hex
+roomnode: jeenode upload
+
+magnetometer: C := m328p
+magnetometer: P := Prototype/Magnetometer/
+magnetometer: I := Prototype/Magnetometer/Magnetometer.hex
+magnetometer: jeenode upload
+
 # this needs some avr-gcc setup, not working
 pff: C := m328p
 pff: P := Prototype/MMC/PFF/

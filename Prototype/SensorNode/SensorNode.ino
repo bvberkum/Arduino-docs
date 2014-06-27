@@ -40,11 +40,15 @@ MpeSerial mpeser (57600);
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-#endif // _DS
+#endif //_DS
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 #endif //_NRF24
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif //_HMC5883L
 
 
 /** AVR routines */
@@ -140,6 +144,11 @@ void debug_ticks(void)
 /* Nordic nRF24L01+ routines */
 
 #endif //_NRF24
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+}
+#endif //_HMC5883L
 
 
 /* Initialization routines */
@@ -154,6 +163,8 @@ void initLibs()
 	dht.begin();
 #endif
 
+#if _HMC5883L
+#endif //_HMC5883L
 }
 
 

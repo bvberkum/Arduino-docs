@@ -7,8 +7,10 @@
 #include <OneWire.h>
 
 
-#define SERIAL  1   // set to 1 to also report readings on the serial port
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
+/** Globals and sketch configuration  */
+#define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
+							
 
 #define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT    4   // defined if PIR is connected to a port's DIO pin
@@ -35,7 +37,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 // Other variables used in various places in the code:
 
 static byte reportCount;    // count up until next report, i.e. packet send
-static byte myNodeID;       // node ID used for this unit
+//static byte myNodeID;       // node ID used for this unit
 
 // This defines the structure of the packets which get sent out by wireless:
 

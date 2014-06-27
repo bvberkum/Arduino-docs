@@ -69,17 +69,18 @@ ToDo
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
+#include <DHT.h> // Adafruit DHT
+#include <DotmpeLib.h>
+//#include <EEPROM.h>
+// include EEPROMEx.h
+#include <JeeLib.h>
+#include <OneWire.h>
+#include <Wire.h>
 #include <stdlib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 #include <avr/sleep.h>
 #include <util/atomic.h>
-
-#include <DHT.h> // Adafruit DHT
-#include <JeeLib.h>
-#include <OneWire.h>
-//#include <EEPROM.h>
-// include EEPROMEx.h
 
 #include "EmBencode.h"
 
@@ -87,26 +88,32 @@ ToDo
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-#define _MEM            1   // Report free memory 
-#define _RFM12LOBAT      1   // Use JeeNode lowbat measurement
-#define _DHT            1
-#define DHT_PIN         7   // DIO for DHTxx
-#define _DS             1
-#define DS_PIN          A5
-#define DEBUG_DS        1
-//#define FIND_DS    1
-#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
-#define PIR_PORT        1
-							
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
+							
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
+// set the sync mode to 2 if the fuses are still the Arduino default
+// mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
+							
+#define _MEM            1   // Report free memory 
+#define _RFM12B         0
+#define _RFM12BLOBAT    1   // Use JeeNode lowbat measurement
+#define _NRF24          0
+#define _HMC5883L       1
+#define _DHT            0
+#define DHT_PIN         0   // DIO for DHTxx
+#define _DS             0
+#define DS_PIN          A5
+#define DEBUG_DS        1
+//#define FIND_DS    1
+#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
+#define PIR_PORT        0
 							
 
 String sketch = "CarrierCase";
@@ -114,6 +121,7 @@ String version = "0";
 
 String node_id = "cc-1";
 
+int tick = 0;
 int pos = 0;
 
 MpeSerial mpeser (57600);
@@ -127,7 +135,7 @@ Scheduler scheduler (schedbuf, REPORT);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-/* RF12 message types */
+/* RFM12 message types */
 enum { ANNOUNCE_MSG, REPORT_MSG };
 
 
@@ -148,12 +156,10 @@ volatile int ds_value[ds_count];
 volatile int ds_value[8]; // take on 8 DS sensors in report
 
 enum { DS_OK, DS_ERR_CRC };
-#endif
-
+#endif //_DS
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
-
 #if _DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
@@ -161,7 +167,21 @@ Port ldr (LDR_PORT);
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
 
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
-#endif
+#endif //_DHT
+#if _NRF24
+#endif //_NRF24
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+/* The I2C address of the module */
+#define HMC5803L_Address 0x1E
+
+/* Register address for the X Y and Z data */
+#define X 3
+#define Y 7
+#define Z 5
+
+#endif //_HMC5883L
 
 /* Report variables */
 
@@ -183,10 +203,15 @@ struct {
 	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _HMC5883L
+	int magnx;
+	int magny;
+	int magnz;
+#endif //_HMC5883L
 #if _MEM
 	int memfree     :16;
 #endif
-#if _RFM12LOBAT
+#if _RFM12BLOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
@@ -354,19 +379,6 @@ void freeEmbencBuff() {
 	embencBuffLen = 0;
 }
 
-/** RF12 routines */
-static bool waitForAck() {
-    MilliTimer ackTimer;
-    while (!ackTimer.poll(ACK_TIME)) {
-        if (rf12_recvDone() && rf12_crc == 0 &&
-                // see http://talk.jeelabs.net/topic/811#post-4712
-                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
-            return 1;
-        set_sleep_mode(SLEEP_MODE_IDLE);
-        sleep_mode();
-    }
-    return 0;
-}
 
 #if PIR_PORT
 
@@ -417,43 +429,6 @@ PIR pir (PIR_PORT);
 // the PIR signal comes in via a pin-change interrupt
 ISR(PCINT2_vect) { pir.poll(); }
 
-// send packet and wait for ack when there is a motion trigger
-static void doTrigger() {
-    #if DEBUG
-        Serial.print("PIR ");
-        Serial.print((int) payload.moved);
-		Serial.print(' ');
-        Serial.print((int) pir.lastOn);
-		Serial.println(' ');
-        serialFlush();
-    #endif
-
-    for (byte i = 0; i < RETRY_LIMIT; ++i) {
-        rf12_sleep(RF12_WAKEUP);
-        rf12_sendNow(RF12_HDR_ACK, &payload, sizeof payload);
-        rf12_sendWait(RADIO_SYNC_MODE);
-        byte acked = waitForAck();
-        rf12_sleep(RF12_SLEEP);
-
-        if (acked) {
-            #if DEBUG
-                Serial.print(" ack ");
-                Serial.println((int) i);
-                serialFlush();
-            #endif
-            // doReset scheduling to start a fresh measurement cycle
-            scheduler.timer(MEASURE, MEASURE_PERIOD);
-            return;
-        }
-        
-        delay(RETRY_PERIOD * 100);
-    }
-    scheduler.timer(MEASURE, MEASURE_PERIOD);
-    #if DEBUG
-        Serial.println(" no ack!");
-        serialFlush();
-    #endif
-}
 #endif
 
 
@@ -488,6 +463,7 @@ static void sendSomeData () {
 }
 
 static void writeConfig() {
+#if _RFM12B
 	eeprom_write_byte(RF12_EEPROM_ADDR, 4);
 	eeprom_write_byte(RF12_EEPROM_ADDR+1, 5);
 	//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
@@ -500,25 +476,45 @@ static void writeConfig() {
 	Serial.print("group: ");
 	Serial.println(group);
 	serialFlush();
+#endif //_RFM12B
 }
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+// wait a few milliseconds for proper ACK to me, return true if indeed received
+static bool waitForAck() {
+    MilliTimer ackTimer;
+    while (!ackTimer.poll(ACK_TIME)) {
+        if (rf12_recvDone() && rf12_crc == 0 &&
+                // see http://talk.jeelabs.net/topic/811#post-4712
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
+            return 1;
+        set_sleep_mode(SLEEP_MODE_IDLE);
+        sleep_mode();
+    }
+    return 0;
+}
+#endif //_RFM12B
+#if _NRF24
+#endif //_NRF24
 #if _DS
-/* Dallas DS18B20 thermometer */
+/* Dallas DS18B20 thermometer routines */
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
 
-	ds.doReset();
+	ds.reset();
 	ds.select(addr);
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
 	Sleepy::loseSomeTime(800); 
 	//delay(1000);     // maybe 750ms is enough, maybe not
-	// we might do a ds.depower() here, but the doReset will take care of it.
+	// we might do a ds.depower() here, but the reset will take care of it.
 
-	present = ds.doReset();
+	present = ds.reset();
 	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
@@ -681,14 +677,59 @@ static void findDS18B20s(void) {
 	writeDSAddr(addr);
 }
 
-
-
 #endif // _DS
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+/* This function will initialise the module and only needs to be run once
+   after the module is first powered up or reset */
+void Init_HMC5803L(void)
+{
+	/* Set the module to 8x averaging and 15Hz measurement rate */
+	Wire.beginTransmission(HMC5803L_Address);
+	Wire.write(0x00);
+	Wire.write(0x70);
+
+	/* Set a gain of 5 */
+	Wire.write(0x01);
+	Wire.write(0xA0);
+	Wire.endTransmission();
+}
+
+
+/* This function will read once from one of the 3 axis data registers
+   and return the 16 bit signed result. */
+int HMC5803L_Read(byte Axis)
+{
+	int Result;
+
+	/* Initiate a single measurement */
+	Wire.beginTransmission(HMC5803L_Address);
+	Wire.write(0x02);
+	Wire.write(0x01);
+	Wire.endTransmission();
+	delay(6);
+
+	/* Move modules the resiger pointer to one of the axis data registers */
+	Wire.beginTransmission(HMC5803L_Address);
+	Wire.write(Axis);
+	Wire.endTransmission();
+
+	/* Read the data from registers (there are two 8 bit registers for each axis) */  
+	Wire.requestFrom(HMC5803L_Address, 2);
+	Result = Wire.read() << 8;
+	Result |= Wire.read();
+
+	return Result;
+}
+#endif //_HMC5883L
+
 
 /* Initialization routines */
 
 void doConfig(void)
 {
+#if _RFM12B
 	// JeeLib RF12_EEPROM_ADDR is at 20
 	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
 	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
@@ -701,6 +742,7 @@ void doConfig(void)
 			(const void*)RF12_EEPROM_ADDR + 3,
 			specByteCnt 
 		);
+#endif //_RFM12B
 
 	char embuf [200];
 	EmBdecode decoder (embuf, sizeof embuf);
@@ -742,22 +784,36 @@ void doConfig(void)
 					break;
 			}
 		}
-		decoder.doReset();
+		decoder.reset();
 	}
 }
 
 void initLibs()
 {
+
+#if _HMC5883L
+	/* Initialise the Wire library */
+	Wire.begin();
+
+	/* Initialise the module */ 
+	Init_HMC5803L();
+#endif //_HMC5883L
+
+#if SERIAL && DEBUG
+	//printf_begin();
+#endif
 }
 
 void doReset(void)
 {
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
+	//pinMode(ledPin, OUTPUT);
+	//pinMode(backlightPin, OUTPUT);
+	//digitalWrite(backlightPin, LOW);
+
 	tick = 0;
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(ANNOUNCE, 0);
+	//scheduler.timer(ANNOUNCE, 0);
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 /* Run-time handlers */
@@ -865,6 +921,7 @@ bool doAnnounce()
 	// FIXME: need to send in chunks
 	}
 
+#if _RFM12B
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(
 		(rf12_id & RF12_HDR_MASK) | RF12_HDR_ACK,
@@ -888,7 +945,8 @@ bool doAnnounce()
 
 	rf12_sleep(RF12_SLEEP);
 	return acked;
-
+#endif //_RFM12B
+	return false;
 #if _DS
 			// report a new node or reinitialize node with central link node
 //			for ( int x=0; x<ds_count; x++) {
@@ -919,35 +977,17 @@ void doMeasure()
 	Serial.print(' ');
 	Serial.println(payload.ctemp);
 #endif
-
-#if _DS
-	uint8_t addr[8];
-	for ( int i = 0; i < ds_count; i++) {
-		readDSAddr(i, addr);
-		ds_value[i] = readDS18B20(addr);
-	}
-#endif
-
-#if _RFM12LOBAT
-	payload.lobat = rf12_lowbat();
-#if SERIAL && DEBUG_MEASURE
-	if (payload.lobat) {
-		Serial.println("Low battery");
-	}
-#endif
-#endif
-
+#if SHT11_PORT
+#endif //SHT11_PORT
 #if PIR_PORT
 	payload.moved = pir.state();
 #endif
-
 #if LDR_PORT
 	//ldr.digiWrite2(1);  // enable AIO pull-up
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
-#endif //LDR
-
+#endif //_LDR
 #if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
@@ -977,25 +1017,48 @@ void doMeasure()
 		Serial.println(payload.temp);
 #endif
 	}
-#endif // _DHT
-
+#endif //_DHT
+#if _DS
+	uint8_t addr[8];
+	for ( int i = 0; i < ds_count; i++) {
+		readDSAddr(i, addr);
+		ds_value[i] = readDS18B20(addr);
+	}
+#endif //_DS
+#if _HMC5883L
+	payload.magnx = smoothedAverage(payload.magnx, HMC5803L_Read(X), firstTime);
+	payload.magny = smoothedAverage(payload.magny, HMC5803L_Read(Y), firstTime);
+	payload.magnz = smoothedAverage(payload.magnz, HMC5803L_Read(Z), firstTime);
+#endif //_HMC5883L
 #if _MEM
 	payload.memfree = freeRam();
 #if SERIAL && DEBUG_MEASURE
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
+#endif //_MEM
+#if _RFM12BLOBAT
+	payload.lobat = rf12_lowbat();
+#if SERIAL && DEBUG_MEASURE
+	if (payload.lobat) {
+		Serial.println("Low battery");
+	}
 #endif
+#endif //_RFM12BLOBAT
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+#if _RFM12B
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	rf12_sleep(RF12_SLEEP);
+#endif
+
 #if SERIAL
+	/* Report over serial, same fields and order as announced */
 	Serial.print(node_id);
 	Serial.print(" ");
 #if LDR_PORT
@@ -1020,15 +1083,25 @@ void doReport(void)
 		Serial.print(' ');
 	}
 #endif
-#if _MEM
-	Serial.print((int) payload.memfree);
+#if _HMC5883L
 	Serial.print(' ');
-#endif
-#if _RFM12LOBAT
+	Serial.print(payload.magnx);
+	Serial.print(' ');
+	Serial.print(payload.magny);
+	Serial.print(' ');
+	Serial.print(payload.magnz);
+#endif //_HMC5883L
+#if _MEM
+	Serial.print(' ');
+	Serial.print((int) payload.memfree);
+#endif //_MEM
+#if _RFM12BLOBAT
+	Serial.print(' ');
 	Serial.print((int) payload.lobat);
-#endif
+#endif //_RFM12BLOBAT
+
 	Serial.println();
-#endif // SERIAL || DEBUG
+#endif //SERIAL
 }
 
 void runScheduler(char task)
@@ -1073,9 +1146,54 @@ void runScheduler(char task)
 	}
 }
 
-static void runCommand()
+void runCommand()
 {
 }
+
+
+#if PIR_PORT
+
+// send packet and wait for ack when there is a motion trigger
+void doTrigger()
+{
+#if DEBUG
+	Serial.print("PIR ");
+	Serial.print((int) payload.moved);
+	Serial.print(' ');
+	Serial.print((int) pir.lastOn);
+	Serial.println(' ');
+	serialFlush();
+#endif
+
+	for (byte i = 0; i < RETRY_LIMIT; ++i) {
+		rf12_sleep(RF12_WAKEUP);
+		rf12_sendNow(RF12_HDR_ACK, &payload, sizeof payload);
+		rf12_sendWait(RADIO_SYNC_MODE);
+		byte acked = waitForAck();
+		rf12_sleep(RF12_SLEEP);
+
+		if (acked) {
+#if DEBUG
+			Serial.print(" ack ");
+			Serial.println((int) i);
+			serialFlush();
+#endif
+			// reset scheduling to start a fresh measurement cycle
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			return;
+		}
+
+		delay(RETRY_PERIOD * 100);
+	}
+	scheduler.timer(MEASURE, MEASURE_PERIOD);
+#if DEBUG
+	Serial.println(" no ack!");
+	serialFlush();
+#endif
+}
+#endif // PIR_PORT
+
+
 
 /* Main */
 
@@ -1094,12 +1212,12 @@ void setup(void)
 #endif
 #endif
 
-	writeConfig();
+	//writeConfig();
 	//doConfig();
-	return;
+	//return;
 
 	// Reported on serial?
-	node_id = "CarrierCase.0-2-RF12-5-23";
+	//node_id = "CarrierCase.0-2-RF12-5-23";
 	//<sketch>.0-<count>-RF12....
 	rf12_id = 23;
 	rf12_initialize(rf12_id, RF12_868MHZ, 5);
@@ -1153,10 +1271,6 @@ void loop(void)
 #endif
 
 	debug_ticks();
-	char task = scheduler.poll();
-	if (task == 0xFF) {} // -1
-	else if (task == 0xFE) {} // -2
-	else runScheduler(task);
 
 #if PIR_PORT
 	if (pir.triggered()) {
@@ -1164,4 +1278,10 @@ void loop(void)
 		doTrigger();
 	}
 #endif
+
+	char task = scheduler.poll();
+	if (task == 0xFF) {} // -1
+	else if (task == 0xFE) {} // -2
+	else runScheduler(task);
+
 }

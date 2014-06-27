@@ -16,7 +16,7 @@
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 							
-#define _RFM12          0
+#define _RFM12B          0
 #define _MEM            1   // Report free memory 
 #define _DHT            1
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
@@ -26,19 +26,20 @@
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define STDBY_PERIOD    60
+							
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
 							
 
-static String sketch = "AdafruitDHT";
-static String version = "0";
-static String node = "adadht";
+String sketch = "AdafruitDHT";
+String version = "0";
+String node = "adadht";
 
 // determined upon handshake 
 char node_id[7];
 
-static int tick = 0;
-static int pos = 0;
+int tick = 0;
+int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -59,6 +60,7 @@ static const char IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[STDBY];
 Scheduler scheduler (schedbuf, STDBY);
+// has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _DHT
@@ -214,7 +216,7 @@ void initLibs()
 	dht.begin();
 #endif
 
-#if _RFM12
+#if _RFM12B
 #endif
 }
 
@@ -458,5 +460,7 @@ void loop(void)
 	debug_ticks();
 	serialFlush();
 	char task = scheduler.pollWaiting();
-	runScheduler(task);
+	if (task == 0xFF) {} // -1
+	else if (task == 0xFE) {} // -2
+	else runScheduler(task);
 }
