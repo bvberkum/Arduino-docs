@@ -459,6 +459,7 @@ ARDUINODIR := $(shell realpath ./arduinodir)
 #_arduino: LIB := $/libraries/
 #_arduino: TARGETS := clean all
 _arduino: 
+	@\
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
@@ -836,6 +837,11 @@ mmc: C := m328p
 mmc: P := Prototype/MMC/
 mmc: I := Prototype/MMC/MMC.hex
 mmc: jeenode upload
+
+parser_demo: C := m328p
+parser_demo: P := libraries/JeeLib/examples/Ports/parser_demo/
+parser_demo: I := libraries/JeeLib/examples/Ports/parser_demo/parser_demo.hex
+parser_demo: jeenode upload
 
 roomnode: C := m328p
 roomnode: P := Mpe/RoomNode/

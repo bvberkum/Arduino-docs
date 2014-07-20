@@ -16,7 +16,7 @@
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 							
-#define _RFM12B          0
+#define _RFM12B         0
 #define _MEM            1   // Report free memory 
 #define _DHT            1
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
@@ -49,11 +49,11 @@ static const byte DHT_PIN = 7;
 
 MpeSerial mpeser (57600);
 
-extern InputParser::Commands cmdTab[] PROGMEM;
+const extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
 /* Scheduled tasks */
-enum { HANDSHAKE, MEASURE, REPORT, STDBY };
+enum { MEASURE, REPORT, STDBY };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
@@ -80,6 +80,19 @@ DHT dht (DHT_PIN, DHT11);
 
 #if _LCD84x48
 #endif //_LCD84x48
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+#endif //_DS
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+#endif //_NRF24
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif //_HMC5883L
+
 
 /* Report variables */
 
@@ -190,6 +203,7 @@ void debug_ticks(void)
 #endif
 }
 
+
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	if (firstTime)
@@ -197,11 +211,16 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
 }
 
-void debug(String msg) {
+void debugline(String msg) {
 #if DEBUG
 	Serial.println(msg);
 #endif
 }
+
+
+/* Peripheral hardware routines */
+
+// none
 
 
 /* Initialization routines */
@@ -219,7 +238,6 @@ void initLibs()
 #if _RFM12B
 #endif
 }
-
 
 
 /* InputParser handlers */
@@ -256,7 +274,6 @@ void doReset(void)
 #endif //_NRF24
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
@@ -382,24 +399,9 @@ void runScheduler(char task)
 {
 	switch (task) {
 
-		case HANDSHAKE:
-			Serial.println("HANDSHAKE");
-			Serial.print(strlen(node_id));
-			Serial.println();
-			if (strlen(node_id) > 0) {
-				Serial.print("Node: ");
-				Serial.println(node_id);
-				//scheduler.timer(MEASURE, 0);
-			} else {
-				doAnnounce();
-				//scheduler.timer(HANDSHAKE, 100);
-			}
-			serialFlush();
-			break;
-
 		case MEASURE:
 			// reschedule these measurements periodically
-			debug("MEASURE");
+			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 			// every so often, a report needs to be sent out
@@ -411,14 +413,14 @@ void runScheduler(char task)
 			break;
 
 		case REPORT:
-			debug("REPORT");
+			debugline("REPORT");
 //			payload.msgtype = REPORT_MSG;
 			doReport();
 			serialFlush();
 			break;
 
 		case STDBY:
-			debug("STDBY");
+			debugline("STDBY");
 			serialFlush();
 			break;
 
@@ -460,7 +462,5 @@ void loop(void)
 	debug_ticks();
 	serialFlush();
 	char task = scheduler.pollWaiting();
-	if (task == 0xFF) {} // -1
-	else if (task == 0xFE) {} // -2
-	else runScheduler(task);
+	runScheduler(task);
 }

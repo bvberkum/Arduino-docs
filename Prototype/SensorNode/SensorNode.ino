@@ -1,7 +1,9 @@
 /*
 	boilerplate for ATmega node with Serial interface
+	uses JeeLib scheduler like JeeLab's roomNode
 */
 #include <DotmpeLib.h>
+#include <JeeLib.h>
 
 
 /** Globals and sketch configuration  */
@@ -14,20 +16,39 @@
 #define _LCD84x48       0
 #define _NRF24          0
 							
+#define SMOOTH          5   // smoothing factor used for running averages
+							
 #define MAXLENLINE      79
 							
 
-static String sketch = "X-SensorNode";
-static String version = "0";
 
-static int tick = 0;
-static int pos = 0;
+String sketch = "X-SensorNode";
+String version = "0";
+
+int tick = 0;
+int pos = 0;
+
 
 /* IO pins */
 static const byte ledPin = 13;
 
 MpeSerial mpeser (57600);
 
+
+/* Scheduled tasks */
+enum { 
+	HANDSHAKE,
+	MEASURE,
+	REPORT,
+	STDBY };
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[STDBY];
+Scheduler scheduler (schedbuf, STDBY);
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 #if _DHT
 /* DHT temp/rh sensor 
@@ -50,6 +71,13 @@ MpeSerial mpeser (57600);
 
 #endif //_HMC5883L
 
+
+/* Report variables */
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+struct {
+} payload;
 
 /** AVR routines */
 
@@ -109,13 +137,12 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=0) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
 
@@ -135,6 +162,22 @@ void debug_ticks(void)
 #endif
 }
 
+
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debugline(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
+
+/* Peripheral hardware routines */
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
@@ -173,6 +216,10 @@ void initLibs()
 void doReset(void)
 {
 	tick = 0;
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(HANDSHAKE, 0);
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 bool doAnnounce()
@@ -187,6 +234,64 @@ void doMeasure()
 void doReport(void)
 {
 }
+
+void runScheduler(char task)
+{
+	switch (task) {
+
+		case HANDSHAKE:
+			Serial.println("HANDSHAKE");
+			Serial.print(strlen(node_id));
+			Serial.println();
+			if (strlen(node_id) > 0) {
+				Serial.print("Node: ");
+				Serial.println(node_id);
+				//scheduler.timer(MEASURE, 0);
+			} else {
+				doAnnounce();
+				//scheduler.timer(HANDSHAKE, 100);
+			}
+			serialFlush();
+			break;
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			debugline("MEASURE");
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+			serialFlush();
+			break;
+
+		case REPORT:
+			debugline("REPORT");
+//			payload.msgtype = REPORT_MSG;
+			doReport();
+			serialFlush();
+			break;
+
+		case STDBY:
+			debugline("STDBY");
+			serialFlush();
+			break;
+
+		case WAITING:
+			scheduler.timer(STDBY, STDBY_PERIOD);
+			break;
+		
+		case IDLE:
+			scheduler.timer(STDBY, STDBY_PERIOD);
+			break;
+		
+	}
+}
+
+
+/* InputParser handlers */
 
 
 /* Main */
@@ -209,5 +314,9 @@ void loop(void)
 	blink(ledPin, 1, 15);
 	debug_ticks();
 	serialFlush();
+	char task = scheduler.pollWaiting();
+	if (task == 0xFF) {} // -1
+	else if (task == 0xFE) {} // -2
+	else runScheduler(task);
 }
 

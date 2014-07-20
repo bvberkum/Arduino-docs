@@ -12,9 +12,9 @@ Current targets:
 
  */
 // Definition of interrupt names
-#include < avr/io.h >
+#include <avr/io.h>
 // ISR interrupt service routine
-#include < avr/interrupt.h >
+#include <avr/interrupt.h>
 
 #include <DotmpeLib.h>
 #include <JeeLib.h>
@@ -36,12 +36,18 @@ Current targets:
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
+//#define SRAM_SIZE       
 
 
-static String sketch = "X-LogReader84x48";
-static String version = "0";
-static String node = "logreader-1";
+String sketch = "X-LogReader84x48";
+String version = "0";
+String node = "logreader-1";
 
+int tick = 0;
+int pos = 0;
+
+
+/* IO pins */
 static const byte ledPin = 13;
 static const byte backlightPin = 9;
 
@@ -49,18 +55,28 @@ MpeSerial mpeser (57600);
 
 MilliTimer idle, stdby;
 
+/* Command parser */
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-enum { USER, USER_POLL, USER_IDLE, USER_STDBY, MEASURE, REPORT, TASK_END };
+/* Scheduled tasks */
+enum { 
+	USER,
+	USER_POLL,
+	USER_IDLE,
+	USER_STDBY,
+	MEASURE,
+	REPORT,
+	TASK_END };
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-int tick = 0;
-int pos = 0;
 
 bool schedRunning()
 {
@@ -118,9 +134,14 @@ struct {
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
-	int v; 
+	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+
+//int usedRam () {
+//	return SRAM_SIZE - freeRam();
+//}
+
 
 /** ATmega routines */
 
@@ -155,6 +176,7 @@ double internalTemp(void)
 	return (t);
 }
 
+
 /** Generic routines */
 
 static void serialFlush () {
@@ -166,15 +188,15 @@ static void serialFlush () {
 #endif
 }
 
-void blink (int led, int count, int length) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
-
+/*
 static void showNibble (byte nibble) {
 	char c = '0' + (nibble & 0x0F);
 	if (c > '9')
@@ -192,6 +214,7 @@ static void showByte (byte value) {
 		Serial.print((int) value);
 	}
 }
+*/
 
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
@@ -200,7 +223,7 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
 }
 
-void debug(String msg) {
+void debugline(String msg) {
 #if DEBUG
 	Serial.println(msg);
 #endif
@@ -249,41 +272,13 @@ void printKeys(void) {
 	Serial.println();
 }
 
-static bool doAnnounce()
+/* Peripheral hardware routines */
+
+
+/* Initialization routines */
+
+void doConfig(void)
 {
-}
-
-static void doMeasure()
-{
-	byte firstTime = payload.ctemp == 0; // special case to init running avg
-
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
-
-#if _MEM
-	payload.memfree = freeRam();
-#if SERIAL && DEBUG_MEASURE
-	Serial.print("MEM free ");
-	Serial.println(payload.memfree);
-#endif
-#endif
-
-	serialFlush();
-}
-
-static void doReport(void)
-{
-#if SERIAL
-	Serial.print(node);
-	Serial.print(" ");
-	Serial.print((int) payload.ctemp);
-	Serial.print(' ');
-#if _MEM
-	Serial.print((int) payload.memfree);
-	Serial.print(' ');
-#endif
-	Serial.println();
-	serialFlush();
-#endif//SERIAL
 }
 
 void lcd_start() 
@@ -304,11 +299,63 @@ void lcd_start()
 }
 
 
+/* Run-time handlers */
+
+void doReset(void)
+{
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	ui_irq = false;
+
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(USER, 0);
+	scheduler.timer(MEASURE, 0);
+}
+
+//bool doAnnounce()
+//{
+//}
+
+void doMeasure()
+{
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+
+#if _MEM
+	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
+#endif
+
+	serialFlush();
+}
+
+// periodic report, i.e. send out a packet and optionally report on serial port
+void doReport(void)
+{
+#if SERIAL
+	Serial.print(node);
+	Serial.print(" ");
+	Serial.print((int) payload.ctemp);
+	Serial.print(' ');
+#if _MEM
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+	Serial.println();
+	serialFlush();
+#endif//SERIAL
+}
+
 void runScheduler()
 {
 	switch (scheduler.pollWaiting()) {
 		case MEASURE:
-			debug("MEASURE");
+			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 			if (++reportCount >= REPORT_EVERY) {
@@ -318,7 +365,7 @@ void runScheduler()
 			serialFlush();
 			break;
 		case REPORT:
-			debug("REPORT");
+			debugline("REPORT");
 			doReport();
 			serialFlush();
 			break;
@@ -392,11 +439,11 @@ void runScheduler()
 		case TASK_END:
 			Serial.print("task? ");
 			break;
-		case -1: // waiting
-		case -2: // nothing
-			Serial.print(";");
-			serialFlush();
-			Sleepy::loseSomeTime(SCHEDULER_DELAY);
+//		case -1: // waiting
+//		case -2: // nothing
+//			Serial.print(";");
+//			serialFlush();
+//			Sleepy::loseSomeTime(SCHEDULER_DELAY);
 		default:
 			out--;
 			if (out == 0) {
@@ -440,17 +487,6 @@ void runScheduler()
 
 static byte STDBY = 0xff;
 
-static void reset(void)
-{
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(USER, 0);
-	scheduler.timer(MEASURE, 0);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
-	ui_irq = false;
-	tick = 0;
-}
-
 #if SERIAL
 
 /* InputParser handlers */
@@ -489,7 +525,7 @@ InputParser::Commands cmdTab[] = {
 	{ 'm', 0, measureCmd },
 	{ 'r', 0, reportCmd },
 	{ 's', 0, stdbyCmd },
-	{ 'x', 0, reset },
+	{ 'x', 0, doReset },
 };
 
 #endif // SERIAL
@@ -502,7 +538,7 @@ void setup(void)
 	mpeser.startAnnounce(sketch, version);
 	delay(500);
 	serialFlush();
-	reset();
+	doReset();
 	attachInterrupt(INT0, irq0, RISING);
 	ui_irq = true;
 }
@@ -510,7 +546,7 @@ void setup(void)
 void loop(void)
 {
 	if (ui_irq) { 
-		debug("Irq");
+		debugline("Irq");
 		ui_irq = false;
 		ui = true;
 		idle.set(UI_IDLE);
@@ -536,12 +572,12 @@ void loop(void)
 	if (ui) {
 		parser.poll();
 		if (idle.poll()) {
-			debug("Idle");
+			debugline("Idle");
 			digitalWrite(backlightPin, 0);
 			analogWrite(backlightPin, 0x1f);
 			stdby.set(UI_STDBY);
 		} else if (stdby.poll()) {
-			debug("StdBy");
+			debugline("StdBy");
 			digitalWrite(backlightPin, LOW);
 			ui = false;
 		}
@@ -551,12 +587,12 @@ void loop(void)
 		blink(ledPin, 1, 15);
 		runScheduler();
 		if (!schedRunning()) {
-			debug("Sleep");
+			debugline("Sleep");
 			digitalWrite(backlightPin, LOW);
 			lcd.stop();
 			serialFlush();
 			Sleepy::loseSomeTime(10000);
-			debug("WakeUp");
+			debugline("WakeUp");
 		}
 	}
 }

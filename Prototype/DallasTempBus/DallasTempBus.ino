@@ -1,4 +1,6 @@
-/* Dallas OneWire Temperature Bus with autodetect and eeprom config */
+/* 
+Dallas OneWire Temperature Bus with autodetect and eeprom config 
+*/
 #include <DotmpeLib.h>
 #include <OneWire.h>
 
@@ -11,6 +13,8 @@
 #define DS_PIN          8
 #define DEBUG_DS        1
 //#define FIND_DS    1
+							
+#define SMOOTH          5   // smoothing factor used for running averages
 							
 #define MAXLENLINE      79
 							
@@ -78,6 +82,22 @@ void debug_ticks(void)
 }
 
 
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debugline(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
+
+/* Peripheral hardware routines */
+
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
@@ -85,14 +105,14 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
 
-	ds.reset();
+	ds.doReset();
 	ds.select(addr);
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	delay(1000);     // maybe 750ms is enough, maybe not
-	// we might do a ds.depower() here, but the reset will take care of it.
+	// we might do a ds.depower() here, but the doReset will take care of it.
 
-	present = ds.reset();
+	present = ds.doReset();
 	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
@@ -281,16 +301,17 @@ void doConfig(void)
 {
 }
 
-void setupLibs()
-{
-}
-
-void reset(void)
+void initLibs()
 {
 }
 
 
 /* Run-time handlers */
+
+void doReset(void)
+{
+
+}
 
 bool doAnnounce()
 {
@@ -305,7 +326,7 @@ void doReport(void)
 {
 }
 
-void runCommand()
+void runScheduler(char task)
 {
 }
 
@@ -328,9 +349,9 @@ void setup(void)
 #endif
 	serialFlush();
 
-	setupLibs();
+	initLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)
