@@ -25,3 +25,6 @@
 [submodule "libraries/RF24"]
 	path = libraries/RF24
 	url = git@github.com:maniacbug/RF24.git
+[submodule "libraries/SPI"]
+	path = libraries/SPI
+	url = git@github.com:jscrane/SPI.git

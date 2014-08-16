@@ -11,7 +11,7 @@
 
 
 static String sketch = "X-Atmega8TempGuard";
-static String vesion = "0";
+static String version = "0";
 
 byte seven_seg_digits[12][7] = { 
 /*	  b c d e f a g */

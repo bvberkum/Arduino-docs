@@ -338,6 +338,8 @@ $(TARGET).hex: $(TARGET).elf
 
 .INTERMEDIATE: $(TARGET).elf
 
+$(info $(COMPILE.cpp))
+
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
 	@$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
 	@echo -n .
