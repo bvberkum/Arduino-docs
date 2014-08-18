@@ -47,7 +47,7 @@ Free pins
 #include <printf.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
@@ -72,45 +72,94 @@ Free pins
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 							
 #define RADIO_SYNC_MODE 2
+							
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE       512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#endif
+							
+
+const String sketch = "Cassette328P";
+const int version = 0;
+
+char node[] = "cs";
+char node_id[7];
 
 
-static String sketch = "Cassette328P";
-static String vesion = "0";
-
-static String node = "";
-
-
+/* IO pins */
 static const int LED_RED       =  5;
 static const int LED_YELLOW    =  6;
 static const int LED_GREEN     =  7;
 
 
-/**
- * See http://www.wormfood.net/avrbaudcalc.php for baurdates. Here used 38400 
- * gives an UBRR of 25 with 0.2% error rate, according to that sheet.
- */
-//#define USART_BAUDRATE 38400
-//#define BAUD_PRESCALE ((( F_CPU / ( USART_BAUDRATE * 16UL ))) - 1 )
+/* *** EEPROM config *** {{{ */
 
-#define CONFIG_VERSION "ls1"
-#define CONFIG_START 32
+#define CONFIG_VERSION "cs1"
+#define CONFIG_START 0
 
 struct Config {
-	char version[4]; bool saved;
+	bool saved;
 	bool radio; bool display; bool dht; bool rtc;
 	uint64_t rf24id;
 	uint64_t rf24routes[1];
+	char config_id[4];
 } static_config = {
 	/* default values */
-	CONFIG_VERSION, false,
-	false, true, true, true,
-	0xF0F0F0F0D2LL, { 0xF0F0F0F0E1LL }
+	false, false, true, true, true,
+	0xF0F0F0F0D2LL, { 0xF0F0F0F0E1LL },
+	CONFIG_VERSION
 };
 
 Config config;
 
-static byte node;       // node ID used for this unit
+bool loadConfig(Config &c) 
+{
+	int w = sizeof(c);
 
+	if (
+			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
+#endif
+		return false;
+	}
+}
+
+void writeConfig(Config &c)
+{
+	for (unsigned int t=0; t<sizeof(c); t++) {
+		
+		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
+}
+
+/* }}} *** */
+
+/* Scheduled tasks */
 enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -200,15 +249,21 @@ DHT dht(DHT_PIN, DHTTYPE);
 #define DS1307_I2C_ADDRESS 0x68
 #endif
 
-/** AVR routines */
+/* *** AVR routines *** {{{ */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
-	int v; 
+	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
-/** ATmega routines */
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
+
+/* }}} *** */
+
+/* *** ATmega routines *** {{{ */
 
 double internalTemp(void)
 {
@@ -240,6 +295,82 @@ double internalTemp(void)
 	// The returned temperature is in degrees Celcius.
 	return (t);
 }
+
+/* }}} *** */
+
+/* *** Generic routines *** {{{ */
+
+static void serialFlush () {
+#if SERIAL
+#if ARDUINO >= 100
+	Serial.flush();
+#endif
+	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
+}
+
+void blink(int led, int count, int length, int length_off=0) {
+	for (int i=0;i<count;i++) {
+		digitalWrite (led, HIGH);
+		delay(length);
+		digitalWrite (led, LOW);
+		delay(length);
+		(length_off > 0) ? delay(length_off) : delay(length);
+	}
+}
+
+#if defined(ARDUINO) && ARDUINO >= 100
+#define printByte(args)  write(args);
+#else
+#define printByte(args)  print(args,BYTE);
+#endif
+
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debug(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
+void debug_ticks(void)
+{
+#if DEBUG
+	tick++;
+	if ((tick % 20) == 0) {
+		Serial.print('.');
+		pos++;
+	}
+	if (pos > MAXLENLINE) {
+		pos = 0;
+		Serial.println();
+	}
+	serialFlush();
+#endif
+}
+
+// Convert normal decimal numbers to binary coded decimal
+byte decToBcd(byte val)
+{
+	return ( (val/10*16) + (val%10) );
+}
+
+// Convert binary coded decimal to normal decimal numbers
+byte bcdToDec(byte val)
+{
+	return ( (val/16*10) + (val%16) );
+}
+
+
+
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
 
 #if _NRF24
 /* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
@@ -348,47 +479,6 @@ void saveRF24Config(Config &c) {
 }
 #endif // RF24 funcs
 
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=0) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
-	}
-}
-
-#if defined(ARDUINO) && ARDUINO >= 100
-#define printByte(args)  write(args);
-#else
-#define printByte(args)  print(args,BYTE);
-#endif
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
-
 #if _LCD
 //uint8_t bell[8]  = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
 
@@ -430,18 +520,6 @@ void i2c_lcd_start()
 	lcd.home();
 }
 #endif //_LCD
-
-// Convert normal decimal numbers to binary coded decimal
-byte decToBcd(byte val)
-{
-	return ( (val/10*16) + (val%10) );
-}
-
-// Convert binary coded decimal to normal decimal numbers
-byte bcdToDec(byte val)
-{
-	return ( (val/16*10) + (val%16) );
-}
 
 #if _RTC
 // Stops the DS1307, but it has the side effect of setting seconds to 0
@@ -556,6 +634,38 @@ void rtc_run(void)
 }
 #endif //_RTC
 
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
+
+void doConfig(void)
+{
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
+}
+
+/* }}} *** */
+
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	doConfig();
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	pinMode( LED_GREEN, OUTPUT );
+	pinMode( LED_YELLOW, OUTPUT );
+	pinMode( LED_RED, OUTPUT );
+	ui_irq = false;
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+}
+
+
 uint8_t cmd;
 
 bool rx_overflow = false;
@@ -586,30 +696,6 @@ int serviceMode(void)
 		pinMode( LED_RED, OUTPUT );
 	}
 	return active;
-}
-
-/* Configuration is persisted to EEPROM */
-static void doConfig(void)
-{
-}
-
-bool loadConfig(Config &c) 
-{
-	if (EEPROM.read(CONFIG_START + 0) == CONFIG_VERSION[0] &&
-			EEPROM.read(CONFIG_START + 1) == CONFIG_VERSION[1] &&
-			EEPROM.read(CONFIG_START + 2) == CONFIG_VERSION[2])
-	{
-		for (unsigned int t=0; t<sizeof(c); t++)
-		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
-		}
-		return true;
-	} else {
-		return false;
-#if DEBUG
-		Serial.println("No valid data in eeprom");
-#endif
-	}
 }
 
 
@@ -859,37 +945,9 @@ static void runCommand()
 */
 }
 
-static void reset(void)
-{
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
-	pinMode( LED_GREEN, OUTPUT );
-	pinMode( LED_YELLOW, OUTPUT );
-	pinMode( LED_RED, OUTPUT );
-	ui_irq = false;
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
-}
+/* }}} *** */
 
-void debug_ticks(void)
-{
-#if DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
-/* Main */
+/* *** Main *** {{{ */
 
 void setup(void)
 {
@@ -920,7 +978,7 @@ void setup(void)
 	digitalWrite( LED_RED, HIGH );
 	digitalWrite( LED_YELLOW, HIGH );
 	initLibs();
-	reset();
+	doReset();
 	digitalWrite( LED_RED, LOW );
 	digitalWrite( LED_YELLOW, LOW );
 }
@@ -967,3 +1025,6 @@ void loop(void)
 		}
 	}
 }
+
+/* }}} *** */
+

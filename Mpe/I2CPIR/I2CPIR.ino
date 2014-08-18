@@ -1,6 +1,12 @@
 /**
 * I2C PIR
 * cannot do announce on PIR trigger? perhaps do other serial proto
+
+TODO: add/wire up power jack (5v, no vreg) to box
+TODO: wire PIR and left data-jack
+TODO: test DS bus, serial autodetect?
+TODO: wire up other jacks, figure out some link/through/detect scheme (no radio
+	so needs to mate with device that does. A RelayBox probably.)
 */
 
 #include <Wire.h>

@@ -22,7 +22,7 @@ Current targets:
 #include <PCD8544.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
@@ -36,16 +36,31 @@ Current targets:
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
-//#define SRAM_SIZE       
+							
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE       512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#endif
+							
 
+const String sketch = "X-LogReader84x48";
+const int version = 0;
 
-String sketch = "X-LogReader84x48";
-String version = "0";
-String node = "logreader-1";
+char node[] = "lr";
 
 int tick = 0;
 int pos = 0;
 
+volatile bool ui_irq;
+
+static bool ui;
+
+byte level = 0xff;
+
+int out = 20;
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -60,7 +75,8 @@ extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-/* Scheduled tasks */
+/* *** Scheduled tasks *** {{{ */
+
 enum { 
 	USER,
 	USER_POLL,
@@ -92,13 +108,12 @@ bool schedRunning()
 	return false;
 }
 
-volatile bool ui_irq;
+/* }}} *** */
 
-static bool ui;
+/* *** EEPROM config *** {{{ */
 
-byte level = 0xff;
+/* }}} *** */
 
-int out = 20;
 
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
@@ -130,7 +145,8 @@ struct {
 #endif
 } payload;
 
-/** AVR routines */
+
+/* *** AVR routines *** {{{ */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
@@ -138,12 +154,13 @@ int freeRam () {
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
-//int usedRam () {
-//	return SRAM_SIZE - freeRam();
-//}
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
 
+/* }}} *** */
 
-/** ATmega routines */
+/* *** ATmega routines *** {{{ */
 
 double internalTemp(void)
 {
@@ -176,8 +193,9 @@ double internalTemp(void)
 	return (t);
 }
 
+/* }}} *** */
 
-/** Generic routines */
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -229,6 +247,10 @@ void debugline(String msg) {
 #endif
 }
 
+
+/* }}} *** */
+
+
 //ISR(INT0_vect) 
 void irq0()
 {
@@ -272,13 +294,18 @@ void printKeys(void) {
 	Serial.println();
 }
 
-/* Peripheral hardware routines */
+/* *** Peripheral hardware routines *** {{{ */
 
+/* }}} *** */
 
-/* Initialization routines */
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
 }
 
 void lcd_start() 
@@ -596,4 +623,6 @@ void loop(void)
 		}
 	}
 }
+
+/* }}} *** */
 

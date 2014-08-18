@@ -8,7 +8,6 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-							
 #define MAXLENLINE      79
 							
 
@@ -24,13 +23,18 @@ static const byte ledPin = 13;
 MpeSerial mpeser (57600);
 
 
-/** AVR routines */
+/* *** AVR routines *** {{{ */
 
 
-/** ATmega routines */
+
+/* }}} *** */
+
+/* *** ATmega routines *** {{{ */
 
 
-/** Generic routines */
+/* }}} *** */
+
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -67,18 +71,29 @@ void debug_ticks(void)
 #endif
 }
 
-/* Initialization routines */
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
+
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
 }
 
 void setupLibs()
 {
 }
 
+/* }}} *** */
 
-/* Run-time handlers */
+/* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
@@ -90,7 +105,9 @@ bool doAnnounce()
 }
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
@@ -109,3 +126,6 @@ void loop(void)
 	//debug_ticks();
 	//serialFlush();
 }
+
+/* }}} *** */
+

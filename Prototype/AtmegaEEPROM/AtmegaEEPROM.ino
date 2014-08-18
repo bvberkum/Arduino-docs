@@ -3,15 +3,19 @@ Atmega EEPROM routines */
 #include <OneWire.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 #define MAXLENLINE      79
 							
 
-static String sketch = "X-AtmegaEEPROM";
-static String node = "x_atmeeprom";
-static String vesion = "0";
+const String sketch = "X-AtmegaEEPROM";
+const int version = 0;
+
+char node[] = "nx";
+// determined upon handshake 
+char node_id[7];
+
 
 static int tick = 0;
 static int pos = 0;
@@ -22,13 +26,72 @@ MpeSerial mpeser (57600);
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
-/* Atmega EEPROM stuff */
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
-should have at least 100,000 writes */
-const int memBase          = 0;
-//const int memCeiling       = EEPROMSizeATmega328;
+/* *** EEPROM config *** {{{ */
 
-/** Generic routines */
+#define CONFIG_VERSION "nx1"
+#define CONFIG_START 0
+
+struct Config {
+	char node[3];
+	int node_id; 
+	int version;
+	char config_id[4];
+} static_config = {
+	/* default values */
+	{ node[0], node[1], }, 0, version, 
+	CONFIG_VERSION
+};
+
+Config config;
+
+bool loadConfig(Config &c) 
+{
+	int w = sizeof(c);
+
+	if (
+			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
+#endif
+		return false;
+	}
+}
+
+void writeConfig(Config &c)
+{
+	for (unsigned int t=0; t<sizeof(c); t++) {
+		
+		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
+}
+
+/* }}} *** */
+
+
+
+
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -45,18 +108,27 @@ void debug(String msg) {
 #endif
 }
 
-/* Initialization routines */
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
+
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
+
+void doConfig(void)
+{
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
+}
 
 void setupLibs()
 {
 }
 
-void reset(void)
-{
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-}
+/* }}} *** */
 
 /* InputParser handlers */
 
@@ -80,7 +152,15 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
-/* Run-time handlers */
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	doConfig();
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	//scheduler.timer(HANDSHAKE, 0);
+}
 
 bool doAnnounce()
 {
@@ -100,7 +180,9 @@ void runScheduler(char task)
 }
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
@@ -110,7 +192,7 @@ void setup(void)
 
 	setupLibs();
 
-	reset();
+	doReset();
 }
 
 void loop(void)
@@ -119,3 +201,6 @@ void loop(void)
 	char task = scheduler.pollWaiting();
 	runScheduler(task);
 }
+
+/* }}} *** */
+

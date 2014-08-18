@@ -1,12 +1,18 @@
 /*
+	Base sketch SensorNode.
+
 	boilerplate for ATmega node with Serial interface
-	uses JeeLib scheduler like JeeLab's roomNode
+	uses JeeLib scheduler like JeeLab's roomNode.
+	No radio.
+
+	TODO: test sketch, serial. 
+		Simple protocol for control, data retrieval sessions?
 */
 #include <DotmpeLib.h>
 #include <JeeLib.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
@@ -16,14 +22,29 @@
 #define _LCD84x48       0
 #define _NRF24          0
 							
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+#define STDBY_PERIOD    60
 							
 #define MAXLENLINE      79
 							
 
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE 512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE 1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE 2048
+#endif
+
 
 String sketch = "X-SensorNode";
-String version = "0";
+int version = 0;
+
+char node[] = "nx";
+// determined upon handshake 
+char node_id[7];
 
 int tick = 0;
 int pos = 0;
@@ -49,6 +70,69 @@ static word schedbuf[STDBY];
 Scheduler scheduler (schedbuf, STDBY);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+
+/* *** EEPROM config *** {{{ */
+
+#define CONFIG_VERSION "sn1"
+#define CONFIG_START 0
+
+struct Config {
+	char node[3];
+	int node_id; 
+	int version;
+	char config_id[4];
+} static_config = {
+	/* default values */
+	{ node[0], node[1], }, 0, version, 
+	{ CONFIG_VERSION[0], CONFIG_VERSION[1], CONFIG_VERSION[2], }
+};
+
+Config config;
+
+bool loadConfig(Config &c) 
+{
+	int w = sizeof(c);
+
+	if (
+			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
+#endif
+		return false;
+	}
+}
+
+void writeConfig(Config &c)
+{
+	for (unsigned int t=0; t<sizeof(c); t++) {
+		
+		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
+}
+
+/* }}} *** */
 
 #if _DHT
 /* DHT temp/rh sensor 
@@ -79,7 +163,7 @@ static byte reportCount;    // count up until next report, i.e. packet send
 struct {
 } payload;
 
-/** AVR routines */
+/* *** AVR routines *** {{{ */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
@@ -91,8 +175,9 @@ int usedRam () {
 	return SRAM_SIZE - freeRam();
 }
 
+/* }}} *** */
 
-/** ATmega routines */
+/* *** ATmega routines *** {{{ */
 
 double internalTemp(void)
 {
@@ -125,8 +210,9 @@ double internalTemp(void)
 	return (t);
 }
 
+/* }}} *** */
 
-/** Generic routines */
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -176,8 +262,9 @@ void debugline(String msg) {
 #endif
 }
 
+/* }}} *** */
 
-/* Peripheral hardware routines */
+/* *** Peripheral hardware routines *** {{{ */
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
@@ -194,10 +281,16 @@ void debugline(String msg) {
 #endif //_HMC5883L
 
 
-/* Initialization routines */
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
 }
 
 void initLibs()
@@ -210,12 +303,15 @@ void initLibs()
 #endif //_HMC5883L
 }
 
+/* }}} *** */
 
-/* Run-time handlers */
+/* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
 	tick = 0;
+
+	doConfig();
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	//scheduler.timer(HANDSHAKE, 0);
@@ -294,13 +390,15 @@ void runScheduler(char task)
 /* InputParser handlers */
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 	serialFlush();
 #endif
 
@@ -319,4 +417,6 @@ void loop(void)
 	else if (task == 0xFE) {} // -2
 	else runScheduler(task);
 }
+
+/* }}} *** */
 

@@ -1,6 +1,11 @@
 /**
  * atmega8 with direct-hookup double 7Seg, and DS18B20 temperature display (1C
  * resolution).
+
+ TODO: shift register for segment led
+ TODO: wire jackplugs, buttons and uC (5v, no vreg, internal osc)
+ TODO: test upload, set up for DS bus
+ TODO: add nRF24L01?
  */
 
 #include <OneWire.h>

@@ -12,6 +12,7 @@
 
 
 /** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
@@ -30,11 +31,19 @@
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
 							
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE       512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#endif
+							
 
-String sketch = "AdafruitDHT";
-String version = "0";
-String node = "adadht";
+const String sketch = "AdafruitDHT";
+const int version = 0;
 
+char node[] = "adadht";
 // determined upon handshake 
 char node_id[7];
 
@@ -49,19 +58,14 @@ static const byte DHT_PIN = 7;
 
 MpeSerial mpeser (57600);
 
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* Command parser */
 const extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
-/* Scheduled tasks */
-enum { MEASURE, REPORT, STDBY };
-// Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
-
-static word schedbuf[STDBY];
-Scheduler scheduler (schedbuf, STDBY);
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+/* *** Device params *** {{{ */
 
 #if _DHT
 /* DHT temp/rh sensor 
@@ -93,8 +97,9 @@ DHT dht (DHT_PIN, DHT11);
 
 #endif //_HMC5883L
 
+/* }}} */
 
-/* Report variables */
+/* *** Report variables *** {{{ */
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
@@ -118,8 +123,26 @@ struct {
 #endif
 } payload;
 
+/* }}} */
 
-/** AVR routines */
+/* *** Scheduled tasks *** {{{ */
+
+enum { MEASURE, REPORT, STDBY };
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[STDBY];
+Scheduler scheduler (schedbuf, STDBY);
+
+/* }}} *** */
+
+/* *** EEPROM config *** {{{ */
+
+
+/* }}} *** */
+
+/* *** AVR routines *** {{{ */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
@@ -131,8 +154,9 @@ int usedRam () {
 	return SRAM_SIZE - freeRam();
 }
 
+/* }}} *** */
 
-/** ATmega routines */
+/* *** ATmega routines *** {{{ */
 
 double internalTemp(void)
 {
@@ -165,8 +189,9 @@ double internalTemp(void)
 	return (t);
 }
 
+/* }}} *** */
 
-/** Generic routines */
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -177,13 +202,12 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=0) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
 
@@ -218,12 +242,16 @@ void debugline(String msg) {
 }
 
 
-/* Peripheral hardware routines */
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
 
 // none
 
 
-/* Initialization routines */
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
@@ -239,6 +267,7 @@ void initLibs()
 #endif
 }
 
+/* }}} *** */
 
 /* InputParser handlers */
 
@@ -263,7 +292,7 @@ InputParser::Commands cmdTab[] = {
 };
 
 
-/* Run-time handlers */
+/* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
@@ -436,7 +465,9 @@ void runScheduler(char task)
 }
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
@@ -464,3 +495,6 @@ void loop(void)
 	char task = scheduler.pollWaiting();
 	runScheduler(task);
 }
+
+/* }}} *** */
+

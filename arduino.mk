@@ -147,7 +147,7 @@ $(error ARDUINODIR is not set correctly; arduino software not found)
 endif
 
 # default arduino version
-ARDUINOCONST ?= 100
+ARDUINOCONST ?= 104
 
 # default path for avr tools
 ifndef AVRTOOLSPATH
@@ -254,19 +254,24 @@ endif
 
 # flags
 CPPFLAGS := -Os -fno-exceptions -ffunction-sections -fdata-sections
-#CPPFLAGS += -Wall
+CPPFLAGS += -g
+CPPFLAGS += -Wall
 #CPPFLAGS += -fpermissive
 #CPPFLAGS += -Wunused-variable
-CPPFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+#CPPFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CPPFLAGS += -mmcu=$(BOARD_BUILD_MCU)
 CPPFLAGS += -DF_CPU=$(BOARD_BUILD_FCPU) -DARDUINO=$(ARDUINOCONST)
 CPPFLAGS += -DUSB_VID=$(BOARD_USB_VID) -DUSB_PID=$(BOARD_USB_PID)
-CPPFLAGS += -I. -Iutil -Iutility -I $(ARDUINOCOREDIR)
-CPPFLAGS += -I $(ARDUINODIR)/hardware/arduino/variants/$(BOARD_BUILD_VARIANT)/
-CPPFLAGS += $(addprefix -I $(ARDUINODIR)/libraries/, $(LIBRARIES))
-CPPFLAGS += $(patsubst %, -I $(ARDUINODIR)/libraries/%/utility, $(LIBRARIES))
-CPPDEPFLAGS = -MMD -MP -MF .dep/$<.dep
-CPPINOFLAGS := -x c++ -include $(ARDUINOCOREDIR)/Arduino.h
+CPPFLAGS += -I. 
+#-Iutil -Iutility 
+CPPFLAGS += -I$(ARDUINOCOREDIR)
+CPPFLAGS += -I$(ARDUINODIR)/hardware/arduino/variants/$(BOARD_BUILD_VARIANT)/
+CPPFLAGS += $(addprefix -I$(ARDUINODIR)/libraries/, $(LIBRARIES))
+#CPPFLAGS += $(patsubst %, -I $(ARDUINODIR)/libraries/%/utility, $(LIBRARIES))
+#CPPDEPFLAGS = -MMD -MP -MF .dep/$<.dep
+CPPDEPFLAGS = -MMD 
+CPPPDEFLAGS := -x c++ -include $(ARDUINOCOREDIR)/Arduino.h
+CPPINOFLAGS := $(CPPPDEFLAGS)
 AVRDUDEFLAGS := $(addprefix -C , $(AVRDUDECONF)) -DV
 AVRDUDEFLAGS += -p $(BOARD_BUILD_MCU) -P $(SERIALDEV)
 AVRDUDEFLAGS += -c $(BOARD_UPLOAD_PROTOCOL) -b $(BOARD_UPLOAD_SPEED)
@@ -338,7 +343,7 @@ $(TARGET).hex: $(TARGET).elf
 
 .INTERMEDIATE: $(TARGET).elf
 
-$(info $(COMPILE.cpp))
+#$(info $(COMPILE.cpp) $(CPPDEPFLAGS))
 
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
 	@$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
@@ -346,12 +351,12 @@ $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
 
 %.o: %.c
 	@mkdir -p .dep/$(dir $<)
-	@$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
+	$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
 	@echo -n .
 
 %.o: %.cpp
 	@mkdir -p .dep/$(dir $<)
-	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
 	@echo -n .
 
 %.o: %.cc
@@ -366,12 +371,12 @@ $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
 
 %.o: %.ino
 	@mkdir -p .dep/$(dir $<)
-	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
+	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
 	@echo -n .
 
 %.o: %.pde
 	@mkdir -p .dep/$(dir $<)
-	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ -x c++ -include $(ARDUINOCOREDIR)/Arduino.h $<
+	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPPDEFLAGS) $<
 	@echo -n .
 
 # building the arduino library

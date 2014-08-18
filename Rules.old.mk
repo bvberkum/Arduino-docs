@@ -37,9 +37,17 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
-PORTS := /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0
-PORT := $(wildcard $(PORTS))
-$(info PORT = $(PORT))
+# add devices here, wildcard checks with FS for available devices
+PORTS := $(wildcard /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0)
+# get list of actually connected devices, select one
+port ?= 1
+PORT := $(word $(port),$(PORTS))
+$(info PORT = PORTS[$(port)] = $(PORT))
+
+ports:
+	@\
+		echo "Available ports:";\
+		for x in $(PORTS); do echo $$x; done
 
 listen: D := $(PORT)
 listen: B := 57600
@@ -555,20 +563,10 @@ blinkall: jeenode upload
 3way: I := Mpe/eBay-ThreeWayMeter/Prototype.hex
 3way: jeenode upload
 
-rf12demo: C := m328p
-rf12demo: P := libraries/JeeLib/examples/RF12/RF12demo/
-rf12demo: I := libraries/JeeLib/examples/RF12/RF12demo/RF12demo.hex
-rf12demo: jeenode upload
-
 radioblip: C := m328p
 radioblip: P := Mpe/RadioBlip/
 radioblip: I := Mpe/RadioBlip/RadioBlip.hex
 radioblip: jeenode upload
-
-jeeblip: C := m328p
-jeeblip: P := libraries/JeeLib/examples/RF12/radioBlip/
-jeeblip: I := libraries/JeeLib/examples/RF12/radioBlip/radioBlip.hex
-jeeblip: jeenode upload
 
 radiolink: C := m328p
 radiolink: P := Mpe/RadioLink/
@@ -595,6 +593,12 @@ rf24ping: P := libraries/RF24/examples/pingpair/
 rf24ping: I := libraries/RF24/examples/pingpair/pingpair.hex
 rf24ping: jeenode upload
 
+rf24hwtx: C := m8
+rf24hwtx: BRD := atmega8
+rf24hwtx: P := libraries/RF24Network/examples/helloworld_tx/
+rf24hwtx: I := libraries/RF24Network/examples/helloworld_tx/helloworld_tx.hex
+rf24hwtx: arduino _upload
+
 carriercase: BRD := uno
 carriercase: P := Mpe/CarrierCase/
 carriercase: _arduino-firmware upload
@@ -609,11 +613,6 @@ hanrun: C := m328p
 hanrun: P := Misc/HanrunENC28J60/
 hanrun: I := Misc/HanrunENC28J60/HanrunENC28J60.hex
 hanrun: jeenode upload
-
-fuseboxmon: C := m328p
-fuseboxmon: P := libraries/JeeLib/examples/RF12/p1scanner
-fuseboxmon: I := libraries/JeeLib/examples/RF12/p1scanner/p1scanner.hex
-fuseboxmon: jeenode upload
 
 utilitybug: C := m328p
 utilitybug: P := Mpe/Utility/UtilityBug/
@@ -838,11 +837,6 @@ mmc: P := Prototype/MMC/
 mmc: I := Prototype/MMC/MMC.hex
 mmc: jeenode upload
 
-parser_demo: C := m328p
-parser_demo: P := libraries/JeeLib/examples/Ports/parser_demo/
-parser_demo: I := libraries/JeeLib/examples/Ports/parser_demo/parser_demo.hex
-parser_demo: jeenode upload
-
 roomnode: C := m328p
 roomnode: P := Mpe/RoomNode/
 roomnode: I := Mpe/RoomNode/RoomNode.hex
@@ -859,8 +853,72 @@ pff: P := Prototype/MMC/PFF/
 pff: I := Prototype/MMC/PFF/PFF.hex
 pff: jeenode upload
 
-# Leonardo mega32u4 / teensy 2.0?
 
+### Prototypes
+
+node: C := m328p
+node: P := Prototype/Node/
+node: I := Prototype/Node/Node.hex
+node: jeenode upload
+
+sensornode: C := m328p
+sensornode: P := Prototype/SensorNode/
+sensornode: I := Prototype/SensorNode/SensorNode.hex
+sensornode: jeenode upload
+
+relaybox: C := m328p
+relaybox: P := Prototype/RelayBox/
+relaybox: I := Prototype/RelayBox/RelayBox.hex
+relaybox: jeenode upload
+
+
+### Tools
+
+bandgap: C := m328p
+bandgap: P := Tool/Bandgap/BandgapLefty/
+bandgap: I := Tool/Bandgap/BandgapLefty/BandgapLefty.hex
+bandgap: jeenode upload
+
+bandgap_measure: C := m328p
+bandgap_measure: P := Tool/Bandgap/BandgapMeasure/
+bandgap_measure: I := Tool/Bandgap/BandgapMeasure/BandgapMeasure.hex
+bandgap_measure: jeenode upload
+
+bandgap_correct: C := m328p
+bandgap_correct: P := Tool/Bandgap/BandgapCorrect/
+bandgap_correct: I := Tool/Bandgap/BandgapCorrect/BandgapCorrect.hex
+bandgap_correct: jeenode upload
+
+
+### JeeLib
+
+rf12demo: C := m328p
+rf12demo: P := libraries/JeeLib/examples/RF12/RF12demo/
+rf12demo: I := libraries/JeeLib/examples/RF12/RF12demo/RF12demo.hex
+rf12demo: jeenode upload
+
+jeeblip: C := m328p
+jeeblip: P := libraries/JeeLib/examples/RF12/radioBlip/
+jeeblip: I := libraries/JeeLib/examples/RF12/radioBlip/radioBlip.hex
+jeeblip: jeenode upload
+
+fuseboxmon: C := m328p
+fuseboxmon: P := libraries/JeeLib/examples/RF12/p1scanner
+fuseboxmon: I := libraries/JeeLib/examples/RF12/p1scanner/p1scanner.hex
+fuseboxmon: jeenode upload
+
+parser_demo: C := m328p
+parser_demo: P := libraries/JeeLib/examples/Ports/parser_demo/
+parser_demo: I := libraries/JeeLib/examples/Ports/parser_demo/parser_demo.hex
+parser_demo: jeenode upload
+
+jeebandgap: C := m328p
+jeebandgap: P := libraries/JeeLib/examples/Ports/bandgap/
+jeebandgap: I := libraries/JeeLib/examples/Ports/bandgap/bandgap.hex
+jeebandgap: jeenode upload
+
+
+### XXX old library symlinks, use submodules if possible
 
 library: $(realpath $/libraries/)
 	cd arduinodir/libraries/ \

@@ -19,11 +19,11 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 #define MAXLENLINE      79
 							
 
-static String sketch = "X-DallasTempBus";
-static String version = "0";
+String sketch = "X-DallasTempBus";
+String version = "0";
 
-static int tick = 0;
-static int pos = 0;
+int tick = 0;
+int pos = 0;
 
 
 MpeSerial mpeser (57600);
@@ -48,13 +48,18 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // _DS
 
 
-/** AVR routines */
+/* *** AVR routines *** {{{ */
 
 
-/** ATmega routines */
+/* }}} *** */
+
+/* *** ATmega routines *** {{{ */
 
 
-/** Generic routines */
+
+/* }}} *** */
+
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -96,7 +101,9 @@ void debugline(String msg) {
 }
 
 
-/* Peripheral hardware routines */
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
@@ -295,7 +302,10 @@ static void printDS18B20s(void) {
 #endif //_DS
 
 
-/* Initialization routines */
+
+/* }}} *** */
+
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
@@ -306,11 +316,13 @@ void initLibs()
 }
 
 
-/* Run-time handlers */
+/* }}} *** */
+
+/* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
-
+	doConfig();
 }
 
 bool doAnnounce()
@@ -331,7 +343,9 @@ void runScheduler(char task)
 }
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
@@ -374,3 +388,6 @@ void loop(void)
 
 	delay(15000);
 }
+
+/* }}} *** */
+
