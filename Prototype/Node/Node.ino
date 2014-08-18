@@ -7,8 +7,9 @@ Basetype Node
 	- node_id    xy-1
 	- version    0
 
-- Should compile but does not give usable node, iow. util functions / init only.
+- Depends on JeeLib InputParser
 - Subtypes of this prototype: SerialNode.
+
 
 See 
 - AtmegaEEPROM
@@ -26,8 +27,18 @@ Serial config
 
 		2,0 C
 
+	Write to EEPROM::
+
+		1 W
+
+	Reload from EEPROM (reset changes)::
+
+		0 W
+
+
   */
 
+#include <SoftwareSerial.h>
 #include <EEPROM.h>
 //#include <util/crc16.h>
 
@@ -58,11 +69,14 @@ char node_id[7];
 /* IO pins */
 static const byte ledPin = 13;
 
+SoftwareSerial virtSerial(11, 12); // RX, TX
+
 
 /* Command parser */
+Stream& cmdIo = virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
-InputParser parser (buffer, 50, cmdTab);
+InputParser parser (buffer, 50, cmdTab, virtSerial);
 
 /* *** Device params *** {{{ */
 
@@ -85,7 +99,7 @@ InputParser parser (buffer, 50, cmdTab);
 #define CONFIG_START 0
 
 struct Config {
-	char node[3];
+	char node[4];
 	int node_id; 
 	int version;
 	char config_id[4];
@@ -116,7 +130,7 @@ bool loadConfig(Config &c)
 
 	} else {
 #if SERIAL && DEBUG
-		Serial.println("No valid data in eeprom");
+		cmdIo.println("No valid data in eeprom");
 #endif
 		return false;
 	}
@@ -133,7 +147,7 @@ void writeConfig(Config &c)
 		{
 			// error writing to EEPROM
 #if SERIAL && DEBUG
-			Serial.println("Error writing "+ String(t)+" to EEPROM");
+			cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
 		}
 	}
@@ -218,12 +232,18 @@ void blink(int led, int count, int length, int length_off=-1) {
 
 /* *** Initialization routines *** {{{ */
 
+void initConfig(void)
+{
+	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+}
+
 void doConfig(void)
 {
 	/* load valid config or reset default config */
 	if (!loadConfig(static_config)) {
 		writeConfig(static_config);
 	}
+	initConfig();
 }
 
 void initLibs()
@@ -235,40 +255,48 @@ void initLibs()
 /* InputParser handlers */
 
 static void helpCmd() {
-	Serial.println("c: print config");
-	Serial.println("C: set Node (2 byte char)");
-	Serial.println("N: set Node ID (2 byte int)");
-	Serial.println("?/h: this help");
+	cmdIo.println("n: print Node ID");
+	cmdIo.println("c: print config");
+	cmdIo.println("N: set Node (3 byte char)");
+	cmdIo.println("C: set Node ID (1 byte int)");
+	cmdIo.println("W: load/save EEPROM");
+	cmdIo.println("?/h: this help");
 }
 
 static void configCmd() {
-	Serial.print("c ");
-	Serial.print(static_config.node);
-	Serial.print(" ");
-	Serial.print(static_config.node_id);
-	Serial.print(" ");
-	Serial.print(static_config.version);
-	Serial.print(" ");
-	Serial.print(static_config.config_id);
-	Serial.println();
+	cmdIo.print("c ");
+	cmdIo.print(static_config.node);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.node_id);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.version);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.config_id);
+	cmdIo.println();
 }
 
-static void configNodeCmd() {
+static void configSetNodeCmd() {
 	const char *node;
 	parser >> node;
 	static_config.node[0] = node[0];
 	static_config.node[1] = node[1];
 	static_config.node[2] = node[2];
-	Serial.print("N ");
-	Serial.println(static_config.node);
+	initConfig();
+	cmdIo.print("N ");
+	cmdIo.println(static_config.node);
 }
 
 static void configNodeIDCmd() {
 	parser >> static_config.node_id;
-	sprintf(node_id, "%s%i", node, static_config.node_id);
-	Serial.print("C ");
-	Serial.println(node_id);
+	initConfig();
+	cmdIo.print("C ");
+	cmdIo.println(node_id);
 	serialFlush();
+}
+
+static void configNodeCmd() {
+	cmdIo.print("n ");
+	cmdIo.println(node_id);
 }
 
 static void configEEPROM() {
@@ -278,17 +306,19 @@ static void configEEPROM() {
 		writeConfig(static_config);
 	} else {
 		loadConfig(static_config);
+		initConfig();
 	}
-	Serial.print("W ");
-	Serial.println(write);
+	cmdIo.print("W ");
+	cmdIo.println(write);
 }
 
 InputParser::Commands cmdTab[] = {
 	{ '?', 0, helpCmd },
 	{ 'h', 0, helpCmd },
 	{ 'c', 0, configCmd},
-	{ 'N', 1, configNodeCmd },
-	{ 'C', 2, configNodeIDCmd },
+	{ 'n', 0, configNodeCmd },
+	{ 'N', 3, configSetNodeCmd },
+	{ 'C', 1, configNodeIDCmd },
 	{ 'W', 1, configEEPROM },
 	{ 0 }
 };
@@ -310,17 +340,28 @@ void setup(void)
 {
 #if SERIAL
 	Serial.begin(57600);
-	Serial.println(SERIAL);
+	virtSerial.begin(4800);
 #endif
 
 	initLibs();
 
 	doReset();
+
+	cmdIo.print("\n[");
+	cmdIo.print(sketch);
+	cmdIo.print(".");
+	cmdIo.print(version);
+	cmdIo.println("]");
+
+	cmdIo.println(node_id);
 }
 
 void loop(void)
 {
-    parser.poll();
+	// FIXME: seems virtSerial receive is not working
+	//if (virtSerial.available())
+	//	virtSerial.write(virtSerial.read());
+	parser.poll();
 }
 
 /* }}} *** */
