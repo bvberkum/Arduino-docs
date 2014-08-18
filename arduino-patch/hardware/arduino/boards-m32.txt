@@ -1,0 +1,17 @@
+
+m32.name=ATmega 32
+#m32.upload.protocol=arduinoisp
+#m32.upload.maximum_size=
+#m32.upload.speed=
+#m32.bootloader.low_fuses=0xff
+#m32.bootloader.high_fuses=0xde
+#m32.bootloader.extended_fuses=0x05
+#m32.bootloader.path=optiboot
+#m32.bootloader.file=optiboot_atmega328.hex
+#m32.bootloader.unlock_bits=0x3F
+#m32.bootloader.lock_bits=0x0F
+m32.build.mcu=atmega32
+m32.build.f_cpu=16000000L
+m32.build.core=arduino
+m32.build.variant=standard
+

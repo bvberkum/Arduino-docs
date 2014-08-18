@@ -1,0 +1,61 @@
+
+##############################################################
+
+atmega8l.name=ATmega8L @ 8Mhz int
+
+atmega8l.upload.protocol=arduino
+atmega8l.upload.maximum_size=7168
+atmega8l.upload.speed=19200
+
+atmega8l.bootloader.low_fuses=0xd4
+atmega8l.bootloader.high_fuses=0xca
+atmega8l.bootloader.path=atmega8l
+atmega8l.bootloader.file=ATmegaBOOT-8L.hex
+atmega8l.bootloader.unlock_bits=0x3F
+atmega8l.bootloader.lock_bits=0x0F
+
+atmega8l.build.mcu=atmega8
+atmega8l.build.f_cpu=8000000L
+atmega8l.build.core=arduino
+atmega8l.build.variant=standard
+
+##############################################################
+
+atmega8_opti_8mhz.name=ATmega8 Optiboot (8MHz internal OSC)
+atmega8_opti_8mhz.upload.protocol=arduino
+atmega8_opti_8mhz.upload.maximum_size=7680
+atmega8_opti_8mhz.upload.speed=9600
+atmega8_opti_8mhz.bootloader.low_fuses=0xa4
+atmega8_opti_8mhz.bootloader.high_fuses=0xcc
+atmega8_opti_8mhz.bootloader.path=optiboot_atmega8_8
+atmega8_opti_8mhz.bootloader.file=optiboot_atmega8_8.hex
+atmega8_opti_8mhz.bootloader.unlock_bits=0x3F
+atmega8_opti_8mhz.bootloader.lock_bits=0x0F
+atmega8_opti_8mhz.build.mcu=atmega8
+atmega8_opti_8mhz.build.f_cpu=8000000L
+atmega8_opti_8mhz.build.core=arduino
+atmega8_opti_8mhz.build.variant=standard
+
+
+# http://todbot.com/blog/2009/05/26/minimal-arduino-with-atmega8/
+# http://todbot.com/blog/wp-content/uploads/2009/05/atmega8_noxtal.zip
+#
+atmega8noxtal.name=ATmega8-noxtal @8MHz
+
+atmega8noxtal.upload.protocol=stk500
+atmega8noxtal.upload.maximum_size=7168
+atmega8noxtal.upload.speed=38400
+
+atmega8noxtal.bootloader.low_fuses=0xe4
+atmega8noxtal.bootloader.high_fuses=0xc4
+atmega8noxtal.bootloader.path=atmega8_noxtal
+atmega8noxtal.bootloader.file=ATmegaBOOT.hex
+atmega8noxtal.bootloader.unlock_bits=0x3F
+atmega8noxtal.bootloader.lock_bits=0x0F
+
+atmega8noxtal.build.mcu=atmega8
+atmega8noxtal.build.f_cpu=8000000L
+atmega8noxtal.build.core=arduino
+atmega8noxtal.build.variant=standard
+
+

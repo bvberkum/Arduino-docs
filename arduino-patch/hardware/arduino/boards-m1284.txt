@@ -1,0 +1,8 @@
+
+m1284.name=ATmega 1284
+m1284.build.mcu=atmega1284p
+m1284.build.f_cpu=16000000L
+m1284.build.core=arduino
+m1284.build.variant=standard
+
+
