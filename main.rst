@@ -1,8 +1,5 @@
 Arduino and AVR (avrdude) projects
 ==================================
-- The files in this repository are from my Arduino/sketchbook folder,
-  which I keep at <~/Documents/Dev/Arduino>. 
-
 
 
 Headless build
@@ -29,9 +26,6 @@ The sketches can be build without starting the Arduino frontend:
 
 Arduino/AVRdude
 ----------------
-An introduction to the world of ~.
-Lets introduce the main boards. 
-
 Arduino NG (Nuova Generazione)
   - An USB board with ATmega8, later ATmega168.
 Diecimilla "10.000"
@@ -45,84 +39,52 @@ JeeNode
     The mainline is compatible with Duemilanove, and later 
     with Uno (OptiBoot 0.44). [#]_
 
-As usual, 8, 168 and 328 are interchangeable with notes on implementation
-details and implication for applications.
-The same seems to go for 16/32/644/1284, but I need to research that.
+8, 168 and 328 are pin-compatible, but have different hardware.
+The same seems to go for mega 16/32/644/1284?
 
-Now, to write software to the boards: avrdude. Involved hardware is discussed
-later. The chips have fuses and two memory areas; eeprom and flash, the syntax to 
-access::
+avrdude::
 
   avrdude
     -U <memtype>:r|w|v:<filename>[:format]
 
-After fuses and a bootloader has been "burned" we can use the Arduino way of
-uploading "sketches": we hook a serial device which has DTR attached to the
-reset line. After the reset the chip now accepts a new program which it writes
-after the existing bootloader which is now protected memory area, I'm not sure 
-on the protocol but that is how I understand it.
+The easiest upload for Arduino land is using a bootloader. 
+This makes the chip accepts new program code over an serial connection.
+Usually a FTDI device, and you have all you need to wire up and program an
+AVR of atmega series.
+To cover more ground, an USBasp is everything needed to wire up and flash AVR
+uC's without bootloader (yet).
 
-The initial burning knows several methods and phases. I've read new chips need
-to be HV programmed once. Generally I have been successfull using arduinoisp 
-and USBasp interfaces to burn the fuses and bootloader. I think both are 5V.
-Once the protection bits are set in the fuses, a reburn requires the ``-e`` flag 
-to erase the chip first. The makefile uses flag ``-D`` normally which prevents
-erase.
+The avrdude commands I need are in Rules.old.mk.
+For compiling, arduino.mk does the job OK and I don't mess with it much.
 
-Using Arduino as ISP (I use a JeeNode but avrdude works the same, although the 
-actual on-chip software and pinout may be different)::
-  
-  avrdude -v -cstk500v1 -P/dev/ttyUSB0 -b 19200
+The avrdude protocol usually is arduino.
 
-Or using USBasp::
+Baudrates do matter. 
+Sometimes -B is needed to lower the clock speeds in order to catch attention of
+an slower running chip.
 
-  avrdude -v -c usbasp -P usb
+Here are my alternatives of serial bootloader aided uploads:
 
-Common options::
-  
-  avrdude 
-    -C /home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf 
-    -v -v -v -v 
-    -c arduino -P /dev/ttyUSB0 -b 57600
-    -D
-    -p atmega328p
-
-XXX:Upload usbasp bootloader using JeeNode ISP?::
-
-    avrdude -v -p m8 -c usbasp 
-      -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m -U lock:w:0x0F:m
-      -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
-
-XXX: Using usbasp::
-  
-  avrdude -C/home/berend/Application/arduino-1.0.1/hardware/tools/avrdude.conf -v
-    -v -v -v -patmega8 -carduino -P/dev/ttyUSB0 -b19200 -D
-    -Uflash:w:/tmp/build7947190257849781585.tmp/atmega8l_usb.cpp.hex:i 
-
-So, in summary the serial settings:
-
-=================== ======== ==================
+=================== ======== ========================
 Protocol            Baudrate Device
-=================== ======== ==================
-Arduino (328/2009)  57600    USB BUB II
-Arduino ISP         19200    JeeNode
-Uno (optiboot?)     115200    
-=================== ======== ==================
-
-I'm using 57600, 3.3v, 16Mhz whenever I can in my homebuilds.
-
-That means being stuck on 328P chips while I guess lower values are needed
-on m8, m16, m32, m48, tiny85 are easily and cheaply available and I plan to 
-experiment with. 
+=================== ======== =======================
+Arduino (328/2009)  57600    Generic FTDI
+Arduino ISP         19200    +Arduino or compatible
+Uno (optiboot?)     115200   "
+=================== ======== =======================
 
 Remember running ATmega328P at 3.3v/16Mhz is out of specs already.
+
+Have not tried HV programming. Ie. 12V.
+Not really needed to, but have a untested programmer build in progress so maybe.
+
 
 .. [#] <http://jeelabs.net/projects/hardware/wiki/JeeNode>
 
 Device ID's
 _____________
 
-And also fuses and bootloader file for various devices.
+Fuses and bootloader file for various devices.
 
 =================== ============== ================= ===== ======
 Board               U1 Device ID   Fuses             Lock  Unlock

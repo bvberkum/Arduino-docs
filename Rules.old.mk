@@ -79,7 +79,7 @@ endif
 
 _upload:
 	@\
-	$(ll) attention $@ "Starting flash upload to $(C) using $(M).." $(I);\
+	$(ll) attention $@ "Starting upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	$(D) $${sudo}$(avrdude) \
 		$(call key,METHODS,$(M))\
@@ -92,8 +92,11 @@ download: C := m328p
 download: M := arduino
 download: I := 
 download: X := -D
-download:
+download: _download
+
+_download:
 	@\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	$(ll) attention $@ "Starting flash/eeprom download using $(M).." $(I);\
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
@@ -156,6 +159,7 @@ flash: _flash
 _flash:
 	@\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
+	$(ll) attention $@ "Starting flash to $(C) using $(M).." $(I);\
 	X="$(X)";\
 	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 1; } ) && ( \
 		[ -n "$(UB)" ] && { \
@@ -683,9 +687,9 @@ at85blink: BRD:=t85
 at85blink: LF:=0x62
 at85blink: HF:=0xD9
 at85blink: C:=t85
-at85blink: X:=-B 3
-at85blink: P:=Mpe/Blink
-at85blink: I:=Mpe/Blink/Blink.hex
+at85blink: X:=-B 1
+at85blink: P:=Prototype/Blink
+at85blink: I:=Prototype/Blink/Blink.hex
 at85blink: TARGETS:= clean all
 at85blink: _arduino _flash
 
@@ -699,7 +703,6 @@ at85mn: X:=-B 3
 at85mn: I:=firmware/attiny85-micronucleus-bootloader.hex
 at85mn: _flash
 
-at85usb: D:=sudo
 at85usb: M:=usbasp
 at85usb: BRD:=t85
 at85usb: C:=t85

@@ -257,6 +257,7 @@ void initLibs()
 static void helpCmd() {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
+	cmdIo.println("m: print free and used memory");
 	cmdIo.println("N: set Node (3 byte char)");
 	cmdIo.println("C: set Node ID (1 byte int)");
 	cmdIo.println("W: load/save EEPROM");
@@ -312,10 +313,22 @@ static void configEEPROM() {
 	cmdIo.println(write);
 }
 
+static void memStat() {
+	int free = freeRam();
+	int used = usedRam();
+	cmdIo.print("m ");
+	cmdIo.print(free);
+	cmdIo.print(' ');
+	cmdIo.print(used);
+	cmdIo.print(' ');
+	cmdIo.println();
+}
+
 InputParser::Commands cmdTab[] = {
 	{ '?', 0, helpCmd },
 	{ 'h', 0, helpCmd },
 	{ 'c', 0, configCmd},
+	{ 'm', 0, memStat},
 	{ 'n', 0, configNodeCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },

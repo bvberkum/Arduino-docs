@@ -29,11 +29,11 @@
  *
  * - Marked '*' has PWM.
  */
-int blinkPin = 8;
-int blinkCount = 1;
-int delay_low = 1000;
-int delay_high = 1000;
-long delay_loop = 0;
+int blinkPin = 3;
+int blinkCount = 2;
+int delay_low = 150;
+int delay_high = 10;
+long delay_loop = 1000;
 
 void blink(int led, int count) {
   unsigned long currentMillis = millis();
