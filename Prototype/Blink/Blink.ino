@@ -29,7 +29,7 @@
  *
  * - Marked '*' has PWM.
  */
-int blinkPin = 3;
+int blinkPin = 1;
 int blinkCount = 2;
 int delay_low = 150;
 int delay_high = 10;

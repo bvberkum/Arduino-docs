@@ -7,16 +7,18 @@ Basetype Node
 	- node_id    xy-1
 	- version    0
 
-- Depends on JeeLib InputParser
 - Subtypes of this prototype: SerialNode.
 
+- Depends on JeeLib Ports InputParser, but not all of ports compiles on t85.
+
+XXX: SoftwareSerial support 20, 16, 8Mhz only. Does not compile for m8.
+XXX: write different versions for t85, m8
 
 See 
 - AtmegaEEPROM
 - Cassette328P
 
-
-InputParser invocation: [value[,arg2] ]command
+Serial protocol: [value[,arg2] ]command
 
 Serial config
 	Set node to 'aa'::
@@ -49,7 +51,7 @@ Serial config
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
-#if defined(__AVR_ATtiny84__)
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
 #elif defined(__AVR_ATmega168__)
 #define SRAM_SIZE       1024

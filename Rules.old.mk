@@ -37,6 +37,18 @@ METHODS = \
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
+define _flash
+	[ "$(M)" = "micronucleus" -o "$(M)" == "mn" ] && { \
+		micronucleus $(I); \
+	} || { \
+		$(D) $${sudo}$(avrdude) \
+			$(call key,METHODS,$(M))\
+			-p $(C) \
+			-U flash:w:$(I) \
+			$(X) ; \
+	}
+endef
+
 # add devices here, wildcard checks with FS for available devices
 PORTS := $(wildcard /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0)
 # get list of actually connected devices, select one
@@ -81,11 +93,7 @@ _upload:
 	@\
 	$(ll) attention $@ "Starting upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
-	$(D) $${sudo}$(avrdude) \
-		$(call key,METHODS,$(M))\
-		-p $(C) \
-		-U flash:w:$(I) \
-		$(X) ; \
+	$(call _flash)
 	$(ll) OK $@ "Flash upload completed successfully"
 
 download: C := m328p
@@ -562,6 +570,11 @@ blinkall: P := Prototype/Blink/BlinkAll
 blinkall: I := Prototype/Blink/BlinkAll/BlinkAll.hex
 blinkall: jeenode upload
 
+oe: C := m328p
+oe: P := Mpe/Plugs/OutputExpander
+oe: I := Mpe/Plugs/OutputExpander/OutputExpander.hex
+oe: _arduino _upload
+
 3way: C := m328p
 3way: P := Mpe/eBay-ThreeWayMeter/
 3way: I := Mpe/eBay-ThreeWayMeter/Prototype.hex
@@ -687,7 +700,7 @@ at85blink: BRD:=t85
 at85blink: LF:=0x62
 at85blink: HF:=0xD9
 at85blink: C:=t85
-at85blink: X:=-B 1
+at85blink: X:=-B1
 at85blink: P:=Prototype/Blink
 at85blink: I:=Prototype/Blink/Blink.hex
 at85blink: TARGETS:= clean all
@@ -699,7 +712,7 @@ at85mn: C:=t85
 at85mn: LF:=0xE1
 at85mn: HF:=0xDD
 at85mn: EF:=0xFE
-at85mn: X:=-B 3
+at85mn: X:=-B1
 at85mn: I:=firmware/attiny85-micronucleus-bootloader.hex
 at85mn: _flash
 
