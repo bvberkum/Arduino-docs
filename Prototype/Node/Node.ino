@@ -7,12 +7,11 @@ Basetype Node
 	- node_id    xy-1
 	- version    0
 
-- Subtypes of this prototype: SerialNode.
+- Subtypes of this prototype: Serial.
 
 - Depends on JeeLib Ports InputParser, but not all of ports compiles on t85.
 
 XXX: SoftwareSerial support 20, 16, 8Mhz only. Does not compile for m8.
-XXX: write different versions for t85, m8
 
 See 
 - AtmegaEEPROM
@@ -36,7 +35,6 @@ Serial config
 	Reload from EEPROM (reset changes)::
 
 		0 W
-
 
   */
 
