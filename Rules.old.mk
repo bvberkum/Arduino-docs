@@ -681,17 +681,20 @@ ledseg595: P := Mpe/LedSegment595/
 ledseg595: I := Mpe/LedSegment595/LedSegment595.hex
 ledseg595: jeenode upload
 
-avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
-avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
+# See ~/project/transistortester
+avrtransistortester: E := firmware/TransistorTester.eep
+avrtransistortester: I := firmware/TransistorTester_168.hex
+#avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
+#avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
 # XXX: This one gives timeout, circuit change?
 #avrtransistortester: E := Mpe/transistortester/Software/trunk/mega8/TransistorTester.eep
 #avrtransistortester: I := Mpe/transistortester/Software/trunk/mega8/TransistorTester.hex
 avrtransistortester: M := usbasp
-avrtransistortester: LF := 0xC1
-avrtransistortester: HF := 0xD9
+avrtransistortester: LF := 0xE2
+avrtransistortester: HF := 0xDC
 avrtransistortester: UB := 0x3F
 avrtransistortester: LB := 0x30
-avrtransistortester: C := m8
+avrtransistortester: C := m168p
 avrtransistortester: X := -B 3
 avrtransistortester: _flash
 
