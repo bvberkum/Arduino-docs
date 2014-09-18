@@ -101,6 +101,11 @@ USBisp m8           0x1e9307       0xCF  0xBF  -     0x3C  0x
 eBay Sanguino 1284  0x             0x    0x    0x    0x    0x  
 =================== ============== ===== ===== ===== ===== ======
 
+Makefile
+  C
+    m328p m1284p
+  BRD
+
 Boards
 ------
 uC16A

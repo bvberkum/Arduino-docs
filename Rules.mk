@@ -28,6 +28,35 @@ arduinodir-libraries-relink::
 		};\
 	done
 
+# add devices here, wildcard checks with FS for available devices
+PORTS := $(wildcard /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0)
+# get list of actually connected devices, select one
+port ?= 1
+PORT := $(word $(port),$(PORTS))
+$(info PORT = PORTS[$(port)] = $(PORT))
+
+ports:
+	@\
+		echo "Available ports:";\
+		for x in $(PORTS); do echo $$x; done
+
+listen: D := $(PORT)
+listen: B := 57600
+#listen: B := 38400
+listen:
+	@\
+	$(ll) attention $@ "Starting minicom @$(B) baud.." $(D);\
+	minicom -D $(D) -b $(B) minirc.arduino
+	@\
+	$(ll) ok $@ "minicom ended." $(D)
+
+screen: D := $(PORT)
+screen: B := 57600
+screen:
+	@\
+	$(ll) attention $@ "Calling screen $(D) $(B)..";\
+	screen $(D) $(B)
+
 #
 #DIR                 := $/mydir
 #include                $(call rules,$(DIR)/)

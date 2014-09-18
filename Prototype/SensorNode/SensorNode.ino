@@ -9,6 +9,7 @@
 		Simple protocol for control, data retrieval sessions?
 */
 #include <DotmpeLib.h>
+#include <EEPROM.h>
 #include <JeeLib.h>
 
 
@@ -84,7 +85,7 @@ struct Config {
 	char config_id[4];
 } static_config = {
 	/* default values */
-	{ node[0], node[1], }, 0, version, 
+	{ node[0], node[1], 0, }, 0, version, 
 	{ CONFIG_VERSION[0], CONFIG_VERSION[1], CONFIG_VERSION[2], }
 };
 

@@ -1,0 +1,14 @@
+nx0:
+  baudrate: 57600
+  chip: m328p
+  eeprom: {file: firmware/eeprom/nx0.hex, size: 1024}
+  node: nx
+  protocol: arduino
+  version: 0
+nx194:
+  baudrate: 57600
+  chip: m328p
+  eeprom: {file: firmware/eeprom/nx194.hex, size: 1024}
+  node: nx
+  protocol: arduino
+  version: 0

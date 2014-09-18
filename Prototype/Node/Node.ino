@@ -3,8 +3,8 @@
 Basetype Node
 	+ r/w config from EEPROM 
 
-	- sketch_id  XYFullName
 	- node_id    xy-1
+	- sketch_id  XY
 	- version    0
 
 - Subtypes of this prototype: Serial.
@@ -51,10 +51,13 @@ Serial config
 							
 #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega168__)
 #define SRAM_SIZE       1024
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
 #define SRAM_SIZE       2048
+#define EEPROM_SIZE     1024
 #endif
 							
 
@@ -69,14 +72,14 @@ char node_id[7];
 /* IO pins */
 static const byte ledPin = 13;
 
-SoftwareSerial virtSerial(11, 12); // RX, TX
+//SoftwareSerial virtSerial(11, 12); // RX, TX
 
 
 /* Command parser */
-Stream& cmdIo = virtSerial;
+Stream& cmdIo = Serial;//virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
-InputParser parser (buffer, 50, cmdTab, virtSerial);
+InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
 /* *** Device params *** {{{ */
 
@@ -100,13 +103,12 @@ InputParser parser (buffer, 50, cmdTab, virtSerial);
 
 struct Config {
 	char node[4];
-	int node_id; 
+	int node_id;
 	int version;
 	char config_id[4];
 } static_config = {
 	/* default values */
-	{ node[0], node[1], }, 0, version, 
-	CONFIG_VERSION
+	{ node[0], node[1], 0, 0 }, 0, version, CONFIG_VERSION
 };
 
 Config config;
@@ -257,10 +259,12 @@ void initLibs()
 static void helpCmd() {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
+	cmdIo.println("v: print version");
 	cmdIo.println("m: print free and used memory");
 	cmdIo.println("N: set Node (3 byte char)");
 	cmdIo.println("C: set Node ID (1 byte int)");
 	cmdIo.println("W: load/save EEPROM");
+	cmdIo.println("E: erase EEPROM!");
 	cmdIo.println("?/h: this help");
 }
 
@@ -300,6 +304,11 @@ static void configNodeCmd() {
 	cmdIo.println(node_id);
 }
 
+static void configVersionCmd() {
+	cmdIo.print("v ");
+	cmdIo.println(static_config.version);
+}
+
 static void configEEPROM() {
 	int write;
 	parser >> write;
@@ -311,6 +320,20 @@ static void configEEPROM() {
 	}
 	cmdIo.print("W ");
 	cmdIo.println(write);
+}
+
+static void eraseEEPROM() {
+	cmdIo.print("! Erasing EEPROM..");
+	for (int i = 0; i<EEPROM_SIZE; i++) {
+		char b = EEPROM.read(i);
+		if (b != 0x00) {
+			EEPROM.write(i, 0);
+			cmdIo.print('.');
+		}
+	}
+	cmdIo.println(' ');
+	cmdIo.print("E ");
+	cmdIo.println(EEPROM_SIZE);
 }
 
 static void memStat() {
@@ -330,9 +353,11 @@ InputParser::Commands cmdTab[] = {
 	{ 'c', 0, configCmd},
 	{ 'm', 0, memStat},
 	{ 'n', 0, configNodeCmd },
+	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },
 	{ 'W', 1, configEEPROM },
+	{ 'E', 0, eraseEEPROM },
 	{ 0 }
 };
 
@@ -353,7 +378,7 @@ void setup(void)
 {
 #if SERIAL
 	Serial.begin(57600);
-	virtSerial.begin(4800);
+	//virtSerial.begin(4800);
 #endif
 
 	initLibs();

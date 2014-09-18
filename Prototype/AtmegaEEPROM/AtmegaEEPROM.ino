@@ -1,6 +1,8 @@
 /* 
 Atmega EEPROM routines */
 #include <OneWire.h>
+#include <DotmpeLib.h>
+#include <EEPROM.h>
 
 
 /* *** Globals and sketch configuration *** */

@@ -49,28 +49,6 @@ define _flash
 	}
 endef
 
-# add devices here, wildcard checks with FS for available devices
-PORTS := $(wildcard /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0)
-# get list of actually connected devices, select one
-port ?= 1
-PORT := $(word $(port),$(PORTS))
-$(info PORT = PORTS[$(port)] = $(PORT))
-
-ports:
-	@\
-		echo "Available ports:";\
-		for x in $(PORTS); do echo $$x; done
-
-listen: D := $(PORT)
-listen: B := 57600
-#listen: B := 38400
-listen:
-	@\
-	$(ll) attention $@ "Starting minicom @$(B) baud.." $(D);\
-	minicom -D $(D) -b $(B) minirc.arduino
-	@\
-	$(ll) ok $@ "minicom ended." $(D)
-
 # avrdude chip ID
 upload: C := m328p
 # avrdude protocol
@@ -104,8 +82,8 @@ download: _download
 
 _download:
 	@\
-	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	$(ll) attention $@ "Starting flash/eeprom download using $(M).." $(I);\
+	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	I=$(I);\
 		[ -z "$$I" ] && I=download-$(C)-$(M);\
 	$(avrdude) \
@@ -123,11 +101,12 @@ _uctest:
 	$(D) $${sudo}$(avrdude) \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
+		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h \
 		$(X)
 	@$(ll) OK $@
 
 uctest: C := m328p
-uctest: M := arduinoisp
+uctest: M := usbasp
 uctest: X := 
 uctest: _uctest
 
@@ -147,7 +126,7 @@ erase:
 	@\
 	$(ll) attention $@ "Starting erase of $(C) using $(M)..";\
 	$(avrdude) \
-		-p $(C) $(call key,METHODS,$(M)) -D;\
+		-p $(C) $(call key,METHODS,$(M)) -e;\
 	$(ll) OK $@ 
 
 flash: C := m8
@@ -573,7 +552,7 @@ blinkall: jeenode upload
 oe: C := m328p
 oe: P := Mpe/Plugs/OutputExpander
 oe: I := Mpe/Plugs/OutputExpander/OutputExpander.hex
-oe: _arduino _upload
+oe: jeenode upload
 
 3way: C := m328p
 3way: P := Mpe/eBay-ThreeWayMeter/

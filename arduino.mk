@@ -171,8 +171,8 @@ SOURCES := $(INOFILE) \
 	$(wildcard $(addprefix utility/, *.c *.cc *.cpp))
 
 # automatically determine included libraries
-LIBRARIES := $(filter $(notdir $(wildcard $(ARDUINODIR)/libraries/*)), \
-	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
+LIBRARIES := \
+	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES))
 
 #$(info adir $(ARDUINODIR))
 #$(info libs $(notdir $(wildcard $(ARDUINODIR)/libraries/*)))

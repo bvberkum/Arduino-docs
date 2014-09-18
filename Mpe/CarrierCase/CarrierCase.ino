@@ -18,8 +18,8 @@ D4  PD4 DIO1      PIR
 D5  PD5 DIO2                 
 D6  PD6 DIO3                 
 D7  PD7 DIO4      DHT11      
-D8  PB0                      
-D9  PB1                      
+D8  PB0           LED yellow 
+D9  PB1           LED orange 
 D10 PB2      SS   RFM12B SEL 
 D11 PB3      MOSI RFM12B SDI 
 D12 PB4      MISO RFM12B DSO 
