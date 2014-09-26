@@ -31,3 +31,12 @@
 [submodule "libraries/RF24Network"]
 	path = libraries/RF24Network
 	url = git@github.com:jscrane/RF24Network.git
+[submodule "libraries/TFT_ILI9163C"]
+	path = libraries/TFT_ILI9163C
+	url = git@github.com:sumotoy/TFT_ILI9163C.git
+[submodule "libraries/Adafruit_GFX"]
+	path = libraries/Adafruit_GFX
+	url = git@github.com:adafruit/Adafruit-GFX-Library.git
+[submodule "libraries/TinyGPS++"]
+	path = libraries/TinyGPS++
+	url = git@github.com:mikalhart/TinyGPSPlus.git

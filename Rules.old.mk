@@ -206,11 +206,12 @@ _flash:
 
 fusebit-doctor-m328: C := m328p
 fusebit-doctor-m328: M := usbasp
-fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.11_m328p.hex
+fusebit-doctor-m328: I := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.hex)
+fusebit-doctor-m328: E := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.bin)
+#fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.11_m328p.hex
 #fusebit-doctor-m328: LF := 0x62
-#fusebit-doctor-m328: HF := 0xD9
 fusebit-doctor-m328: LF := 0x62
-fusebit-doctor-m328: HF := 0xD2
+fusebit-doctor-m328: HF := 0xD1
 fusebit-doctor-m328: EF := 0x07
 fusebit-doctor-m328: LB := 0x0F
 fusebit-doctor-m328: UB := 0x3F
@@ -662,20 +663,37 @@ ledseg595: jeenode upload
 
 # See ~/project/transistortester
 avrtransistortester: E := firmware/TransistorTester.eep
-avrtransistortester: I := firmware/TransistorTester_168.hex
+avrtransistortester: M := usbasp
+avrtransistortester: X := -B 3
+avrtransistortester: _flash
+
+avrtransistortester168: I := firmware/TransistorTester_168.hex
+avrtransistortester168: LF := 0xE2
+avrtransistortester168: HF := 0xDC
+avrtransistortester168: UB := 0x3F
+avrtransistortester168: LB := 0x30
+avrtransistortester168: C := m168p
+avrtransistortester168: avrtransistortester
+
+avrtransistortester328: I := $(wildcard ~/project/transistortester/Software/trunk/mega328_3.3V/TransistorTester.hex)
+avrtransistortester328: E := $(wildcard ~/project/transistortester/Software/trunk/mega328_3.3V/TransistorTester.eep)
+avrtransistortester328: LF := 0xE2
+avrtransistortester328: HF := 0xDC
+	# 04 is same as FC, E4, etc
+avrtransistortester328: EF := 0x04
+avrtransistortester328: UB := 
+avrtransistortester328: LB := 
+avrtransistortester328: C := m328p
+avrtransistortester328: M := usbasp
+avrtransistortester328: X := -B 3
+avrtransistortester328: _flash
+
 #avrtransistortester: E := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.eep
 #avrtransistortester: I := Misc/AVR-Transistortester_neu/ATmega8/TransistorTestNew.hex
 # XXX: This one gives timeout, circuit change?
 #avrtransistortester: E := Mpe/transistortester/Software/trunk/mega8/TransistorTester.eep
 #avrtransistortester: I := Mpe/transistortester/Software/trunk/mega8/TransistorTester.hex
-avrtransistortester: M := usbasp
-avrtransistortester: LF := 0xE2
-avrtransistortester: HF := 0xDC
-avrtransistortester: UB := 0x3F
-avrtransistortester: LB := 0x30
-avrtransistortester: C := m168p
-avrtransistortester: X := -B 3
-avrtransistortester: _flash
+
 
 at85blink: M:=usbasp
 at85blink: BRD:=t85
@@ -914,6 +932,22 @@ jeebandgap: C := m328p
 jeebandgap: P := libraries/JeeLib/examples/Ports/bandgap/
 jeebandgap: I := libraries/JeeLib/examples/Ports/bandgap/bandgap.hex
 jeebandgap: jeenode upload
+
+
+TFT_ILI9163C: C := m328p
+TFT_ILI9163C: P := Mpe/TFT_ILI9163C/
+TFT_ILI9163C: I := Mpe/TFT_ILI9163C/TFT_ILI9163C.hex
+TFT_ILI9163C: jeenode upload
+
+TFT_ILI9163C_test: C := m328p
+TFT_ILI9163C_test: P := libraries/TFT_ILI9163C/examples/test
+TFT_ILI9163C_test: I := libraries/TFT_ILI9163C/examples/test/test.hex
+TFT_ILI9163C_test: jeenode upload
+
+TFT_ILI9163C_graphicstest: C := m328p
+TFT_ILI9163C_graphicstest: P := libraries/TFT_ILI9163C/examples/graphicstest
+TFT_ILI9163C_graphicstest: I := libraries/TFT_ILI9163C/examples/graphicstest/graphicstest.hex
+TFT_ILI9163C_graphicstest: jeenode upload
 
 
 ### XXX old library symlinks, use submodules if possible
