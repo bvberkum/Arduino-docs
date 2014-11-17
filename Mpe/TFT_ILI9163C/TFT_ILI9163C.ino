@@ -27,27 +27,29 @@
 //#define SCLK 13 (SCK)
 // led
 
-#define GPS_HW_SERIAL 1
-//#define rxPin 7
-//#define txPin 6
+#define GPS_HW_SERIAL 0
+#define rxPin 7
+#define txPin 6
 
 
 TFT_ILI9163C tft = TFT_ILI9163C(CS, DC, RESET);
 
-#if GPS_HW_SERIAL
-#define SERIAL 0
-#endif
+//#define SERIAL 1
+//#if GPS_HW_SERIAL
+//#define SERIAL 0
+//#endif
 
-#if !GPS_HW_SERIAL
+//#if !GPS_HW_SERIAL
 SoftwareSerial gps_serial(7, 6); // RX, TX
-#elif GPS_HW_SERIAL
-Stream &gps_serial = Serial;
-#endif
+//#elif GPS_HW_SERIAL
+//Stream &gps_serial = Serial;
+//#endif
 
 TinyGPSPlus gps;
 
 int r=0;
 int byteRead = 0;
+int overflow_flash = 0;
 
 /*
 unsigned long testText() {
@@ -122,17 +124,18 @@ bool b;
 int line = 0;
 int c = 0;
 int newData = 0;
+char in;
 
 void setup() {
 
-#if SERIAL && !GPS_HW_SERIAL
+//#if SERIAL && !GPS_HW_SERIAL
 	Serial.begin(57600);
-#endif
+//#endif
 
-#if !GPS_HW_SERIAL
+//#if !GPS_HW_SERIAL
 	pinMode(rxPin, INPUT);
 	pinMode(txPin, OUTPUT);
-#endif
+//#endif
 
 	gps_serial.begin(9600);
 	//gps_serial.begin(38400);
@@ -196,14 +199,21 @@ void gpsDisplay() {
 
 	tft.print("SAT: ");  
 	tft.println(gps.satellites.value());
-}
 
+	tft.println("");
+
+	if (overflow_flash)
+		tft.println("!");
+}
 void loop(){
 	if (gps_serial.overflow()) {
 		Serial.println("!");
+		overflow_flash = 1;
 	}
 	while (gps_serial.available() > 0) {
-		gps.encode(gps_serial.read());
+		in = gps_serial.read();
+		gps.encode(in);
+		Serial.print(in);
 /*
 		byteRead += 1;
 		char inchar = (char)gps_serial.read();
@@ -229,7 +239,7 @@ void loop(){
 		//Serial.println(serialBuffer);
 		serialBuffer = "";
 	}
-#if SERIAL && !GPS_HW_SERIAL
+//#if SERIAL && !GPS_HW_SERIAL
 	if (gps.altitude.isUpdated())
 	{
 		Serial.print("ALT=");  Serial.println(gps.altitude.meters());
@@ -245,15 +255,15 @@ void loop(){
 	if (gps.hdop.isUpdated()) {
 		Serial.print("HDOP=");  Serial.println(gps.hdop.value());
 	}
-#endif
+//#endif
 
 	if ( c % 100000 == 0 ) {
 		gpsDisplay();
 		byte chk = gps.failedChecksum();
-#if SERIAL && !GPS_HW_SERIAL
+//#if SERIAL && !GPS_HW_SERIAL
 		Serial.print("Sentences that failed checksum=");
 		Serial.println(chk);
-#endif
+//#endif
 	}
 	c += 1;
 }

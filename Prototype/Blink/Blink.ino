@@ -29,14 +29,14 @@
  *
  * - Marked '*' has PWM.
  */
-int blinkPin = 1;
+int blinkPin = 13;
 int blinkCount = 2;
 int delay_low = 150;
-int delay_high = 10;
+int delay_high = 100;
 long delay_loop = 1000;
 
 void blink(int led, int count) {
-  unsigned long currentMillis = millis();
+  //unsigned long currentMillis = millis();
   for (int i=0;i<count;i++) {
     digitalWrite(led, HIGH);
     delay(delay_high);

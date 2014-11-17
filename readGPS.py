@@ -45,7 +45,17 @@ line_types = {
 	),
 	'$GPGLL': (
 		"GLL", "Latitude and longitude, with time of position fix and status",
-		"", (), (9, 10), []
+		"", (), (9, 10), [
+			None,
+			( 'Latitude', float, "" ),
+			( 'N', str, "" ),
+			( 'Longitude', float, "" ),
+			( 'E', str, "" ),
+			( 'hhmmss.ss', str, "" ),
+			( 'A', str, "Valid" ),
+			( '', 'A', str, "Mode" ),
+			None
+		]
 	),
 	'$GPGRS': (
 		"GRS", "GNSS Range Residuals", "", 
@@ -174,12 +184,16 @@ class GPSInfo(object):
 			assert len(msg) == count, "Expected %s, got %i" %( count, len(msg), )
 		lastf, chk = msg[-1].split('*')
 		msg[-1] =lastf
-		
+
+		opt = []	
 		for i, f in enumerate(spec[5]):
 			if not f: continue
 			if len(f) == 1:
 				assert msg[i] == f[0], (f, msg)
 				continue
+			if not f[0]:
+				f = f[1:]
+				opt.append(i)
 			if len(f) == 3:
 				name, decode, descr = f
 			else:

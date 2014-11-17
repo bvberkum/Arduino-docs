@@ -28,8 +28,8 @@
  *
  * - Marked '*' has PWM.
  */
-int first_led = 0;
-int last_led = 4;
+int first_led = 6;
+int last_led = 18;
 
 void blink(int led, int count, int length) {
   for (int i=0; i<count; i++) {

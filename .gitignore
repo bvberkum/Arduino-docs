@@ -12,6 +12,7 @@
 *.rar
 .lib
 .dep
+*.d
 *.o
 *.hex
 libraries/RF24_gitbub

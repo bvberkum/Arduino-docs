@@ -4,14 +4,6 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
-OLD ?= 1
-
-ifeq ($(OLD),1)
-include Rules.old.mk
-else
-include Rules.new.mk
-endif
-
 arduinodir-libraries-relink::
 	for f in libraries/*; do \
 		F=$$(basename $$f); \
@@ -29,7 +21,7 @@ arduinodir-libraries-relink::
 	done
 
 # add devices here, wildcard checks with FS for available devices
-PORTS := $(wildcard /dev/tty.usbserial-A9A953R3 /dev/tty.usbserial-A900TTH0 /dev/ttyUSB0)
+PORTS := $(wildcard /dev/tty.usbserial-* /dev/ttyUSB*)
 # get list of actually connected devices, select one
 port ?= 1
 PORT := $(word $(port),$(PORTS))
@@ -70,6 +62,14 @@ screen:
 # XXX: using find here is so wastefull (otherwise), there is no cache at all?
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 #endif
+
+OLD ?= 1
+
+ifeq ($(OLD),1)
+include Rules.old.mk
+else
+include Rules.new.mk
+endif
 
 #      ------------ -- 
 #

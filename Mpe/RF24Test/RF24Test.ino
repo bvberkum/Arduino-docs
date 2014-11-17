@@ -124,7 +124,7 @@ void setup(void)
 
 	doReset();
 
-	printf("\n\rRF24/examples/GettingStarted/\n\r");
+	Serial.println("\n\rRF24/examples/GettingStarted/");
 	radio.printDetails();
 
 	Serial.print("SRAM used: ");

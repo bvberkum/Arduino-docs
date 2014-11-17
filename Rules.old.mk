@@ -232,19 +232,24 @@ fusebit-doctor-m8: D :=
 fusebit-doctor-m8: _flash
 
 
-flash-betemcu: C := m8
-flash-betemcu: M := usbasp
-flash-betemcu: I := firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
-flash-betemcu: LF := 0xFF
-flash-betemcu: HF := 0xD9
-flash-betemcu: EF := 
-flash-betemcu: LB := 0x3C
-flash-betemcu: UB := 0x3F
-flash-betemcu: _flash
+upload-betemcu: C := m8
+upload-betemcu: M := usbasp
+upload-betemcu: I := 
+upload-betemcu: _flash
 
-upload-betemcu-usbasploader: M := usbasp
-upload-betemcu-usbasploader: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
-upload-betemcu-usbasploader:
+flash-betemcu-usbasploader: C := m8
+flash-betemcu-usbasploader: M := usbasp
+flash-betemcu-usbasploader: I := firmware/betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
+flash-betemcu-usbasploader: LF := 0xFF
+flash-betemcu-usbasploader: HF := 0xD9
+flash-betemcu-usbasploader: EF := 
+flash-betemcu-usbasploader: LB := 0x3C
+flash-betemcu-usbasploader: UB := 0x3F
+flash-betemcu-usbasploader: _flash
+
+flash-betemcu-usbasploader-alt: M := usbasp
+flash-betemcu-usbasploader-alt: I := firmware/betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
+flash-betemcu-usbasploader-alt:
 	$(avrdude) \
 		-p m8 -e \
 		$(call key,METHODS,$(M)) \
@@ -948,6 +953,17 @@ TFT_ILI9163C_graphicstest: C := m328p
 TFT_ILI9163C_graphicstest: P := libraries/TFT_ILI9163C/examples/graphicstest
 TFT_ILI9163C_graphicstest: I := libraries/TFT_ILI9163C/examples/graphicstest/graphicstest.hex
 TFT_ILI9163C_graphicstest: jeenode upload
+
+habr-usbasp-i2c-tiny-usb: C := m8
+habr-usbasp-i2c-tiny-usb: M := usbasp
+habr-usbasp-i2c-tiny-usb: I := Misc/habr-usbasp/i2c_tiny_usb/i2c_tiny_usb.hex
+habr-usbasp-i2c-tiny-usb: _upload
+
+habr-usbasp-cdc-232: C := m8
+habr-usbasp-cdc-232: M := usbasp
+habr-usbasp-cdc-232: I := Misc/habr-usbasp/rs232/rs232.hex
+habr-usbasp-cdc-232: _upload
+
 
 
 ### XXX old library symlinks, use submodules if possible
