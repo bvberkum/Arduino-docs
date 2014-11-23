@@ -39,6 +39,7 @@ Serial config
   */
 
 #include <SoftwareSerial.h>
+#include <DotmpeLib.h>
 #include <EEPROM.h>
 //#include <util/crc16.h>
 
@@ -48,6 +49,8 @@ Serial config
 /* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+							
+#define _MEM            1   // Report free memory 
 							
 #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
@@ -254,6 +257,37 @@ void initLibs()
 
 /* }}} *** */
 
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	doConfig();
+}
+
+bool doAnnounce()
+{
+}
+
+// readout all the sensors and other values
+void doMeasure()
+{
+	// none, see  SensorNode
+}
+
+// periodic report, i.e. send out a packet and optionally report on serial port
+void doReport(void)
+{
+	// none, see RadioNode
+}
+
+void runScheduler(char task)
+{
+	// no-op, see SensorNode
+}
+
+/* }}} *** */
+
+
 /* InputParser handlers */
 
 static void helpCmd() {
@@ -361,15 +395,6 @@ InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 
-
-/* *** Run-time handlers *** {{{ */
-
-void doReset(void)
-{
-	doConfig();
-}
-
-
 /* }}} *** */
 
 /* *** Main *** {{{ */
@@ -377,8 +402,14 @@ void doReset(void)
 void setup(void)
 {
 #if SERIAL
-	Serial.begin(57600);
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, String(version));
 	//virtSerial.begin(4800);
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
+	serialFlush();
 #endif
 
 	initLibs();

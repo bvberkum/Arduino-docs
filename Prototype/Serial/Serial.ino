@@ -26,8 +26,18 @@ MpeSerial mpeser (57600);
 /* Scheduled tasks */
 /* *** EEPROM config *** {{{ */
 /* }}} *** */
-/* Report variables */
+
 /* *** AVR routines *** {{{ */
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v;
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
 
 
 
@@ -127,6 +137,10 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 #endif
 

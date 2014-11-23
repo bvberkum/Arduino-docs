@@ -8,6 +8,7 @@ Atmega EEPROM routines */
 /* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+							
 #define MAXLENLINE      79
 							
 
@@ -34,8 +35,8 @@ InputParser parser (50, cmdTab);
 #define CONFIG_START 0
 
 struct Config {
-	char node[3];
-	int node_id; 
+	char node[4];
+	int node_id;
 	int version;
 	char config_id[4];
 } static_config = {
@@ -48,7 +49,7 @@ Config config;
 
 bool loadConfig(Config &c) 
 {
-	int w = sizeof(c);
+	unsigned int w = sizeof(c);
 
 	if (
 			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
@@ -126,7 +127,7 @@ void doConfig(void)
 	}
 }
 
-void setupLibs()
+void initLibs()
 {
 }
 
@@ -188,11 +189,13 @@ void runScheduler(char task)
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 	serialFlush();
+#endif
 
-	setupLibs();
+	initLibs();
 
 	doReset();
 }

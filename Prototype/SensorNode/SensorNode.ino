@@ -30,13 +30,15 @@
 #define STDBY_PERIOD    60
 							
 #define MAXLENLINE      79
-							
-#if defined(__AVR_ATtiny84__)
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega168__)
 #define SRAM_SIZE       1024
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
 #define SRAM_SIZE       2048
+#define EEPROM_SIZE     1024
 #endif
 							
 
@@ -64,13 +66,15 @@ enum {
 	HANDSHAKE,
 	MEASURE,
 	REPORT,
-	STDBY };
+	STDBY
+};
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[STDBY];
 Scheduler scheduler (schedbuf, STDBY);
+
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
@@ -143,8 +147,10 @@ void writeConfig(Config &c)
 */
 
 #endif //_DHT
+
 #if _LCD84x48
 #endif //_LCD84x48
+
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
@@ -152,7 +158,9 @@ void writeConfig(Config &c)
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
+
 #endif //_NRF24
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
@@ -162,6 +170,7 @@ void writeConfig(Config &c)
 /* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
+// This defines the structure of the packets which get sent out by wireless:
 
 struct {
 } payload;
@@ -239,6 +248,7 @@ void debug_ticks(void)
 {
 #if SERIAL && DEBUG
 	tick++;
+#if SERIAL
 	if ((tick % 20) == 0) {
 		Serial.print('.');
 		pos++;
@@ -249,8 +259,8 @@ void debug_ticks(void)
 	}
 	serialFlush();
 #endif
+#endif
 }
-
 
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
@@ -344,6 +354,7 @@ void doMeasure()
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+	// none, see RadioNode
 }
 
 void runScheduler(char task)
@@ -370,6 +381,7 @@ void runScheduler(char task)
 			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
+
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
@@ -401,8 +413,11 @@ void runScheduler(char task)
 	}
 }
 
+/* }}} *** */
+
 
 /* InputParser handlers */
+
 
 
 /* }}} *** */
