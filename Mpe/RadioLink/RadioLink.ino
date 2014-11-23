@@ -348,7 +348,11 @@ static void handleInput (char c) {
 		showHelp();
 }
 
-void setup() {
+
+/* *** Main *** {{{ */
+
+void setup(void)
+{
 	Serial.begin(SERIAL_BAUD);
 	Serial.println();
 	Serial.println(F("[RadioLink]"));
@@ -372,7 +376,9 @@ void setup() {
 	//showHelp();
 }
 
-void loop() {
+
+void loop(void)
+{
 	if (Serial.available()) {
 		blink( LED_RADIO, 1, 50, 50 );
 		handleInput(Serial.read());
