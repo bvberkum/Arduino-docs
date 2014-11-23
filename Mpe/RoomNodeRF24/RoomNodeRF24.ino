@@ -13,28 +13,38 @@
 #include "printf.h"
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
-							
-#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MAXLENLINE      79
-#define SRAM_SIZE       0x800 // atmega328, for debugging
 							
 #define SHT11_PORT      0   // defined if SHT11 is connected to a port
 #define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
 #define PIR_PORT        0   // defined if PIR is connected to a port's DIO pin
-							
 #define _MEM            1   // Report free memory 
 #define _RFM12B         0
 #define _RFM12BLOBAT    0
 #define _NRF24          1
 							
+#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
+							
+#define MAXLENLINE      79
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
+#define SRAM_SIZE       512
+#define EEPROM_SIZE     512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#define EEPROM_SIZE     512
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+//#define SRAM_SIZE       0x800 // atmega328, for debugging
+#define EEPROM_SIZE     1024
+#endif
+							
 
-String sketch = "RF24Test";
-String version = "0";
+const String sketch = "RF24Test";
+const int version = 0;
 
 String node_id = "rf24tst-1";
 
@@ -51,9 +61,12 @@ const byte rf24_csn = 8;
 MpeSerial mpeser (57600);
 
 
-// The scheduler makes it easy to perform various tasks at various times:
-enum { MEASURE, REPORT, STDBY };
-
+/* Scheduled tasks */
+enum { 
+	MEASURE,
+	REPORT,
+	STDBY
+};
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
@@ -64,6 +77,11 @@ Scheduler scheduler (schedbuf, STDBY);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
+
+/* *** EEPROM config *** {{{ */
+
+/* }}} *** */
+
 // Other variables used in various places in the code:
 #if SHT11_PORT
 SHT11 sht11 (SHT11_PORT);
@@ -72,7 +90,17 @@ SHT11 sht11 (SHT11_PORT);
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
 
+#endif //_DHT
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+#endif // _DS
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
@@ -84,6 +112,7 @@ const uint64_t pipes[2] = {
 	0xF0F0F0F0E1LL, /* dest id: central link node */
 	0xF0F0F0F0D2LL /* src id: local node */
 };
+
 #endif //_NRF24
 
 
@@ -104,8 +133,7 @@ struct {
 #endif
 } payload;
 
-
-/** AVR routines */
+/* *** AVR routines *** {{{ */
 
 int freeRam () {
 	extern int __heap_start, *__brkval; 
@@ -117,8 +145,9 @@ int usedRam () {
 	return SRAM_SIZE - freeRam();
 }
 
+/* }}} *** */
 
-/** ATmega routines */
+/* *** ATmega routines *** {{{ */
 
 double internalTemp(void)
 {
@@ -151,8 +180,9 @@ double internalTemp(void)
 	return (t);
 }
 
+/* }}} *** */
 
-/** Generic routines */
+/* *** Generic routines *** {{{ */
 
 static void serialFlush () {
 #if SERIAL
@@ -175,7 +205,7 @@ void blink(int led, int count, int length, int length_off=0) {
 
 void debug_ticks(void)
 {
-#if DEBUG
+#if SERIAL && DEBUG
 	tick++;
 	// a bit less for non-waiting loops or always..?
 	if ((tick % 20) == 0) {
@@ -190,6 +220,7 @@ void debug_ticks(void)
 		pos = 0;
 		Serial.println();
 	}
+	serialFlush();
 #endif
 #endif
 }
@@ -201,12 +232,15 @@ static int smoothedAverage(int prev, int next, byte firstTime =0) {
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
 }
 
-void debug(String msg) {
+void debugline(String msg) {
 #if DEBUG
 	Serial.println(msg);
 #endif
 }
 
+/* }}} *** */
+
+/* *** Peripheral hardware routines *** {{{ */
 
 #if PIR_PORT
 
@@ -265,8 +299,9 @@ void rf24_run()
 }
 #endif //_NRF24
 
+/* }}} *** */
 
-/* Initialization routines */
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
@@ -283,8 +318,9 @@ void initLibs()
 #endif
 }
 
+/* }}} *** */
 
-/* Run-time handlers */
+/* *** Run-time handlers *** {{{ */
 
 bool doAnnounce()
 {
@@ -298,6 +334,7 @@ bool doAnnounce()
 	Serial.print(F(" memfree"));
 #endif
 #endif
+	return false;
 }
 
 void doReset(void)
@@ -375,14 +412,13 @@ bool doReport(void)
 	return ok;
 }
 
-void runScheduler(char task)
+void runScheduler(byte task)
 {
 	switch (task) {
 
 		case MEASURE:
 			// reschedule these measurements periodically
-			debug("MEASURE");
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			debugline("MEASURE");
 
 			doMeasure();
 
@@ -395,7 +431,7 @@ void runScheduler(char task)
 			break;
 
 		case REPORT:
-			debug("REPORT");
+			debugline("REPORT");
 //			payload.msgtype = REPORT_MSG;
 			if (doReport()) {
 				// XXX report again?
@@ -415,7 +451,6 @@ void runScheduler(char task)
 	}
 }
 
-
 #if PIR_PORT
 
 // send packet and wait for ack when there is a motion trigger
@@ -426,20 +461,21 @@ void doTrigger()
 
 
 
-/* Main */
+/* }}} *** */
+
+/* *** Main *** {{{ */
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 	doAnnounce();
-	serialFlush();
-
-#if DEBUG
-	Serial.print(F("SRAM used: "));
-	Serial.println(usedRam());
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
 #endif
+	serialFlush();
 #endif
 
 	initLibs();
@@ -450,10 +486,12 @@ void setup(void)
 void loop(void)
 {
 	debug_ticks();
-
-	char task = scheduler.pollWaiting();
 	serialFlush();
-	if (task == 0xFF) return; // -1
-	if (task == 0xFE) return; // -2
-	runScheduler(task);
+	byte task = scheduler.pollWaiting();
+	if (task == 0xFF) {} // -1
+	else if (task == 0xFE) {} // -2
+	else runScheduler(task);
 }
+
+/* }}} *** */
+

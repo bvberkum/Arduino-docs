@@ -611,6 +611,11 @@ cassette328p: P := Mpe/Cassette328P/
 cassette328p: I := Mpe/Cassette328P/Cassette328P.hex
 cassette328p: jeenode upload
 
+cassette328pmilli: C := m328p
+cassette328pmilli: P := Mpe/Cassette328P/Milli/
+cassette328pmilli: I := Mpe/Cassette328P/Milli/Milli.hex
+cassette328pmilli: jeenode upload
+
 hanrun: C := m328p
 hanrun: P := Misc/HanrunENC28J60/
 hanrun: I := Misc/HanrunENC28J60/HanrunENC28J60.hex
@@ -862,6 +867,11 @@ roomnode: C := m328p
 roomnode: P := Mpe/RoomNode/
 roomnode: I := Mpe/RoomNode/RoomNode.hex
 roomnode: jeenode upload
+
+roomnode24: C := m328p
+roomnode24: P := Mpe/RoomNodeRF24/
+roomnode24: I := Mpe/RoomNodeRF24/RoomNodeRF24.hex
+roomnode24: jeenode upload
 
 magnetometer: C := m328p
 magnetometer: P := Prototype/Magnetometer/
