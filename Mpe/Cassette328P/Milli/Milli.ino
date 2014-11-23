@@ -17,8 +17,8 @@
 static unsigned long count;
 
 static unsigned long now () {
-	// FIXME 49-day overflow
-	return millis() / 1000;
+    // FIXME 49-day overflow
+    return millis() / 1000;
 }
 
 /* blocking blink */
@@ -37,7 +37,7 @@ lednr -> blink-count, active-mili, inactive-mili */
 unsigned long blinks[maxBlinkLoops]; /*
     lednr -> remaining periods */
 long ledState [maxBlinkLoops]; /*
-	lednr -> signed for inactive-mili started, unsigned for active-mili started */
+    lednr -> signed for inactive-mili started, unsigned for active-mili started */
 static long led[maxBlinkLoops] = {
     LED_GREEN,
     LED_YELLOW,
@@ -93,42 +93,42 @@ void execLeds() {
 }
 static void printMillis() {
 
-	static unsigned long lasttime = 0;  // static vars remembers values over function calls without being global
+    static unsigned long lasttime = 0;  // static vars remembers values over function calls without being global
 
-	if (millis() - lasttime <= REPORT_DELAY) return;  // instead of delay(2) just ignore if called too fast 
+    if (millis() - lasttime <= REPORT_DELAY) return;  // instead of delay(2) just ignore if called too fast 
 
-	lasttime = millis();
+    lasttime = millis();
     blinkPrime( 0, 3, 30, 40);
 
-	Serial.println();
-	Serial.print(count);	
-	Serial.print(", ");	
-	Serial.print(now());	
-	Serial.print(", ");	
-	Serial.print(millis());	
-	Serial.print(" ");	
+    Serial.println();
+    Serial.print(count);    
+    Serial.print(", ");    
+    Serial.print(now());    
+    Serial.print(", ");    
+    Serial.print(millis());    
+    Serial.print(" ");    
     //debugLeds();
-	count ++;
+    count ++;
 }
 
 int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+    extern int __heap_start, *__brkval; 
+    int v; 
+    return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
 void setup() {
-	Serial.begin(SERIAL_BAUD);
-	Serial.println();
-	Serial.print(F("[Milli]"));
-	Serial.println();
-	Serial.print(F("[freeRAM: "));
-	Serial.print(freeRam());
-	Serial.print("] ");	
-	count = 0;
-	pinMode( LED_GREEN, OUTPUT );
-	pinMode( LED_YELLOW, OUTPUT );
-	pinMode( LED_RED, OUTPUT );
+    Serial.begin(SERIAL_BAUD);
+    Serial.println();
+    Serial.print(F("[Milli]"));
+    Serial.println();
+    Serial.print(F("[freeRAM: "));
+    Serial.print(freeRam());
+    Serial.print("] ");    
+    count = 0;
+    pinMode( LED_GREEN, OUTPUT );
+    pinMode( LED_YELLOW, OUTPUT );
+    pinMode( LED_RED, OUTPUT );
 
     blinkPrime( 0, 0, 0, 0 );
     digitalWrite( LED_GREEN, LOW );
@@ -145,10 +145,10 @@ void setup() {
 }
 
 void loop() {
-	static unsigned long lasttime = 0;  
-	execLeds();
-	printMillis();
-	if (millis() - lasttime <= RED_DELAY) return;
-	lasttime = millis();
+    static unsigned long lasttime = 0;  
+    execLeds();
+    printMillis();
+    if (millis() - lasttime <= RED_DELAY) return;
+    lasttime = millis();
     blinkPrime( 2, 5, 20, 20 );
 }

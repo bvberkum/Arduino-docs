@@ -309,13 +309,12 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=0) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
 
@@ -325,22 +324,9 @@ void blink(int led, int count, int length, int length_off=0) {
 #define printByte(args)  print(args,BYTE);
 #endif
 
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
 void debug_ticks(void)
 {
-#if DEBUG
+#if SERIAL && DEBUG
 	tick++;
 	if ((tick % 20) == 0) {
 		Serial.print('.');
@@ -367,13 +353,29 @@ byte bcdToDec(byte val)
 }
 
 
+// utility code to perform simple smoothing as a running average
+static int smoothedAverage(int prev, int next, byte firstTime =0) {
+	if (firstTime)
+		return next;
+	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
+}
+
+void debugline(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
 
 /* }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
 
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+
+#endif //_DS
 #if _NRF24
-/* nRF24L01+: 2.4Ghz radio. Addresses are 40 bit, ie. < 0x10000000000L */
+/* Nordic nRF24L01+ routines */
 RF24 radio(12,13); /* CE, CS */
 
 void radio_init()
@@ -633,6 +635,12 @@ void rtc_run(void)
 #endif //_LCD
 }
 #endif //_RTC
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+}
+#endif //_HMC5883L
+
 
 /* }}} *** */
 
@@ -646,6 +654,33 @@ void doConfig(void)
 	}
 }
 
+void initLibs()
+{
+#if _RTC
+	rtc_init();
+#endif
+#if _NRF24
+	radio_init();
+#endif
+#if _RF12
+	//radio_init();
+#endif
+#if _LCD
+	i2c_lcd_init();
+	i2c_lcd_start();
+	lcd.print(F("Cassette328P"));
+#endif
+#if _DHT
+	dht.begin();
+#if DEBUG 
+	Serial.println("Initialized DHT");
+	float t = dht.readTemperature();
+	Serial.println(t);
+#endif
+#endif
+	blink(LED_GREEN, 4, 100);
+}
+
 /* }}} *** */
 
 /* *** Run-time handlers *** {{{ */
@@ -653,12 +688,12 @@ void doConfig(void)
 void doReset(void)
 {
 	doConfig();
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
 	pinMode( LED_GREEN, OUTPUT );
 	pinMode( LED_YELLOW, OUTPUT );
 	pinMode( LED_RED, OUTPUT );
+	digitalWrite( LED_GREEN, LOW );
+	digitalWrite( LED_YELLOW, LOW );
+	digitalWrite( LED_RED, LOW );
 	ui_irq = false;
 	tick = 0;
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
@@ -699,38 +734,11 @@ int serviceMode(void)
 }
 
 
-void initLibs()
-{
-#if _RTC
-	rtc_init();
-#endif
-#if _NRF24
-	radio_init();
-#endif
-#if _RF12
-	//radio_init();
-#endif
-#if _LCD
-	i2c_lcd_init();
-	i2c_lcd_start();
-	lcd.print(F("Cassette328P"));
-#endif
-#if _DHT
- 	dht.begin();
-#if DEBUG 
-	Serial.println("Initialized DHT");
-	float t = dht.readTemperature();
-	Serial.println(t);
-#endif
-#endif
-	blink(LED_GREEN, 4, 100);
-}
-
-static bool doAnnounce()
+bool doAnnounce()
 {
 }
 
-static void doMeasure()
+void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -807,7 +815,7 @@ static void doMeasure()
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport(void)
+void doReport(void)
 {
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
@@ -873,7 +881,8 @@ void runScheduler(char task)
 			break;
 
 		case REPORT:
-			debug("REPORT");
+			debugline("REPORT");
+//			payload.msgtype = REPORT_MSG;
 			doReport();
 			serialFlush();
 			break;
@@ -951,12 +960,14 @@ static void runCommand()
 
 void setup(void)
 {
-	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
 #if SERIAL
-#if DEBUG
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
+#endif
+#if DEBUG
 	byte rf12_show = 1;
 #else
 	byte rf12_show = 0;
@@ -975,12 +986,11 @@ void setup(void)
 //		config = static_config;
 //	}
 	serialFlush();
-	digitalWrite( LED_RED, HIGH );
-	digitalWrite( LED_YELLOW, HIGH );
+#endif
+
 	initLibs();
+
 	doReset();
-	digitalWrite( LED_RED, LOW );
-	digitalWrite( LED_YELLOW, LOW );
 }
 
 void loop(void)
@@ -1015,11 +1025,10 @@ void loop(void)
 		runScheduler(task);
 	} else if (ui) {
 	} else {
-		blink(ledPin, 1, 15);
-		debug("Sleep");
+		debugline("Sleep");
 		serialFlush();
 		char task = scheduler.pollWaiting();
-		debug("WakeUp");
+		debugline("WakeUp");
 		if (0 < task && task < 0xFF) {
 			runScheduler(task);
 		}

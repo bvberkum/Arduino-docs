@@ -4,18 +4,18 @@
 #include <DotmpeLib.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define MAXLENLINE      79
 							
 
-static String sketch = "X-Serial";
-static String version = "0";
+const String sketch = "X-Serial";
+const int version = 0;
 
-static int tick = 0;
-static int pos = 0;
+int tick = 0;
+int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -87,7 +87,7 @@ void doConfig(void)
 	}
 }
 
-void setupLibs()
+void initLibs()
 {
 }
 
@@ -98,6 +98,8 @@ void setupLibs()
 void doReset(void)
 {
 	tick = 0;
+
+	doConfig();
 }
 
 bool doAnnounce()
@@ -111,11 +113,13 @@ bool doAnnounce()
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 	serialFlush();
+#endif
 
-	setupLibs();
+	initLibs();
 
 	doReset();
 }

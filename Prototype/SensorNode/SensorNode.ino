@@ -17,6 +17,7 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
+#define _MEM            1   // Report free memory 
 #define _DHT            0
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             0
@@ -30,18 +31,17 @@
 							
 #define MAXLENLINE      79
 							
-
 #if defined(__AVR_ATtiny84__)
-#define SRAM_SIZE 512
+#define SRAM_SIZE       512
 #elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE 1024
+#define SRAM_SIZE       1024
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE 2048
+#define SRAM_SIZE       2048
 #endif
+							
 
-
-String sketch = "X-SensorNode";
-int version = 0;
+const String sketch = "X-SensorNode";
+const int version = 0;
 
 char node[] = "nx";
 // determined upon handshake 
@@ -49,7 +49,6 @@ char node_id[7];
 
 int tick = 0;
 int pos = 0;
-
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -233,6 +232,7 @@ void blink(int led, int count, int length, int length_off=-1) {
 	}
 }
 
+
 void debug_ticks(void)
 {
 #if SERIAL && DEBUG
@@ -274,7 +274,13 @@ void debugline(String msg) {
 #if _NRF24
 /* Nordic nRF24L01+ routines */
 
-#endif //_NRF24
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
@@ -298,6 +304,11 @@ void initLibs()
 {
 #if _DHT
 	dht.begin();
+#if DEBUG 
+	Serial.println("Initialized DHT");
+	float t = dht.readTemperature();
+	Serial.println(t);
+#endif
 #endif
 
 #if _HMC5883L
@@ -400,6 +411,10 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 #endif
 
