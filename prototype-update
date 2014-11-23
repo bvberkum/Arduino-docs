@@ -1,0 +1,13 @@
+#!/bin/bash
+
+target_prefix=$1
+
+read $target_prefix $repo_branch $source_prefix < ${source_prefix////-}
+
+temp_branch=_${repo_branch////-}_${source_prefix////-}
+
+echo git fetch $(dirname $repo_branch)
+echo git co $repo_branch
+echo git subtree split --squash --prefix=$target_prefix $temp_branch
+echo git co $cb
+
