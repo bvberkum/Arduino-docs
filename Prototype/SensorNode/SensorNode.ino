@@ -52,6 +52,9 @@ int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
+#if _DHT
+static const byte DHT_PIN = 7;
+#endif
 
 MpeSerial mpeser (57600);
 
@@ -145,7 +148,7 @@ void writeConfig(Config &c)
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-#endif //_DS
+#endif // _DS
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
@@ -232,7 +235,6 @@ void blink(int led, int count, int length, int length_off=-1) {
 	}
 }
 
-
 void debug_ticks(void)
 {
 #if SERIAL && DEBUG
@@ -284,7 +286,7 @@ void debugline(String msg) {
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
-}
+
 #endif //_HMC5883L
 
 
@@ -334,6 +336,7 @@ bool doAnnounce()
 {
 }
 
+// readout all the sensors and other values
 void doMeasure()
 {
 }

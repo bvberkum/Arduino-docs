@@ -11,7 +11,6 @@
 #include <DHT.h> // Adafruit DHT
 
 
-/** Globals and sketch configuration  */
 /* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
@@ -241,7 +240,6 @@ void debugline(String msg) {
 #endif
 }
 
-
 /* }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
@@ -297,6 +295,8 @@ InputParser::Commands cmdTab[] = {
 void doReset(void)
 {
 	tick = 0;
+
+	doConfig();
 
 #if _NRF24
 	rf24_init();
@@ -473,7 +473,11 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 #endif
 

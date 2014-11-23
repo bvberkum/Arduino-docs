@@ -23,6 +23,10 @@ static const byte ledPin = 13;
 MpeSerial mpeser (57600);
 
 
+/* Scheduled tasks */
+/* *** EEPROM config *** {{{ */
+/* }}} *** */
+/* Report variables */
 /* *** AVR routines *** {{{ */
 
 
@@ -45,13 +49,12 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=0) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
 
@@ -68,6 +71,12 @@ void debug_ticks(void)
 		Serial.println();
 	}
 	serialFlush();
+#endif
+}
+
+void debugline(String msg) {
+#if DEBUG
+	Serial.println(msg);
 #endif
 }
 
@@ -105,6 +114,8 @@ void doReset(void)
 bool doAnnounce()
 {
 }
+
+/* InputParser handlers */
 
 
 /* }}} *** */

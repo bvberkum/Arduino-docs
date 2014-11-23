@@ -1,16 +1,16 @@
+/*
+*/
+#include <DotmpeLib.h>
 #include <JeeLib.h>
 
 
-/** Globals and sketch configuration  */
-#define DEBUG       1    // 
+/* *** Globals and sketch configuration *** */
+#define DEBUG           1 /* Enable trace statements */
 #define DEBUG_MEASURE   1
 #define DEBUG_RH    1
-#define SERIAL      1    // set to 1 to enable serial interface
-
-#define SMOOTH      5    // smoothing factor used for running averages
-
+#define SERIAL          1 /* Enable serial */
+							
 #define _DHT        1    // define to use JeeLib DHT for DHT
-#define DHT_PIN     14   // DIO for DHTxx
 
 #define _MEM        1
 #define REPORT_EVERY    5   // report every N measurement cycles
@@ -21,15 +21,31 @@
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define RADIO_SYNC_MODE 2
-/*  				----	*/
+							
+#define MAXLENLINE      79
+							
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE       512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#endif
+							
+#if SERIAL || DEBUG
+
+const String sketch = "DHT11Test_JeeLib";
+const int version = 0;
+
+int pos = 0;
 
 
+/* IO pins */
 #if _DHT
+#define DHT_PIN     14   // DIO for DHTxx
 DHTxx dht(DHT_PIN);
 #endif
 
-
-int pos = 0;
 
 enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
@@ -95,6 +111,39 @@ int freeRam () {
 	extern int __heap_start, *__brkval; 
 	int v; 
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+/* *** Initialization routines *** {{{ */
+
+void doConfig(void)
+{
+	/* load valid config or reset default config */
+	if (!loadConfig(static_config)) {
+		writeConfig(static_config);
+	}
+}
+
+void initLibs()
+{
+	rf12_initialize(1, RF12_868MHZ, 4);
+}
+
+/* }}} *** */
+
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	tick = 0;
+
+	doConfig();
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(ANNOUNCE, 0);
+}
+
+bool doAnnounce()
+{
 }
 
 
@@ -206,17 +255,22 @@ static void doReport() {
 #endif // SERIAL || DEBUG
 }
 
-void setup() {
-#if SERIAL || DEBUG
-	Serial.begin(57600);
-	Serial.println("DHT11Test_JeeLib");
+
+/* }}} *** */
+
+/* *** Main *** {{{ */
+
+void setup(void)
+{
+#if SERIAL
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, String(version));
 	serialFlush();
 #endif
 
-	rf12_initialize(1, RF12_868MHZ, 4);
+	initLibs();
 
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(ANNOUNCE, 0);
+	doReset();
 }
 
 void loop() {
