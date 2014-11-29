@@ -4,31 +4,57 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 #include <DotmpeLib.h>
 #include <OneWire.h>
 
-/** Globals and sketch configuration  */
+
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
+#define _DHT            0
+#define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             1
-#define DS_PIN          8
 #define DEBUG_DS        1
 //#define FIND_DS    1
+#define _LCD84x48       0
+#define _NRF24          0
 							
 #define SMOOTH          5   // smoothing factor used for running averages
 							
 #define MAXLENLINE      79
 							
+#if defined(__AVR_ATtiny84__)
+#define SRAM_SIZE       512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#endif
+							
 
-String sketch = "X-DallasTempBus";
-String version = "0";
+const String sketch = "X-DallasTempBus";
+const int version = 0;
 
 int tick = 0;
 int pos = 0;
 
+/* IO pins */
+static const byte ledPin = 13;
+#if _DS
+static const byte DS_PIN = 8;
+#endif
 
 MpeSerial mpeser (57600);
 
 
+/* Scheduled tasks */
+/* *** EEPROM config *** {{{ */
+
+/* }}} *** */
+
+#if _DHT
+#endif //_DHT
+#if _LCD84x48
+#endif //_LCD84x48
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
@@ -46,10 +72,34 @@ uint8_t ds_search = 0;
 //};
 enum { DS_OK, DS_ERR_CRC };
 #endif // _DS
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
+#endif //_NRF24
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif //_HMC5883L
+
+
+/* Report variables */
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+struct {
+} payload;
 
 /* *** AVR routines *** {{{ */
 
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v;
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
 
 /* }}} *** */
 
@@ -99,7 +149,6 @@ void debugline(String msg) {
 	Serial.println(msg);
 #endif
 }
-
 
 /* }}} *** */
 
@@ -300,7 +349,21 @@ static void printDS18B20s(void) {
 #endif
 }
 #endif //_DS
+#if _NRF24
+/* Nordic nRF24L01+ routines */
 
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+
+#endif //_HMC5883L
 
 
 /* }}} *** */
@@ -322,6 +385,8 @@ void initLibs()
 
 void doReset(void)
 {
+	tick = 0;
+
 	doConfig();
 }
 
@@ -329,6 +394,7 @@ bool doAnnounce()
 {
 }
 
+// readout all the sensors and other values
 void doMeasure()
 {
 }
@@ -349,8 +415,13 @@ void runScheduler(char task)
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 #if FIND_DS
 	printDS18B20s();
 #endif
@@ -362,6 +433,7 @@ void setup(void)
 	}
 #endif
 	serialFlush();
+#endif
 
 	initLibs();
 

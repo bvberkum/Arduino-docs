@@ -122,10 +122,17 @@ void setup(void)
 
 	initLibs();
 
+	Serial.print("Init done, resetting libs..");
+
 	doReset();
 
-	Serial.println("\n\rRF24/examples/GettingStarted/");
+	Serial.println("OK\n\r[RF24/examples/GettingStarted/]");
+
+#if _NRF24
+	Serial.print("Radio details:");
 	radio.printDetails();
+	Serial.println();
+#endif
 
 	Serial.print("SRAM used: ");
 	Serial.println(usedRam());

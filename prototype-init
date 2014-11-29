@@ -1,0 +1,21 @@
+#!/bin/bash
+
+cb=$(git st|head -1|awk 'NF>1{print $NF}')
+
+target_prefix=$1
+repo_branch=$2
+source_prefix=$3
+
+[ ! -e $target_prefix ] || { exit 2; }
+[ ! -e .${target_prefix////-}.gitprototype ] || { exit 3; }
+
+echo $1 $2 $3 > .${target_prefix////-}.gitprototype
+
+git co $repo_branch
+temp_branch=_${repo_branch////-}_${source_prefix////-}
+git subtree split --squash --prefix=$source_prefix -b $temp_branch
+
+git co $cb
+git read-tree --prefix=$target_prefix -u $temp_branch
+
+# now commit...

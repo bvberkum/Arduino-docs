@@ -4,18 +4,18 @@
 #include <DotmpeLib.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define MAXLENLINE      79
 							
 
-static String sketch = "X-Serial";
-static String version = "0";
+const String sketch = "X-Serial";
+const int version = 0;
 
-static int tick = 0;
-static int pos = 0;
+int tick = 0;
+int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -23,7 +23,21 @@ static const byte ledPin = 13;
 MpeSerial mpeser (57600);
 
 
+/* Scheduled tasks */
+/* *** EEPROM config *** {{{ */
+/* }}} *** */
+
 /* *** AVR routines *** {{{ */
+
+int freeRam () {
+	extern int __heap_start, *__brkval; 
+	int v;
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+int usedRam () {
+	return SRAM_SIZE - freeRam();
+}
 
 
 
@@ -45,13 +59,12 @@ static void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=0) {
+void blink(int led, int count, int length, int length_off=-1) {
 	for (int i=0;i<count;i++) {
 		digitalWrite (led, HIGH);
 		delay(length);
 		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
+		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }
 
@@ -71,6 +84,12 @@ void debug_ticks(void)
 #endif
 }
 
+void debugline(String msg) {
+#if DEBUG
+	Serial.println(msg);
+#endif
+}
+
 /* }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
@@ -87,7 +106,7 @@ void doConfig(void)
 	}
 }
 
-void setupLibs()
+void initLibs()
 {
 }
 
@@ -98,11 +117,15 @@ void setupLibs()
 void doReset(void)
 {
 	tick = 0;
+
+	doConfig();
 }
 
 bool doAnnounce()
 {
 }
+
+/* InputParser handlers */
 
 
 /* }}} *** */
@@ -111,11 +134,17 @@ bool doAnnounce()
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
+#endif
 
-	setupLibs();
+	initLibs();
 
 	doReset();
 }

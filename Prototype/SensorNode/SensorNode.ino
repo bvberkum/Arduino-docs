@@ -17,6 +17,7 @@
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
+#define _MEM            1   // Report free memory 
 #define _DHT            0
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             0
@@ -29,19 +30,20 @@
 #define STDBY_PERIOD    60
 							
 #define MAXLENLINE      79
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
+#define SRAM_SIZE       512
+#define EEPROM_SIZE     512
+#elif defined(__AVR_ATmega168__)
+#define SRAM_SIZE       1024
+#define EEPROM_SIZE     512
+#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define SRAM_SIZE       2048
+#define EEPROM_SIZE     1024
+#endif
 							
 
-#if defined(__AVR_ATtiny84__)
-#define SRAM_SIZE 512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE 1024
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE 2048
-#endif
-
-
-String sketch = "X-SensorNode";
-int version = 0;
+const String sketch = "X-SensorNode";
+const int version = 0;
 
 char node[] = "nx";
 // determined upon handshake 
@@ -50,9 +52,11 @@ char node_id[7];
 int tick = 0;
 int pos = 0;
 
-
 /* IO pins */
 static const byte ledPin = 13;
+#if _DHT
+static const byte DHT_PIN = 7;
+#endif
 
 MpeSerial mpeser (57600);
 
@@ -62,13 +66,15 @@ enum {
 	HANDSHAKE,
 	MEASURE,
 	REPORT,
-	STDBY };
+	STDBY
+};
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[STDBY];
 Scheduler scheduler (schedbuf, STDBY);
+
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
@@ -141,16 +147,20 @@ void writeConfig(Config &c)
 */
 
 #endif //_DHT
+
 #if _LCD84x48
 #endif //_LCD84x48
+
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-#endif //_DS
+#endif // _DS
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
+
 #endif //_NRF24
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
@@ -160,6 +170,7 @@ void writeConfig(Config &c)
 /* Report variables */
 
 static byte reportCount;    // count up until next report, i.e. packet send
+// This defines the structure of the packets which get sent out by wireless:
 
 struct {
 } payload;
@@ -237,6 +248,7 @@ void debug_ticks(void)
 {
 #if SERIAL && DEBUG
 	tick++;
+#if SERIAL
 	if ((tick % 20) == 0) {
 		Serial.print('.');
 		pos++;
@@ -247,8 +259,8 @@ void debug_ticks(void)
 	}
 	serialFlush();
 #endif
+#endif
 }
-
 
 // utility code to perform simple smoothing as a running average
 static int smoothedAverage(int prev, int next, byte firstTime =0) {
@@ -274,11 +286,17 @@ void debugline(String msg) {
 #if _NRF24
 /* Nordic nRF24L01+ routines */
 
-#endif //_NRF24
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
-}
+
 #endif //_HMC5883L
 
 
@@ -298,6 +316,11 @@ void initLibs()
 {
 #if _DHT
 	dht.begin();
+#if DEBUG 
+	Serial.println("Initialized DHT");
+	float t = dht.readTemperature();
+	Serial.println(t);
+#endif
 #endif
 
 #if _HMC5883L
@@ -323,6 +346,7 @@ bool doAnnounce()
 {
 }
 
+// readout all the sensors and other values
 void doMeasure()
 {
 }
@@ -330,6 +354,7 @@ void doMeasure()
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+	// none, see RadioNode
 }
 
 void runScheduler(char task)
@@ -356,6 +381,7 @@ void runScheduler(char task)
 			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
+
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
@@ -387,8 +413,11 @@ void runScheduler(char task)
 	}
 }
 
+/* }}} *** */
+
 
 /* InputParser handlers */
+
 
 
 /* }}} *** */
@@ -400,6 +429,10 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 #endif
 

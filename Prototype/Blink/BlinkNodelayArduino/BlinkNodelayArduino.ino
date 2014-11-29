@@ -1,5 +1,6 @@
 /*
    BlinkNodelayArduino - use millis for non-blocking blink
+   See Casset328p mili for another impl.
 */
 int blinkPin = 2;
 int blinkCount = 1;

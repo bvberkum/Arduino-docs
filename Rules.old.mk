@@ -570,9 +570,15 @@ radioblip: P := Mpe/RadioBlip/
 radioblip: I := Mpe/RadioBlip/RadioBlip.hex
 radioblip: jeenode upload
 
+# XXX merge with Prototype if needed
+#radiolink: C := m328p
+#radiolink: P := Mpe/RadioLink/
+#radiolink: I := Mpe/RadioLink/RadioLink.hex
+#radiolink: jeenode upload
+
 radiolink: C := m328p
-radiolink: P := Mpe/RadioLink/
-radiolink: I := Mpe/RadioLink/RadioLink.hex
+radiolink: P := Prototype/RadioLink/
+radiolink: I := Prototype/RadioLink/RadioLink.hex
 radiolink: jeenode upload
 
 rf24helper: C := m328p
@@ -610,6 +616,11 @@ cassette328p: C := m328p
 cassette328p: P := Mpe/Cassette328P/
 cassette328p: I := Mpe/Cassette328P/Cassette328P.hex
 cassette328p: jeenode upload
+
+cassette328pmilli: C := m328p
+cassette328pmilli: P := Mpe/Cassette328P/Milli/
+cassette328pmilli: I := Mpe/Cassette328P/Milli/Milli.hex
+cassette328pmilli: jeenode upload
 
 hanrun: C := m328p
 hanrun: P := Misc/HanrunENC28J60/
@@ -863,6 +874,11 @@ roomnode: P := Mpe/RoomNode/
 roomnode: I := Mpe/RoomNode/RoomNode.hex
 roomnode: jeenode upload
 
+roomnode24: C := m328p
+roomnode24: P := Mpe/RoomNodeRF24/
+roomnode24: I := Mpe/RoomNodeRF24/RoomNodeRF24.hex
+roomnode24: jeenode upload
+
 magnetometer: C := m328p
 magnetometer: P := Prototype/Magnetometer/
 magnetometer: I := Prototype/Magnetometer/Magnetometer.hex
@@ -964,6 +980,11 @@ habr-usbasp-cdc-232: M := usbasp
 habr-usbasp-cdc-232: I := Misc/habr-usbasp/rs232/rs232.hex
 habr-usbasp-cdc-232: _upload
 
+
+ds1307-example: C := m328p
+ds1307-example: P := libraries/ds1307/examples/DS1307/
+ds1307-example: I := libraries/ds1307/examples/DS1307/DS1307.hex
+ds1307-example: jeenode upload
 
 
 ### XXX old library symlinks, use submodules if possible

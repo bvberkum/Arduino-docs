@@ -1,38 +1,114 @@
-/**
-RadioLink
-  - Based on RF12demo
-ToDo
-  - Want to use some flash based logger here.
- */
+/// @dir RF12demo
+/// Configure some values in EEPROM for easy config of the RF12 later on.
+// 2009-05-06 <jc@wippler.nl> http://opensource.org/licenses/mit-license.php
+
+// this version adds flash memory support, 2009-11-19
+// Adding frequency features, author JohnO, 2013-09-05
+// Major EEPROM format change, refactoring, and cleanup for v12, 2014-02-13
+
+#define RF69_COMPAT 0 // define this to use the RF69 driver i.s.o. RF12
+
 #include <JeeLib.h>
 #include <util/crc16.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 #include <util/parity.h>
-#include <EmBencode.h>
 
-// ATtiny's only support outbound serial @ 38400 baud, and no DataFlash logging
+#define MAJOR_VERSION RF12_EEPROM_VERSION // bump when EEPROM layout changes
+#define MINOR_VERSION 2                   // bump on other non-trivial changes
+#define RF24 1
+#define RF12 0
 
-#if defined(__AVR_ATtiny84__) ||defined(__AVR_ATtiny44__)
-#define SERIAL_BAUD 38400
+#define VERSION "[RadioLink.1]"           // keep in sync with the above
+
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
+#define TINY        1
+#define SERIAL_BAUD 38400   // can only be 9600 or 38400
+#define DATAFLASH   0       // do not change
+#undef  LED_PIN             // do not change
+#define rf12_configDump()   // disabled
 #else
-#define SERIAL_BAUD 57600
+#define TINY        0
+#define SERIAL_BAUD 57600   // adjust as needed
+#define DATAFLASH   0       // set to 0 for non-JeeLinks, else 4/8/16 (Mbit)
 #define LED_PIN     9       // activity LED, comment out to disable
-
-#define DATAFLASH 1 // check for presence of DataFlash memory on JeeLink
-#define FLASH_MBIT  16  // support for various dataflash sizes: 4/8/16 Mbit
-
-#define LED_NODE  8 // B0 - node activity LED, comment out to disable
-#define LED_RADIO 9 // B1 - radio activity LED, comment out to disable
-
 #endif
 
-#define COLLECT 0x20 // collect mode, i.e. pass incoming without sending acks
+/// Save a few bytes of flash by declaring const if used more than once.
+const char INVALID1[] PROGMEM = "\rInvalid\n";
+const char INITFAIL[] PROGMEM = "config save failed\n";
+
+#if TINY
+// Serial support (output only) for Tiny supported by TinyDebugSerial
+// http://www.ernstc.dk/arduino/tinycom.html
+// 9600, 38400, or 115200
+// hardware\jeelabs\avr\cores\tiny\TinyDebugSerial.h Modified to
+// moveTinyDebugSerial from PB0 to PA3 to match the Jeenode Micro V3 PCB layout
+// Connect Tiny84 PA3 to USB-BUB RXD for serial output from sketch.
+// Jeenode AIO2
+//
+// With thanks for the inspiration by 2006 David A. Mellis and his AFSoftSerial
+// code. All right reserved.
+// Connect Tiny84 PA2 to USB-BUB TXD for serial input to sketch.
+// Jeenode DIO2
+// 9600 or 38400 at present.
+
+#if SERIAL_BAUD == 9600
+#define BITDELAY 54          // 9k6 @ 8MHz, 19k2 @16MHz
+#endif
+#if SERIAL_BAUD == 38400
+#define BITDELAY 11         // 38k4 @ 8MHz, 76k8 @16MHz
+#endif
+
+#define _receivePin 8
+static int _bitDelay;
+static char _receive_buffer;
+static byte _receive_buffer_index;
 
 static void showString (PGM_P s); // forward declaration
 
-char embuf [200];
-EmBdecode decoder (embuf, sizeof embuf);
+ISR (PCINT0_vect) {
+    char i, d = 0;
+    if (digitalRead(_receivePin))       // PA2 = Jeenode DIO2
+        return;             // not ready!
+    whackDelay(_bitDelay - 8);
+    for (i=0; i<8; i++) {
+        whackDelay(_bitDelay*2 - 6);    // digitalread takes some time
+        if (digitalRead(_receivePin)) // PA2 = Jeenode DIO2
+            d |= (1 << i);
+    }
+    whackDelay(_bitDelay*2);
+    if (_receive_buffer_index)
+        return;
+    _receive_buffer = d;                // save data
+    _receive_buffer_index = 1;  // got a byte
+}
+
+// TODO: replace with code from the std avr libc library:
+//  http://www.nongnu.org/avr-libc/user-manual/group__util__delay__basic.html
+void whackDelay (word delay) {
+    byte tmp=0;
+
+    asm volatile("sbiw      %0, 0x01 \n\t"
+                 "ldi %1, 0xFF \n\t"
+                 "cpi %A0, 0xFF \n\t"
+                 "cpc %B0, %1 \n\t"
+                 "brne .-10 \n\t"
+                 : "+r" (delay), "+a" (tmp)
+                 : "0" (delay)
+                 );
+}
+
+static byte inChar () {
+    byte d;
+    if (! _receive_buffer_index)
+        return -1;
+    d = _receive_buffer; // grab first and only byte
+    _receive_buffer_index = 0;
+    return d;
+}
+
+#endif
 
 static unsigned long now () {
     // FIXME 49-day overflow
@@ -63,40 +139,9 @@ static void showString (PGM_P s) {
 
 static void displayVersion () {
     showString(PSTR(VERSION));
-}
-
-//static unsigned long blinkRun [2][3]; /* lednr -> blink-count, active-mili, inactive-mili */
-//static unsigned long ledOn [2];
-//static void switchLed( pin, on ) {
-//    ledOn[pin] = milis();
-//    pinMode(pin, OUTPUT);
-//    digitalWrite(pin, on);
-//}
-void runLeds() {
-
-//    static unsigned long lasttime = 0;  // static vars remembers values over function calls without being global
-//
-//    if (millis() - lasttime <= 2) return;  // instead of delay(2) just ignore if called too fast 
-//    lasttime = millis();
-//
-//    for (int i=0;i<2;i++) {
-//        if (ledOn[i] == 0) {
-//            if (blinkRun[i][0] > 0) {
-//                blinkRun[i][0]--;
-//                switchLed(i, 1);
-//            }
-//
-//        } else if (ledOn[i]-milis() >= blinkRun[1]){
-//            switchLed(i, 0);
-//            ledOn[i] = milis();
-//        }
-//        } else if (ledOn[i]-milis() >= blinkRun[2]){
-//        }
-//    }
-}
-
-static void blink( int pin, int count, int active, int inactive ) {
-//    blinkRun[pin] = [count, active, inactive];
+#if TINY
+    showString(PSTR(" Tiny"));
+#endif
 }
 
 /// @details
@@ -174,6 +219,11 @@ static byte bandToFreq (byte band) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // OOK transmit code
 
+#if RF69_COMPAT // not implemented in RF69 compatibility mode
+static void fs20cmd(word house, byte addr, byte cmd) {}
+static void kakuSend(char addr, byte device, byte on) {}
+#else
+
 // Turn transmitter on or off, but also apply asymmetric correction and account
 // for 25 us SPI overhead to end up with the proper on-the-air pulse widths.
 // With thanks to JGJ Veken for his help in getting these values right.
@@ -224,6 +274,25 @@ static void kakuSend(char addr, byte device, byte on) {
     }
 }
 
+#endif
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// DataFlash code
+
+#if DATAFLASH
+#include "dataflash.h"
+#else // DATAFLASH
+
+#define df_present() 0
+#define df_initialize()
+#define df_dump()
+#define df_replay(x,y)
+#define df_erase(x)
+#define df_wipe()
+#define df_append(x,y)
+
+#endif
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 const char helpText1[] PROGMEM =
@@ -231,6 +300,8 @@ const char helpText1[] PROGMEM =
     "Available commands:\n"
     "  <nn> i     - set node ID (standard node ids are 1..30)\n"
     "  <n> b      - set MHz band (4 = 433, 8 = 868, 9 = 915)\n"
+    "  <nnnn> o   - change frequency offset within the band (default 1600)\n"
+    "               96..3903 is the range supported by the RFM12B\n"
     "  <nnn> g    - set network group (RFM12 only allows 212, 0 = any)\n"
     "  <n> c      - set collect mode (advanced, normally 0)\n"
     "  t          - broadcast max-size test packet, request ack\n"
@@ -244,10 +315,24 @@ const char helpText1[] PROGMEM =
     "  <addr>,<dev>,<on> k              - KAKU command (433 MHz)\n"
 ;
 
+const char helpText2[] PROGMEM =
+    "Flash storage (JeeLink only):\n"
+    "    d                                  - dump all log markers\n"
+    "    <sh>,<sl>,<t3>,<t2>,<t1>,<t0> r    - replay from specified marker\n"
+    "    123,<bhi>,<blo> e                  - erase 4K block\n"
+    "    12,34 w                            - wipe entire flash memory\n"
+;
+
 static void showHelp () {
+#if TINY
+    showString(PSTR("?\n"));
+#else
     showString(helpText1);
+    if (df_present())
+        showString(helpText2);
     showString(PSTR("Current configuration:\n"));
     rf12_configDump();
+#endif
 }
 
 static void handleInput (char c) {
@@ -308,6 +393,7 @@ static void handleInput (char c) {
                 config.frequency_offset = value;
                 saveConfig();
             }
+#if !TINY
             // this code adds about 400 bytes to flash memory use
             // display the exact frequency associated with this setting
             byte freq = 0, band = config.nodeId >> 6;
@@ -326,6 +412,7 @@ static void handleInput (char c) {
             printOneChar('0' + (f2 / 10) % 10);
             printOneChar('0' + f2 % 10);
             Serial.println(" MHz");
+#endif
             break;
         }
 
@@ -452,10 +539,20 @@ static void displayASCII (const byte* data, byte count) {
     Serial.println();
 }
 
-/* *** Main *** {{{ */
+void setup () {
+    delay(100); // shortened for now. Handy with JeeNode Micro V1 where ISP
+                // interaction can be upset by RF12B startup process.
 
-void setup(void)
-{
+#if TINY
+    PCMSK0 |= (1<<PCINT2);  // tell pin change mask to listen to PA2
+    GIMSK |= (1<<PCIE0);    // enable PCINT interrupt in general interrupt mask
+    // FIXME: _bitDelay has not yet been initialised here !?
+    whackDelay(_bitDelay*2); // if we were low this establishes the end
+    pinMode(_receivePin, INPUT);        // PA2
+    digitalWrite(_receivePin, HIGH);    // pullup!
+    _bitDelay = BITDELAY;
+#endif
+
     Serial.begin(SERIAL_BAUD);
     Serial.println();
     displayVersion();
@@ -473,24 +570,21 @@ void setup(void)
     }
 
     rf12_configDump();
-    //rf12_control(0x949C); // Receiver Control: LNA -20, RX @ 200Mhz, DRSSI-97
-    //rf12_control(0x9485); // Receiver Control: LNA ma, RX @ 200Mhz, DRSSI-73
-    //rf12_control(0x9850); // Transmission Control: Pos, 90kHz
-    //rf12_control(0xC606); // Data Rate 6
+    df_initialize();
+#if !TINY
     showHelp();
+#endif
 }
 
-void loop(void)
-{
-    if (Serial.available()) {
-        blink( LED_RADIO, 1, 50, 50 );
+void loop () {
+#if TINY
+    if (_receive_buffer_index)
+        handleInput(inChar());
+#else
+    if (Serial.available())
         handleInput(Serial.read());
-    }
-
-    //runLeds();
-
+#endif
     if (rf12_recvDone()) {
-        //blink( LED_NODE, 1, 50, 50 );
         byte n = rf12_len;
         if (rf12_crc == 0)
             showString(PSTR("OK"));
@@ -514,6 +608,15 @@ void loop(void)
                 printOneChar(' ');
             showByte(rf12_data[i]);
         }
+#if RF69_COMPAT
+        // display RSSI value after packet data
+        showString(PSTR(" ("));
+        if (config.hex_output)
+            showByte(RF69::rssi);
+        else
+            Serial.print(-(RF69::rssi>>1));
+        showString(PSTR(") "));
+#endif
         Serial.println();
 
         if (config.hex_output > 1) { // also print a line as ascii
@@ -529,8 +632,10 @@ void loop(void)
         if (rf12_crc == 0) {
             activityLed(1);
 
-            if (RF12_WANTS_ACK && (config.nodeId & COLLECT) == 0) {
-                //blink( LED_RADIO, 2, 50, 50 );
+            if (df_present())
+                df_append((const char*) rf12_data - 2, rf12_len + 2);
+
+            if (RF12_WANTS_ACK && (config.collect_mode) == 0) {
                 showString(PSTR(" -> ack\n"));
                 rf12_sendStart(RF12_ACK_REPLY, 0, 0);
             }
@@ -540,8 +645,6 @@ void loop(void)
 
     if (cmd && rf12_canSend()) {
         activityLed(1);
-        //blink( LED_NODE, 1, 200, 0 );
-        //blink( LED_RADIO, 4, 50, 50 );
 
         showString(PSTR(" -> "));
         Serial.print((word) sendLen);

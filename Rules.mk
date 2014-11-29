@@ -71,6 +71,8 @@ else
 include Rules.new.mk
 endif
 
+include Rules.simple-m8.mk
+
 #      ------------ -- 
 #
 include                $(MK_SHARE)Core/Main.dirstack-pop.mk
