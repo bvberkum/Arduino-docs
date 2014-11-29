@@ -463,7 +463,7 @@ ARDUINODIR := $(shell realpath ./arduinodir)
 #arduino: BRD := 
 #_arduino: LIB := $/libraries/
 #_arduino: TARGETS := clean all
-_arduino: 
+_arduino:
 	@\
 	p=$$(realpath .);\
 	cd $P; \
