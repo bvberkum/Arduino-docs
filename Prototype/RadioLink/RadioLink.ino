@@ -16,7 +16,10 @@
 
 #define MAJOR_VERSION RF12_EEPROM_VERSION // bump when EEPROM layout changes
 #define MINOR_VERSION 2                   // bump on other non-trivial changes
-#define VERSION "[RF12demo.12]"           // keep in sync with the above
+#define RF24 1
+#define RF12 0
+
+#define VERSION "[RadioLink.1]"           // keep in sync with the above
 
 #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
 #define TINY        1
