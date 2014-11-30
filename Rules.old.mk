@@ -982,9 +982,10 @@ habr-usbasp-cdc-232: _upload
 
 
 ds1307-example: C := m328p
-ds1307-example: P := libraries/ds1307/examples/DS1307/
-ds1307-example: I := libraries/ds1307/examples/DS1307/DS1307.hex
-ds1307-example: jeenode upload
+#ds1307-example: P := libraries/ds1307/examples/DS1307/
+#ds1307-example: I := libraries/ds1307/examples/DS1307/DS1307.hex
+ds1307-example: I := libraries/avr_lib_ds1307_01/src/ds1307/main.hex
+ds1307-example: upload
 
 
 ### XXX old library symlinks, use submodules if possible

@@ -40,3 +40,15 @@
 [submodule "libraries/TinyGPS++"]
 	path = libraries/TinyGPS++
 	url = git@github.com:mikalhart/TinyGPSPlus.git
+[submodule "libraries/uart"]
+	path = libraries/uart
+	url = git@github.com:andygock/avr-uart.git
+[submodule "libraries/twi"]
+	path = libraries/twi
+	url = git@github.com:RyanLowerr/twi-avr.git
+[submodule "libraries/i2c"]
+	path = libraries/i2c
+	url = git@github.com:pietern/avr-i2c.git
+[submodule "Misc/AVR-UART-Parse-example"]
+	path = Misc/AVR-UART-Parse-example
+	url = git@github.com:ColinBrosseau/AVR-UART-Parse-exemple.git

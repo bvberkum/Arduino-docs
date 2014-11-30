@@ -11,10 +11,11 @@ Please refer to LICENSE file for licensing information.
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 #include "uart/uart.h"
 #define UART_BAUD_RATE 2400
+
+#include <util/delay.h>
 
 #include "ds1307/ds1307.h"
 
