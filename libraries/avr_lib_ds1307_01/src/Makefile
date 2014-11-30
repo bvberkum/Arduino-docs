@@ -5,10 +5,12 @@
 # (GNU make, BSD make, SysV make)
 
 
-MCU = atmega328p
+-include Params.mk
+
+MCU ?= atmega328p
 FORMAT = ihex
 TARGET = main
-SRC = $(TARGET).c  ./ds1307/ds1307.c  ./i2chw/twimaster.c ../../uart/uart.c
+SRC ?= $(TARGET).c 
 ASRC = 
 OPT = s
 
@@ -28,10 +30,10 @@ DEBUG = stabs
 CSTANDARD = -std=gnu99
 
 # Place -D or -U options here
-CDEFS = -DF_CPU=16000000L
+CDEFS ?= 
 
 # Place -I options here
-CINCS = -I../../
+CINCS ?= 
 
 
 CDEBUG = -g$(DEBUG)

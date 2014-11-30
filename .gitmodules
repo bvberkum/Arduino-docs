@@ -52,3 +52,6 @@
 [submodule "Misc/AVR-UART-Parse-example"]
 	path = Misc/AVR-UART-Parse-example
 	url = git@github.com:ColinBrosseau/AVR-UART-Parse-exemple.git
+[submodule "libraries/softuart"]
+	path = libraries/softuart
+	url = git@github.com:blalor/avr-softuart.git
