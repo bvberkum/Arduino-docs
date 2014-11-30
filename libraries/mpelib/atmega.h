@@ -1,0 +1,2 @@
+extern double internalTemp(void);
+

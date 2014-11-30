@@ -125,6 +125,8 @@ bool doAnnounce()
 {
 }
 
+/* }}} *** */
+
 /* InputParser handlers */
 
 
