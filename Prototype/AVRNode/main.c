@@ -10,10 +10,11 @@
 #include <util/delay.h>
 
 #include <uart/uart.h>
+
 #include <mpelib/ser.h>
+#include <mpelib/sercmd.h>
 #include <mpelib/avr.h>
 #include <mpelib/atmega.h>
-#include <mpelib/sercmd.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -27,7 +28,7 @@
 const char sketch[] = "AVRNode";
 const int version = 0;
 
-const char node[] = "nx";
+const char node[] = "an";
 char node_id[7];
 
 
