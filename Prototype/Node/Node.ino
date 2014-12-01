@@ -288,7 +288,7 @@ void runScheduler(char task)
 /* }}} *** */
 
 
-/* InputParser handlers */
+/* InputParser handlers {{{ */
 
 static void helpCmd() {
 	cmdIo.println("n: print Node ID");
