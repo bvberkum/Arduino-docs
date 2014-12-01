@@ -40,3 +40,6 @@
 [submodule "libraries/TinyGPS++"]
 	path = libraries/TinyGPS++
 	url = git@github.com:mikalhart/TinyGPSPlus.git
+[submodule "Misc/HID-Serial"]
+	path = Misc/HID-Serial
+	url = git@github.com:rayshobby/hid-serial.git

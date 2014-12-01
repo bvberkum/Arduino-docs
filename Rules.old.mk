@@ -986,6 +986,16 @@ ds1307-example: P := libraries/ds1307/examples/DS1307/
 ds1307-example: I := libraries/ds1307/examples/DS1307/DS1307.hex
 ds1307-example: jeenode upload
 
+# HID-Serial
+#hid-example: C := m328p
+#hid-example: P := libraries/HIDSerial/examples/echo/
+#hid-example: I := libraries/HIDSerial/examples/echo/echo.hex
+#hid-example: I := firmware/HID-Serial-hello_world.cpp.hex
+hid-example: C := m8
+hid-example: M := usbasp
+hid-example: BRD := betemcu
+hid-example: I := firmware/HID-Serial-echo.cpp.hex
+hid-example: _upload
 
 ### XXX old library symlinks, use submodules if possible
 
