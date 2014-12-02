@@ -4,6 +4,8 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
+ARDUINODIR := $(shell realpath ./arduinodir/)
+
 arduinodir-libraries-relink::
 	for f in libraries/*; do \
 		F=$$(basename $$f); \

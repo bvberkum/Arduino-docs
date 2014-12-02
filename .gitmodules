@@ -58,3 +58,6 @@
 [submodule "libraries/softuart"]
 	path = libraries/softuart
 	url = git@github.com:blalor/avr-softuart.git
+[submodule "libraries/Tictocs"]
+	path = libraries/Tictocs
+	url = https://github.com/maniacbug/Tictocs

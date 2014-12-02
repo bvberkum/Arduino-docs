@@ -24,14 +24,14 @@ void print_value (char *id, int value) {
 	uart_puts(RETURN_NEWLINE);
 }
 
-void showNibble (uint8_t nibble) {
+void showNibble(char nibble) {
 	char c = '0' + (nibble & 0x0F);
 	if (c > '9')
 		c += 7;
 	uart_putc(c);
 }
 
-void showByte (uint8_t value) {
+void showByte(char value) {
 	//if (config.hex_output) {
 	showNibble(value >> 4);
 	showNibble(value);

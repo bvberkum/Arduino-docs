@@ -39,7 +39,7 @@
 							
 #define _MEM            1   // Report free memory 
 #define _RFM12B         1
-#define _RFM12BLOBAT    1
+#define _RFM12LOBAT    1
 #define _NRF24          1
 #define _HMC5883L       1
 #define _DHT            1
@@ -135,7 +135,7 @@ struct {
 #if _MEM
 	int memfree     :16;
 #endif
-#if _RFM12BLOBAT
+#if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
@@ -482,7 +482,7 @@ void doMeasure()
 #if _MEM
 	payload.memfree = freeRam();
 #endif //_MEM
-#if _RFM12BLOBAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #endif
 }
@@ -529,10 +529,10 @@ void doReport(void)
 	Serial.print(' ');
 	Serial.print((int) payload.memfree);
 #endif //_MEM
-#if _RFM12BLOBAT
+#if _RFM12LOBAT
 	Serial.print(' ');
 	Serial.print((int) payload.lobat);
-#endif //_RFM12BLOBAT
+#endif //_RFM12LOBAT
 
 	Serial.println();
 #endif //SERIAL

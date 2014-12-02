@@ -8,7 +8,10 @@
 
 #include <DotmpeLib.h>
 #include <JeeLib.h>
-#include <DHT.h> // Adafruit DHT
+// Adafruit DHT
+#include <DHT.h>
+
+//include <mpelib.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -16,28 +19,32 @@
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 							
-#define _RFM12B         0
+#define UART_BAUD_RATE  57600
+#define _RFM12B         1
 #define _MEM            1   // Report free memory 
 #define _DHT            1
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
 							
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
-#define REPORT_EVERY    5   // report every N measurement cycles
+#define MEASURE_PERIOD  300  // how often to measure, in tenths of seconds
+#define REPORT_EVERY    1   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define STDBY_PERIOD    60
 							
 #define MAXLENLINE      79
-#define SRAM_SIZE       0x800 // atmega328, for debugging
+#define RADIO_SYNC_MODE 2
 							
-#if defined(__AVR_ATtiny84__)
+#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega168__)
 #define SRAM_SIZE       1024
+#define EEPROM_SIZE     512
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
 #define SRAM_SIZE       2048
+#define EEPROM_SIZE     1024
 #endif
-							
+
 
 const String sketch = "AdafruitDHT";
 const int version = 0;
@@ -48,6 +55,8 @@ char node_id[7];
 
 int tick = 0;
 int pos = 0;
+
+static byte myNodeID;       // node ID used for this unit
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -61,7 +70,7 @@ MpeSerial mpeser (57600);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* Command parser */
-const extern InputParser::Commands cmdTab[] PROGMEM;
+extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
 /* *** Device params *** {{{ */
@@ -119,6 +128,7 @@ struct {
 	int memfree :16;
 #endif
 #if _RFM12LOBAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
@@ -126,13 +136,13 @@ struct {
 
 /* *** Scheduled tasks *** {{{ */
 
-enum { MEASURE, REPORT, STDBY };
+enum { MEASURE, REPORT, STDBY, END };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[STDBY];
-Scheduler scheduler (schedbuf, STDBY);
+static word schedbuf[END];
+Scheduler scheduler (schedbuf, END);
 
 /* }}} *** */
 
@@ -257,6 +267,18 @@ void doConfig(void)
 
 void initLibs()
 {
+#if _RFM12B
+	rf12_initialize(9, RF12_868MHZ, 5);
+//#if SERIAL && DEBUG
+//	myNodeID = rf12_config();
+//	serialFlush();
+//#else
+//	myNodeID = rf12_config(0); // don't report info on the serial port
+//#endif
+
+	rf12_sleep(RF12_SLEEP); // power down
+#endif // _RFM12B
+
 #if _DHT
 	dht.begin();
 #endif
@@ -274,19 +296,20 @@ static void helpCmd() {
 }
 
 static void handshakeCmd() {
-	int v;
-	char buf[7];
-	node.toCharArray(buf, 7);
-	parser >> v;
-	sprintf(node_id, "%s%i", buf, v);
-	Serial.print("handshakeCmd:");
-	Serial.println(node_id);
-	serialFlush();
+	//int v;
+	//char buf[7];
+	//node.toCharArray(buf, 7);
+	//parser >> v;
+	//sprintf(node_id, "%s%i", buf, v);
+	//Serial.print("handshakeCmd:");
+	//Serial.println(node_id);
+	//serialFlush();
 }
 
 InputParser::Commands cmdTab[] = {
 	{ 'h', 0, helpCmd },
-	{ 'A', 0, handshakeCmd }
+	{ 'A', 0, handshakeCmd },
+	{ 0 }
 };
 
 
@@ -399,6 +422,9 @@ void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
+#if SERIAL
+	serialFlush();
+#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -408,9 +434,9 @@ void doReport(void)
 	Serial.print(node);
 #if _DHT
 	Serial.print(' ');
-	Serial.print((int) payload.temp);
-	Serial.print(' ');
 	Serial.print((int) payload.rhum);
+	Serial.print(' ');
+	Serial.print((int) payload.temp);
 #endif
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
@@ -419,9 +445,18 @@ void doReport(void)
 	Serial.print((int) payload.memfree);
 #endif
 #if _RFM12LOBAT
-#endif
-	Serial.println();
+	Serial.print(' ');
+	Serial.print((int) payload.lobat);
+#endif //_RFM12LOBAT
+	serialFlush();
 #endif // SERIAL || DEBUG
+
+#if _RFM12B
+	rf12_sleep(RF12_WAKEUP);
+	rf12_sendNow(0, &payload, sizeof payload);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	rf12_sleep(RF12_SLEEP);
+#endif
 }
 
 void runScheduler(char task)
@@ -484,17 +519,24 @@ void setup(void)
 	initLibs();
 
 	doReset();
+
+//	doMeasure();
+//	doReport();
+//	serialFlush();
 }
 
 void loop(void)
 {
-	//doMeasure();
-	//doReport();
-	//delay(1500);
-	//return;
-	
-	blink(ledPin, 1, 15);
+	//blink(ledPin, 1, 15);
 	debug_ticks();
+/*
+	doMeasure();
+	if ((tick % 100) == 0) {
+		doReport();
+	}
+	delay(50);
+	return;
+*/	
 	serialFlush();
 	char task = scheduler.pollWaiting();
 	runScheduler(task);

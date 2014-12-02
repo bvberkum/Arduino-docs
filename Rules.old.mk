@@ -43,6 +43,7 @@ define _flash
 	} || { \
 		$(D) $${sudo}$(avrdude) \
 			$(call key,METHODS,$(M))\
+			-V \
 			-p $(C) \
 			-U flash:w:$(I) \
 			$(X) ; \
@@ -187,7 +188,7 @@ _flash:
 			$(ll) attention $@ "Writing Flash.." && \
 			$(D) $${sudo}$(avrdude) -p $(C) -D $$X \
 				$(call key,METHODS,$(M)) \
-				-U flash:w:$(I) \
+				-V -U flash:w:$(I) \
 				&& $(ll) info $@ OK \
 				|| exit 6;\
 		});\
@@ -440,7 +441,6 @@ m1284p:
 #ARDUINODIR := /usr/share/arduino/
 #ARDUINODIR := $(shell realpath ./arduino-1.0.5)
 #ARDUINODIR := $(shell realpath ./arduino-1.0.1)
-ARDUINODIR := $(shell realpath ./arduinodir)
 
 #AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools
 #AVRTOOLSPATH += $(ARDUINODIR)/hardware/tools/avr/bin

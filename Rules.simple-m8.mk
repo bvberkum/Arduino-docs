@@ -2,7 +2,6 @@
 #
 ## http://www.nongnu.org/avr-libc/user-manual/group__demo__project.html
 
-ARDUINODIR:=./arduinodir/
 BOARD:=atmega8
 
 # default path for avr tools

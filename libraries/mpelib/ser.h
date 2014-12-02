@@ -5,9 +5,9 @@
 
 extern void uart0_println(char *line);
 extern void uart0_putint(int value);
-extern void print_value (char *id, int value);
-extern void showNibble (uint8_t nibble);
-extern void showByte (uint8_t value);
+extern void print_value(char *id, int value);
+extern void showNibble(char nibble);
+extern void showByte(char value);
 extern void uart_ok(void);
 
 extern void mpelib_ser_start(void);

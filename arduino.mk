@@ -139,6 +139,7 @@
 #
 
 # default arduino software directory, check software exists
+$(info $(ARDUINODIR))
 ifndef ARDUINODIR
 ARDUINODIR := $(firstword $(wildcard ~/opt/arduino /usr/share/arduino))
 endif
@@ -169,6 +170,8 @@ SOURCES := $(INOFILE) \
 	$(wildcard *.c *.cc *.cpp) \
 	$(wildcard $(addprefix util/, *.c *.cc *.cpp)) \
 	$(wildcard $(addprefix utility/, *.c *.cc *.cpp))
+
+$(info SOURCES=$(SOURCES))
 
 # automatically determine included libraries
 LIBRARIES := \
@@ -346,15 +349,18 @@ $(TARGET).hex: $(TARGET).elf
 #$(info $(COMPILE.cpp) $(CPPDEPFLAGS))
 
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
+	@echo "$^ -> $@"
 	@$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
 	@echo -n .
 
 %.o: %.c
+	@echo "$^ -> $@"
 	@mkdir -p .dep/$(dir $<)
 	$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
 	@echo -n .
 
 %.o: %.cpp
+	@echo "$^ -> $@"
 	@mkdir -p .dep/$(dir $<)
 	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
 	@echo -n .
@@ -382,6 +388,7 @@ $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
 # building the arduino library
 
 $(ARDUINOLIB): $(ARDUINOLIBOBJS)
+	@echo "$^ -> $@"
 	$(AR) rcs $@ $?
 	@echo -n .
 
