@@ -9,10 +9,13 @@
  */
 
 #include <OneWire.h>
+#include <mpelib.h>
 
 #define DEBUG       1 /* Enable trace statements */
 #define SERIAL      1 /* Enable serial */
 #define DEBUG_DS   0
+
+#define ATMEGA_CTEMP_ADJ 324.31
 
 
 static String sketch = "X-Atmega8TempGuard";
@@ -48,47 +51,6 @@ enum { DS_OK, DS_ERR_CRC };
 
 int atmegaTemp;
 int probeTemp;
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-/* ATmega328 internal temperature */
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
 
 /* Dallas DS18B20 thermometer */
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {

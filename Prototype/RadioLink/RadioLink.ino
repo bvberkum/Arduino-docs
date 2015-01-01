@@ -16,10 +16,11 @@
 
 #define MAJOR_VERSION RF12_EEPROM_VERSION // bump when EEPROM layout changes
 #define MINOR_VERSION 2                   // bump on other non-trivial changes
-#define RF24 1
-#define RF12 0
+#define RF24 1 // set for nRF24
+//#define RF12 0
 
-#define VERSION "[RadioLink.1]"           // keep in sync with the above
+// Up to date with JeeLib RF12demo v12
+#define VERSION "[RadioLink.1]"
 
 #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
 #define TINY        1
@@ -219,7 +220,10 @@ static byte bandToFreq (byte band) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // OOK transmit code
 
-#if RF69_COMPAT // not implemented in RF69 compatibility mode
+#if RF24 // not implemented in RF69 compatibility mode
+static void fs20cmd(word house, byte addr, byte cmd) {}
+static void kakuSend(char addr, byte device, byte on) {}
+#elif RF69_COMPAT // not implemented in RF69 compatibility mode
 static void fs20cmd(word house, byte addr, byte cmd) {}
 static void kakuSend(char addr, byte device, byte on) {}
 #else

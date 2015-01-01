@@ -22,6 +22,7 @@ Hardware
 		(A7) probe right (aluminium)
 		(A8) metercoil
 
+		See CarrierCase
 */
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
@@ -390,9 +391,11 @@ static void doMeasure()
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport() {
+void doReport(void)
+{
 	/* no working radio */
 #if SERIAL
+	/* Report over serial, same fields and order as announced */
 	Serial.print(node_id);
 	Serial.print(" ");
 	Serial.print((int) payload.ctemp);

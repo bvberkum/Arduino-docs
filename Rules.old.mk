@@ -601,11 +601,26 @@ rf24ping: P := libraries/RF24/examples/pingpair/
 rf24ping: I := libraries/RF24/examples/pingpair/pingpair.hex
 rf24ping: jeenode upload
 
-rf24hwtx: C := m8
-rf24hwtx: BRD := atmega8
+#rf24hwtx: C := m8
+#rf24hwtx: BRD := atmega8
 rf24hwtx: P := libraries/RF24Network/examples/helloworld_tx/
 rf24hwtx: I := libraries/RF24Network/examples/helloworld_tx/helloworld_tx.hex
-rf24hwtx: arduino _upload
+#rf24hwtx: arduino _upload
+rf24hwtx: jeenode upload
+
+#rf24hwrx: C := m8
+#rf24hwrx: BRD := atmega8
+rf24hwrx: P := libraries/RF24Network/examples/helloworld_rx/
+rf24hwrx: I := libraries/RF24Network/examples/helloworld_rx/helloworld_rx.hex
+rf24hwrx: jeenode upload
+
+sensornet: P := libraries/RF24Network/examples/sensornet/
+sensornet: I := libraries/RF24Network/examples/sensornet/sensornet.hex
+sensornet: jeenode upload
+
+meshping: P := libraries/RF24Network/examples/meshping/
+meshping: I := libraries/RF24Network/examples/meshping/meshping.hex
+meshping: jeenode upload
 
 carriercase: BRD := uno
 carriercase: P := Mpe/CarrierCase/
@@ -637,10 +652,10 @@ gastest: P := Mpe/GasDetector/Test/
 gastest: I := Mpe/GasDetector/Test/Test.hex
 gastest: jeenode upload
 
-gasdetector: C := m328p
-gasdetector: P := Mpe/GasDetector/
-gasdetector: I := Mpe/GasDetector/GasDetector.hex
-gasdetector: jeenode upload
+gasdet: C := m328p
+gasdet: P := Mpe/GasDetector/
+gasdet: I := Mpe/GasDetector/GasDetector.hex
+gasdet: jeenode upload
 
 sandbox: C := m328p
 sandbox: P := Mpe/Sandbox/
@@ -831,13 +846,15 @@ m8guard: I := Prototype/TempGuard/Atmega8TempGuard/Atmega8TempGuard.hex
 #m8guard: TARGETS := clean all
 m8guard: arduino _upload
 
-dstbus: C := m8
-dstbus: BRD := atmega8
-dstbus: M := usbasp
-dstbus: X := -B3
+#dstbus: C := m8
+#dstbus: BRD := atmega8
+#dstbus: C := m328p
+#dstbus: BRD := atmega328
+#dstbus: M := usbasp
+#dstbus: X := -B3
 dstbus: P := Prototype/DallasTempBus/
 dstbus: I := Prototype/DallasTempBus/DallasTempBus.hex
-dstbus: arduino _upload
+dstbus: jeenode upload
 
 lcd5110: C := m328p
 lcd5110: P := Prototype/Lcd84x48/
@@ -997,6 +1014,13 @@ hid-example: M := usbasp
 hid-example: BRD := betemcu
 hid-example: I := firmware/HID-Serial-echo.cpp.hex
 hid-example: _upload
+
+
+serialavail: C := m328
+serialavail: BRD := atmega328
+serialavail: P := Misc/Arduino/SerialAvailable/
+serialavail: I := Misc/Arduino/SerialAvailable/SerialAvailable.hex
+serialavail: jeenode _upload
 
 ### XXX old library symlinks, use submodules if possible
 

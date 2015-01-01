@@ -1,6 +1,14 @@
 /* 
 Dallas OneWire Temperature Bus with autodetect and eeprom config 
 */
+#include <EEPROM.h>
+#if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define I2C_SLAVE       4
+#include <Wire.h>
+#else
+#define I2C_SLAVE       0
+#endif
+
 #include <DotmpeLib.h>
 #include <OneWire.h>
 
@@ -13,8 +21,7 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 #define _DHT            0
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             1
-#define DEBUG_DS        1
-//#define FIND_DS    1
+#define DEBUG_DS        0
 #define _LCD84x48       0
 #define _NRF24          0
 							
@@ -30,6 +37,8 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 #define SRAM_SIZE       2048
 #endif
 							
+
+void receiveEvent(int howMany);
 
 const String sketch = "X-DallasTempBus";
 const int version = 0;
@@ -161,14 +170,14 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
 
-	ds.doReset();
+	ds.reset();
 	ds.select(addr);
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	delay(1000);     // maybe 750ms is enough, maybe not
-	// we might do a ds.depower() here, but the doReset will take care of it.
+	// we might do a ds.depower() here, but the reset will take care of it.
 
-	present = ds.doReset();
+	present = ds.reset();
 	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
@@ -269,6 +278,7 @@ static void readDSAddr(int a, uint8_t addr[8]) {
 }
 
 
+// TODO see CarrierCase for more up to date code
 static void printDS18B20s(void) {
 	byte i;
 	byte data[8];
@@ -283,14 +293,15 @@ static void printDS18B20s(void) {
 		return;
 	}
 
-#if SERIAL && DEBUG_DS
-	Serial.print("Address=");
+#if SERIAL && DEBUG
+	Serial.print("Address: ");
 	for( i = 0; i < 8; i++) {
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(addr[i], HEX);
 		Serial.print(" ");
 	}
+	Serial.println("");
 #endif
 
 	if ( OneWire::crc8( addr, 7) != addr[7]) {
@@ -331,6 +342,7 @@ static void printDS18B20s(void) {
 
 	// XXX: add value to payload
 #if SERIAL && DEBUG_DS
+	Serial.print("Temp: ");
 	if (SignBit) // If its negative
 	{
 		Serial.print("-");
@@ -376,6 +388,10 @@ void doConfig(void)
 
 void initLibs()
 {
+#if I2C_SLAVE
+	Wire.begin(I2C_SLAVE);
+	Wire.onReceive(receiveEvent);
+#endif
 }
 
 
@@ -408,6 +424,19 @@ void runScheduler(char task)
 {
 }
 
+#if I2C_SLAVE
+void receiveEvent(int howMany)
+{
+	  while(1 < Wire.available()) // loop through all but the last
+	  	    {
+	  	    	    char c = Wire.read(); // receive byte as a character
+	  	    	        Serial.print(c);         // print the character
+	  	    	          }
+	    int x = Wire.read();    // receive byte as an integer
+	      Serial.println(x);         // print the integer
+}
+#endif
+
 
 /* }}} *** */
 
@@ -421,9 +450,6 @@ void setup(void)
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
-#endif
-#if FIND_DS
-	printDS18B20s();
 #endif
 #if DS 
 	ds_count = readDSCount();
@@ -445,10 +471,10 @@ void loop(void)
 #if _DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {
-		if (ds_reset) {
-			Serial.println("Reset triggered");
-		}
-		findDS18B20s();
+		//if (ds_reset) {
+		//	Serial.println("Reset triggered");
+		//}
+		printDS18B20s();
 		return;
 	}
 #endif
@@ -458,7 +484,8 @@ void loop(void)
 
 	debug_ticks();
 
-	delay(15000);
+	delay(15);
+	//delay(15000);
 }
 
 /* }}} *** */

@@ -260,19 +260,18 @@ CPPFLAGS := -Os -fno-exceptions -ffunction-sections -fdata-sections
 CPPFLAGS += -g
 CPPFLAGS += -Wall
 #CPPFLAGS += -fpermissive
-#CPPFLAGS += -Wunused-variable
-#CPPFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+CPPFLAGS += -Wunused-variable
+CPPFLAGS += -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CPPFLAGS += -mmcu=$(BOARD_BUILD_MCU)
 CPPFLAGS += -DF_CPU=$(BOARD_BUILD_FCPU) -DARDUINO=$(ARDUINOCONST)
 CPPFLAGS += -DUSB_VID=$(BOARD_USB_VID) -DUSB_PID=$(BOARD_USB_PID)
-CPPFLAGS += -I. 
-#-Iutil -Iutility 
+CPPFLAGS += -I. -Iutil -Iutility 
 CPPFLAGS += -I$(ARDUINOCOREDIR)
 CPPFLAGS += -I$(ARDUINODIR)/hardware/arduino/variants/$(BOARD_BUILD_VARIANT)/
 CPPFLAGS += $(addprefix -I$(ARDUINODIR)/libraries/, $(LIBRARIES))
-#CPPFLAGS += $(patsubst %, -I $(ARDUINODIR)/libraries/%/utility, $(LIBRARIES))
-#CPPDEPFLAGS = -MMD -MP -MF .dep/$<.dep
-CPPDEPFLAGS = -MMD 
+CPPFLAGS += $(patsubst %, -I $(ARDUINODIR)/libraries/%/utility, $(LIBRARIES))
+CPPDEPFLAGS = -MMD -MP -MF .dep/$<.dep
+#CPPDEPFLAGS = -MMD
 CPPPDEFLAGS := -x c++ -include $(ARDUINOCOREDIR)/Arduino.h
 CPPINOFLAGS := $(CPPPDEFLAGS)
 AVRDUDEFLAGS := $(addprefix -C , $(AVRDUDECONF)) -DV
