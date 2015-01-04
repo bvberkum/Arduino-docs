@@ -1,7 +1,6 @@
 /*
 	boilerplate for ATmega node with Serial interface
 */
-#include <DotmpeLib.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -11,90 +10,43 @@
 #define MAXLENLINE      79
 							
 
+
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
 const String sketch = "X-Serial";
 const int version = 0;
-
-int tick = 0;
-int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
 
 MpeSerial mpeser (57600);
 
+/* *** InputParser {{{ */
+/* }}} *** */
 
-/* Scheduled tasks */
+/* *** Report variables *** {{{ */
+
+
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+/* *** /Peripheral devices *** }}} */
+
 /* *** EEPROM config *** {{{ */
-/* }}} *** */
 
-/* *** AVR routines *** {{{ */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-
-
-/* }}} *** */
-
-/* *** ATmega routines *** {{{ */
-
-
-/* }}} *** */
-
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=-1) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		(length_off > -1) ? delay(length_off) : delay(length);
-	}
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
-void debugline(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
-/* }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
-/* }}} *** */
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -110,7 +62,8 @@ void initLibs()
 {
 }
 
-/* }}} *** */
+
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -130,15 +83,16 @@ bool doAnnounce()
 /* InputParser handlers */
 
 
-/* }}} *** */
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -154,7 +108,7 @@ void setup(void)
 void loop(void)
 {
 	//blink(ledPin, 1, 15);
-	//debug_ticks();
+	debug_ticks();
 	//serialFlush();
 }
 

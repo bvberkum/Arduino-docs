@@ -1,3 +1,6 @@
+#ifndef mpelib_avr_h
+#define mpelib_avr_h
+
 
 #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
 #define SRAM_SIZE       512
@@ -16,16 +19,15 @@
 
 
 
-int freeRam (void) {
+static int freeRam (void) {
 	extern int __heap_start, *__brkval; 
 	int v;
 	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
 
-int usedRam (void) {
+static int usedRam (void) {
 	return SRAM_SIZE - freeRam();
 }
 
-
-
+#endif
 

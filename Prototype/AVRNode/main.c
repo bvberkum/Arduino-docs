@@ -151,7 +151,7 @@ static void memStat(void) {
 	uart0_puts(RETURN_NEWLINE);
 }
 
-const Commands cmdTab[] PROGMEM = {
+const Command cmdTab[] PROGMEM = {
 	{ '?', 0, helpCmd },
 	{ 'h', 0, helpCmd },
 	{ 'c', 0, configCmd },

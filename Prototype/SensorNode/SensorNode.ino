@@ -8,9 +8,6 @@
 	TODO: test sketch, serial. 
 		Simple protocol for control, data retrieval sessions?
 */
-#include <DotmpeLib.h>
-#include <EEPROM.h>
-#include <JeeLib.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -19,6 +16,7 @@
 							
 #define _MEM            1   // Report free memory 
 #define _DHT            0
+#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             0
 #define _LCD84x48       0
@@ -29,18 +27,13 @@
 #define SMOOTH          5   // smoothing factor used for running averages
 #define STDBY_PERIOD    60
 							
-#define MAXLENLINE      79
-#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
-#define SRAM_SIZE       512
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE       1024
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE       2048
-#define EEPROM_SIZE     1024
-#endif
-							
+
+#include <EEPROM.h>
+#include <JeeLib.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
+
 
 const String sketch = "X-SensorNode";
 const int version = 0;
@@ -49,40 +42,125 @@ char node[] = "nx";
 // determined upon handshake 
 char node_id[7];
 
-int tick = 0;
-int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
 #if _DHT
 static const byte DHT_PIN = 7;
 #endif
+#if _DS
+static const byte DS_PIN = 8;
+#endif
 
 MpeSerial mpeser (57600);
 
 
-/* Scheduled tasks */
-enum { 
+/* InputParser {{{ */
+/* }}} *** */
+
+/* *** Report variables *** {{{ */
+
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+} payload;
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
 	HANDSHAKE,
 	MEASURE,
 	REPORT,
-	STDBY
+	STDBY,
+	END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[STDBY];
-Scheduler scheduler (schedbuf, STDBY);
+static word schedbuf[END];
+Scheduler scheduler (schedbuf, END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+#endif //_DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+OneWire ds(DS_PIN);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
+
+//uint8_t ds_addr[ds_count][8] = {
+//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
+//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
+//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
+//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
+//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
+//};
+enum { DS_OK, DS_ERR_CRC };
+
+
+#endif // _DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+#endif //_NRF24
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif //_HMC5883L
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
+#endif //_NRF24
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif //_HMC5883L
+
+
+/* *** /Peripheral devices *** }}} */
+
 /* *** EEPROM config *** {{{ */
 
 #define CONFIG_VERSION "sn1"
 #define CONFIG_START 0
+
 
 struct Config {
 	char node[3];
@@ -139,150 +217,37 @@ void writeConfig(Config &c)
 	}
 }
 
-/* }}} *** */
+
+/* *** /EEPROM config *** }}} */
+
+/* *** Peripheral hardware routines *** {{{ */
+
+
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
 
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
 */
 
-#endif //_DHT
+#endif // DHT
 
 #if _LCD84x48
 #endif //_LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-#endif // _DS
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-
-#endif //_NRF24
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-
-/* Report variables */
-
-static byte reportCount;    // count up until next report, i.e. packet send
-// This defines the structure of the packets which get sent out by wireless:
-
-struct {
-} payload;
-
-/* *** AVR routines *** {{{ */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-/* }}} *** */
-
-/* *** ATmega routines *** {{{ */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-/* }}} *** */
-
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=-1) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		(length_off > -1) ? delay(length_off) : delay(length);
-	}
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-#if SERIAL
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-#endif
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debugline(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
-/* }}} *** */
-
-/* *** Peripheral hardware routines *** {{{ */
-
-#if _DS
 /* Dallas DS18B20 thermometer routines */
 
-#endif //_DS
+
+#endif // DS
+
 #if _NRF24
 /* Nordic nRF24L01+ routines */
 
@@ -293,14 +258,13 @@ void debugline(String msg) {
 
 #if _RTC
 #endif //_RTC
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
-
 #endif //_HMC5883L
 
 
-/* }}} *** */
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -327,7 +291,8 @@ void initLibs()
 #endif //_HMC5883L
 }
 
-/* }}} *** */
+
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -344,11 +309,13 @@ void doReset(void)
 
 bool doAnnounce()
 {
+	return false;
 }
 
 // readout all the sensors and other values
 void doMeasure()
 {
+	// TODO doMeasure
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -377,7 +344,6 @@ void runScheduler(char task)
 			break;
 
 		case MEASURE:
-			// reschedule these measurements periodically
 			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
@@ -403,9 +369,6 @@ void runScheduler(char task)
 			break;
 
 		case WAITING:
-			scheduler.timer(STDBY, STDBY_PERIOD);
-			break;
-		
 		case IDLE:
 			scheduler.timer(STDBY, STDBY_PERIOD);
 			break;
@@ -413,22 +376,23 @@ void runScheduler(char task)
 	}
 }
 
-/* }}} *** */
+
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers **** {{{ */
 
 
-/* InputParser handlers */
 
-
-
-/* }}} *** */
+/* *** /InputParser handlers **** }}} */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -447,9 +411,7 @@ void loop(void)
 	debug_ticks();
 	serialFlush();
 	char task = scheduler.pollWaiting();
-	if (task == 0xFF) {} // -1
-	else if (task == 0xFE) {} // -2
-	else runScheduler(task);
+	runScheduler(task);
 }
 
 /* }}} *** */

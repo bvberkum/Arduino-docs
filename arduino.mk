@@ -139,13 +139,13 @@
 #
 
 # default arduino software directory, check software exists
-$(info $(ARDUINODIR))
 ifndef ARDUINODIR
 ARDUINODIR := $(firstword $(wildcard ~/opt/arduino /usr/share/arduino))
 endif
 ifeq "$(wildcard $(ARDUINODIR)/hardware/arduino/boards.txt)" ""
 $(error ARDUINODIR is not set correctly; arduino software not found)
 endif
+
 
 # default arduino version
 ARDUINOCONST ?= 104
@@ -171,16 +171,10 @@ SOURCES := $(INOFILE) \
 	$(wildcard $(addprefix util/, *.c *.cc *.cpp)) \
 	$(wildcard $(addprefix utility/, *.c *.cc *.cpp))
 
-$(info SOURCES=$(SOURCES))
-
 # automatically determine included libraries
 LIBRARIES := \
 	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES))
 
-#$(info adir $(ARDUINODIR))
-#$(info libs $(notdir $(wildcard $(ARDUINODIR)/libraries/*)))
-#$(info includes	$(shell sed -ne "s/^ *\# *include *[<\"]\(.*\)\.h[>\"]/\1/p" $(SOURCES)))
-$(info "Loading for LIBRARIES:" $(LIBRARIES))
 endif
 
 # no serial device? make a poor attempt to detect an arduino
@@ -209,9 +203,10 @@ ARDUINOCOREDIR := $(ARDUINODIR)/hardware/arduino/cores/arduino
 ARDUINOLIB := .lib/arduino.a
 ARDUINOLIBLIBSDIR := $(ARDUINODIR)/libraries
 ARDUINOLIBLIBSPATH := $(foreach lib, $(LIBRARIES), \
-	$(ARDUINODIR)/libraries/$(lib)/ $(ARDUINODIR)/libraries/$(lib)/utility/ )
+	$(ARDUINODIR)/libraries/$(lib) $(ARDUINODIR)/libraries/$(lib)/utility )
 ARDUINOLIBOBJS := $(foreach dir, $(ARDUINOCOREDIR) $(ARDUINOLIBLIBSPATH), \
 	$(patsubst %, .lib/%.o, $(wildcard $(addprefix $(dir)/, *.c *.cpp))))
+#$(info OBJECTS $(ARDUINOLIBOBJS))
 ifeq "$(AVRDUDECONF)" ""
 ifeq "$(AVRDUDE)" "$(ARDUINODIR)/hardware/tools/avr/bin/avrdude"
 AVRDUDECONF := $(ARDUINODIR)/hardware/tools/avr/etc/avrdude.conf
@@ -270,6 +265,7 @@ CPPFLAGS += -I$(ARDUINOCOREDIR)
 CPPFLAGS += -I$(ARDUINODIR)/hardware/arduino/variants/$(BOARD_BUILD_VARIANT)/
 CPPFLAGS += $(addprefix -I$(ARDUINODIR)/libraries/, $(LIBRARIES))
 CPPFLAGS += $(patsubst %, -I $(ARDUINODIR)/libraries/%/utility, $(LIBRARIES))
+#CPPFLAGS += -I$(ARDUINODIR)/libraries/
 CPPDEPFLAGS = -MMD -MP -MF .dep/$<.dep
 #CPPDEPFLAGS = -MMD
 CPPPDEFLAGS := -x c++ -include $(ARDUINOCOREDIR)/Arduino.h
@@ -288,6 +284,31 @@ ifneq "$(MAKECMDGOALS)" "clean"
 -include $(DEPFILES)
 endif
 
+
+ll                  = /srv/project-mpe/mkdoc/usr/share/mkdoc/Core/log.sh
+#ll                  = /usr/share/mkdoc/Core/log.sh
+#ll                  = log.sh
+
+ARDUINODIRLIB=$(ARDUINODIR)/libraries
+#compiledLIB=.lib/$(ARDUINOCOREDIR)
+define readable-path
+$(subst $(BOARDS_FILE),BOARDS_FILE:,$(subst $(ARDUINOCOREDIR)/,ARDUINOCOREDIR:,$(subst $(ARDUINODIRLIB)/,ARDUINODIRLIB:,$1)))
+endef
+#(subst $(myLIB),myLIB:,$1))))
+#readable_path_vars = BOARDS_FILE ARDUINOCOREDIR ARDUINODIRLIB myLIB
+	#$(foreach var,$(readable_path_vars),$(subst $($(var)),$(var):,$1)))
+
+define alog
+	$(ll) "$1" "$(call readable-path,$2)" "$3" "$(call readable-path,$4)"
+endef
+
+$(info $(shell $(call alog,header2,ARDUINODIR,$(ARDUINODIR) )))
+$(info $(shell $(call alog,header2,Working dir,$(shell pwd) )))
+$(info $(shell $(call alog,header2,SOURCES,$(SOURCES) )))
+$(info $(shell $(call alog,header2,LIBRARIES,$(LIBRARIES) )))
+$(info $(shell $(call alog,header2,TARGET,$(TARGET).hex )))
+
+
 # default rule
 .DEFAULT_GOAL := all
 
@@ -301,7 +322,7 @@ all: target
 target: $(TARGET).hex
 
 upload: target
-	@echo "\nUploading to board..."
+	@$(call alog,attention,$@,"Uploading...",$(SERIALDEV))
 	@test -n "$(SERIALDEV)" || { \
 		echo "error: SERIALDEV could not be determined automatically." >&2; \
 		exit 1; }
@@ -312,9 +333,9 @@ upload: target
 	$(AVRDUDE) $(AVRDUDEFLAGS) -U flash:w:$(TARGET).hex:i
 
 clean:
-	rm -f $(OBJECTS)
-	rm -f $(TARGET).elf $(TARGET).hex $(ARDUINOLIB) *~
-	rm -rf .lib .dep
+	@$(call alog,attention,$@,"Cleaning...",$(SERIALDEV))
+	@rm -f $(OBJECTS) $(TARGET).elf $(TARGET).hex $(ARDUINOLIB) *~
+	@rm -rf .lib/$(ARDUINOCOREDIR) .dep
 
 boards:
 	@echo Available values for BOARD:
@@ -340,73 +361,83 @@ size: $(TARGET).elf
 # building the target
 
 $(TARGET).hex: $(TARGET).elf
+	@$(call alog,attention,$@,"Building image...",$^)
 	@$(OBJCOPY) -O ihex -R .eeprom $< $@
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 .INTERMEDIATE: $(TARGET).elf
 
 #$(info $(COMPILE.cpp) $(CPPDEPFLAGS))
 
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
-	@echo "$^ -> $@"
-	@$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
-	@echo -n .
+	@$(call alog,attention,$@,"Packing...",$^)
+	$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
+	@$(call alog,ok,$@,Done)
 
 %.o: %.c
-	@echo "$^ -> $@"
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
-	$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
-	@echo -n .
+	@$(COMPILE.c) $(CPPDEPFLAGS) -o $@ $<
+	@$(call alog,ok,$@,Done)
 
 %.o: %.cpp
-	@echo "$^ -> $@"
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
-	@echo -n .
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
+	@$(call alog,ok,$@,Done)
 
 %.o: %.cc
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
 	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 %.o: %.C
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
 	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 %.o: %.ino
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
-	@echo -n .
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPINOFLAGS) $<
+	@$(call alog,ok,$@,Done)
 
 %.o: %.pde
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p .dep/$(dir $<)
-	$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPPDEFLAGS) $<
-	@echo -n .
+	@$(COMPILE.cpp) $(CPPDEPFLAGS) -o $@ $(CPPPDEFLAGS) $<
+	@$(call alog,ok,$@,Done)
 
 # building the arduino library
 
 $(ARDUINOLIB): $(ARDUINOLIBOBJS)
-	@echo "$^ -> $@"
-	$(AR) rcs $@ $?
-	@echo -n .
+	@$(call alog,attention,$@,Compiling...,$^)
+	@$(AR) rcs $@ $?
+	@$(call alog,ok,$@,Done)
 
 .lib/%.c.o: %.c
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p $(dir $@)
 	@$(COMPILE.c) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 .lib/%.cpp.o: %.cpp
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p $(dir $@)
 	@$(COMPILE.cpp) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 .lib/%.cc.o: %.cc
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p $(dir $@)
 	@$(COMPILE.cpp) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
 
 .lib/%.C.o: %.C
+	@$(call alog,attention,$@,Compiling...,$^)
 	@mkdir -p $(dir $@)
 	@$(COMPILE.cpp) -o $@ $<
-	@echo -n .
+	@$(call alog,ok,$@,Done)
+

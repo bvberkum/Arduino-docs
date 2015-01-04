@@ -31,6 +31,7 @@ InputParser parser (50, cmdTab);
 
 /* *** EEPROM config *** {{{ */
 
+
 #define CONFIG_VERSION "nx1"
 #define CONFIG_START 0
 
@@ -94,23 +95,6 @@ void writeConfig(Config &c)
 
 
 
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
 /* }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
@@ -131,15 +115,17 @@ void initLibs()
 {
 }
 
+
 /* }}} *** */
 
-/* InputParser handlers */
+/* Initialization routines *** {{{ */
 
-static void helpCmd() {
+
+void helpCmd() {
 	Serial.println("Help!");
 }
 
-static void handshakeCmd() {
+void handshakeCmd() {
 	int v;
 	char buf[7];
 	node.toCharArray(buf, 7);
@@ -155,14 +141,19 @@ InputParser::Commands cmdTab[] = {
 	{ 'A', 0, handshakeCmd }
 };
 
+
+
+/* }}} *** */
+
 /* *** Run-time handlers *** {{{ */
+
 
 void doReset(void)
 {
-	doConfig();
 	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
+
+	doConfig();
+
 }
 
 bool doAnnounce()
@@ -172,6 +163,7 @@ bool doAnnounce()
 #endif // SERIAL && DEBUG
 }
 
+// readout all the sensors and other values
 void doMeasure()
 {
 }
@@ -182,10 +174,15 @@ void runScheduler(char task)
 	}
 }
 
+/* }}} *** */
+
+/* InputParser handlers {{{ */
+
 
 /* }}} *** */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
@@ -203,9 +200,10 @@ void setup(void)
 void loop(void)
 {
 	serialFlush();
-	char task = scheduler.pollWaiting();
-	runScheduler(task);
+	//char task = scheduler.pollWaiting();
+	//runScheduler(task);
 }
+
 
 /* }}} *** */
 

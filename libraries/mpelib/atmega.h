@@ -1,9 +1,11 @@
+#ifndef mpelib_atmega_h
+#define mpelib_atmega_h
 
 #ifndef ATMEGA_CTEMP_ADJ
 #define ATMEGA_CTEMP_ADJ 324.31
 #endif
 
-double internalTemp(void)
+static double internalTemp(void)
 {
 	unsigned int wADC;
 	double t;
@@ -34,4 +36,4 @@ double internalTemp(void)
 	return (t);
 }
 
-
+#endif

@@ -1,3 +1,4 @@
+// CPP library
 #ifndef DotmpeLib_h
 #define DotmpeLib_h
 

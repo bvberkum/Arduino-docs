@@ -27,11 +27,10 @@
 							
 #define RADIO_SYNC_MODE 2
 
-#include <DotmpeLib.h>
 #include <JeeLib.h>
 // Adafruit DHT
 #include <DHT.h>
-
+#include <DotmpeLib.h>
 #include <mpelib.h>
 
 
@@ -53,55 +52,17 @@ static const byte DHT2_PIN = 6;
 
 MpeSerial mpeser (57600);
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+/* *** InputParser {{{ */
 
-/* Command parser */
+
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
-/* *** Device params *** {{{ */
 
-#if _DHT
-/* DHT temp/rh sensor 
- - AdafruitDHT
-*/
-//DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
-//DHTxx dht (DHT_PIN); // JeeLib DHT
-//#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
-#if DHT_HIGH 
-DHT dht (DHT_PIN, DHT21); 
-//DHT dht (DHT_PIN, DHT22); 
-// AM2301
-// DHT21, AM2302?
-#else
-DHT dht (DHT_PIN, DHT11);
-#endif
-#endif //_DHT
-
-#if _DHT2
-DHT dht2 (DHT2_PIN, DHT11);
-#endif
-
-#if _LCD84x48
-#endif //_LCD84x48
-#if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-#endif //_DS
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-#endif //_NRF24
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-/* }}} */
+/* }}} *** */
 
 /* *** Report variables *** {{{ */
+
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
@@ -132,11 +93,17 @@ struct {
 #endif
 } payload;
 
-/* }}} */
+
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
-enum { MEASURE, REPORT, STDBY, END };
+enum {
+	MEASURE,
+	REPORT,
+	STDBY,
+	END
+};
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
@@ -144,14 +111,114 @@ static const char IDLE = 0xFE; // -2: no tasks running
 static word schedbuf[END];
 Scheduler scheduler (schedbuf, END);
 
-/* }}} *** */
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+//DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
+//DHTxx dht (DHT_PIN); // JeeLib DHT
+//#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT22   // DHT 22  (AM2302)
+#if DHT_HIGH 
+DHT dht (DHT_PIN, DHT21); 
+//DHT dht (DHT_PIN, DHT22); 
+// AM2301
+// DHT21, AM2302?
+#else
+DHT dht (DHT_PIN, DHT11);
+#endif
+#endif // DHT
+
+#if _DHT2
+DHT dht2 (DHT2_PIN, DHT11);
+#endif
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+#endif // DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
+#endif // NRF24
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices *** }}} */
+
+/* *** EEPROM config *** {{{ */
+
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
-// none
+
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
+
+#if _LCD84x48
+#endif //_LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+#endif //_HMC5883L
 
 
-/* }}} *** */
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -171,7 +238,7 @@ void initLibs()
 //#endif
 
 	rf12_sleep(RF12_SLEEP); // power down
-#endif // _RFM12B
+#endif // RFM12B
 
 #if _DHT
 	dht.begin();
@@ -179,36 +246,10 @@ void initLibs()
 #if _DHT2
 	dht2.begin();
 #endif
-
-#if _RFM12B
-#endif
 }
 
-/* }}} *** */
 
-/* InputParser handlers */
-
-static void helpCmd() {
-	Serial.println("Help!");
-}
-
-static void handshakeCmd() {
-	//int v;
-	//char buf[7];
-	//node.toCharArray(buf, 7);
-	//parser >> v;
-	//sprintf(node_id, "%s%i", buf, v);
-	//Serial.print("handshakeCmd:");
-	//Serial.println(node_id);
-	//serialFlush();
-}
-
-InputParser::Commands cmdTab[] = {
-	{ 'h', 0, helpCmd },
-	{ 'A', 0, handshakeCmd },
-	{ 0 }
-};
-
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -250,7 +291,6 @@ bool doAnnounce()
 	
 	serialFlush();
 
-	parser.poll();
 	delay(100);
 	return false;
 
@@ -405,6 +445,7 @@ void runScheduler(char task)
 			debugline("MEASURE");
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
+
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
@@ -426,26 +467,62 @@ void runScheduler(char task)
 			break;
 
 		case WAITING:
-			//scheduler.timer(STDBY, STDBY_PERIOD);
+			scheduler.timer(STDBY, STDBY_PERIOD);
 			break;
 		
 		case IDLE:
-			//scheduler.timer(STDBY, STDBY_PERIOD);
+			scheduler.timer(STDBY, STDBY_PERIOD);
 			break;
 		
 	}
 }
 
 
-/* }}} *** */
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers *** {{{ */
+
+static void helpCmd() {
+	Serial.println("n: print Node ID");
+	Serial.println("c: print config");
+	Serial.println("v: print version");
+	Serial.println("m: print free and used memory");
+	Serial.println("N: set Node (3 byte char)");
+	Serial.println("C: set Node ID (1 byte int)");
+	Serial.println("W: load/save EEPROM");
+	Serial.println("E: erase EEPROM!");
+	Serial.println("?/h: this help");
+}
+
+static void handshakeCmd() {
+	//int v;
+	//char buf[7];
+	//node.toCharArray(buf, 7);
+	//parser >> v;
+	//sprintf(node_id, "%s%i", buf, v);
+	//Serial.print("handshakeCmd:");
+	//Serial.println(node_id);
+	//serialFlush();
+}
+
+InputParser::Commands cmdTab[] = {
+	{ '?', 0, helpCmd },
+	{ 'h', 0, helpCmd },
+	{ 'A', 0, handshakeCmd },
+	{ 0 }
+};
+
+
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -474,6 +551,7 @@ void loop(void)
 	delay(50);
 	return;
 */	
+	parser.poll();
 	serialFlush();
 	char task = scheduler.pollWaiting();
 	runScheduler(task);

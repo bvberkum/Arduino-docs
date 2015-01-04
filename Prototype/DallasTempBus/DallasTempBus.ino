@@ -1,16 +1,6 @@
 /* 
 Dallas OneWire Temperature Bus with autodetect and eeprom config 
 */
-#include <EEPROM.h>
-#if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define I2C_SLAVE       4
-#include <Wire.h>
-#else
-#define I2C_SLAVE       0
-#endif
-
-#include <DotmpeLib.h>
-#include <OneWire.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -29,22 +19,25 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 							
 #define MAXLENLINE      79
 							
-#if defined(__AVR_ATtiny84__)
-#define SRAM_SIZE       512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE       1024
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE       2048
+
+#include <EEPROM.h>
+#if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
+#define I2C_SLAVE       4
+#include <Wire.h>
+#else
+#define I2C_SLAVE       0
 #endif
-							
+
+#include <DotmpeLib.h>
+#include <mpelib.h>
+#include <OneWire.h>
 
 void receiveEvent(int howMany);
+
 
 const String sketch = "X-DallasTempBus";
 const int version = 0;
 
-int tick = 0;
-int pos = 0;
 
 /* IO pins */
 static const byte ledPin = 13;
@@ -55,15 +48,35 @@ static const byte DS_PIN = 8;
 MpeSerial mpeser (57600);
 
 
-/* Scheduled tasks */
-/* *** EEPROM config *** {{{ */
+/* *** Report variables *** {{{ */
 
-/* }}} *** */
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+struct {
+} payload;
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
 
 #if _DHT
 #endif //_DHT
+
 #if _LCD84x48
-#endif //_LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
@@ -80,91 +93,66 @@ uint8_t ds_search = 0;
 //	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
 //};
 enum { DS_OK, DS_ERR_CRC };
+
+
 #endif // _DS
+
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 #endif //_NRF24
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
 #endif //_HMC5883L
 
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-/* Report variables */
 
-static byte reportCount;    // count up until next report, i.e. packet send
+#endif //_NRF24
 
-struct {
-} payload;
+#if _LCD
+#endif //_LCD
 
-/* *** AVR routines *** {{{ */
+#if _RTC
+#endif //_RTC
 
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
+#if _HMC5883L
+/* Digital magnetometer I2C module */
 
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
+#endif //_HMC5883L
 
-/* }}} *** */
+/* *** /Peripheral devices *** }}} */
 
-/* *** ATmega routines *** {{{ */
+/* *** EEPROM config *** {{{ */
 
 
 
-/* }}} *** */
-
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debugline(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
-/* }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // _DHT
+
+#if _LCD84x48
+#endif //_LCD84x48
+
 #if _DS
-/* Dallas DS18B20 thermometer routines */
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
@@ -360,7 +348,10 @@ static void printDS18B20s(void) {
 	serialFlush();
 #endif
 }
-#endif //_DS
+
+
+#endif // _DS
+
 #if _NRF24
 /* Nordic nRF24L01+ routines */
 
@@ -371,14 +362,13 @@ static void printDS18B20s(void) {
 
 #if _RTC
 #endif //_RTC
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
-
 #endif //_HMC5883L
 
 
-/* }}} *** */
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -395,7 +385,7 @@ void initLibs()
 }
 
 
-/* }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -424,6 +414,9 @@ void runScheduler(char task)
 {
 }
 
+
+/* *** /Run-time handlers *** }}} */
+
 #if I2C_SLAVE
 void receiveEvent(int howMany)
 {
@@ -438,15 +431,15 @@ void receiveEvent(int howMany)
 #endif
 
 
-/* }}} *** */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());

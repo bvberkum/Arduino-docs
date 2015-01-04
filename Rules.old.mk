@@ -31,13 +31,19 @@ METHODS = \
 		arduinoisp="-cstk500v1 -P $(PORT) -b 9600"; \
 		arduinoisp_="-cstk500v1 -P $(PORT) -b 19200"; \
 		arduinoisp__="-cstk500v1 -P $(PORT) -b 57600"; \
-	  usbasp="-c usbasp -P usb"
+		usbasp="-c usbasp -P usb"
 #IMAGES := \
 #	blink=firmware/betemcu-usbasp/misc/betemcu_blink/betemcu_blink.cpp.hex\
 #	ArduinoISP=ArduinoISP_mega328.hex
 #atmega8_mkjdz.com_I2C_lcd1602.hex
 
+#	ifneq ($(M),"parisp")
+#	ifeq ("$(PORT)","")
+#		$(error "No port: $(PORT)")
+#	endif
+#	endif
 define _flash
+	echo "Using port $(PORT)"
 	[ "$(M)" = "micronucleus" -o "$(M)" == "mn" ] && { \
 		micronucleus $(I); \
 	} || { \
@@ -73,6 +79,7 @@ _upload:
 	$(ll) attention $@ "Starting upload to $(C) using $(M).." $(I);\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
 	$(call _flash)
+	@\
 	$(ll) OK $@ "Flash upload completed successfully"
 
 download: C := m328p
@@ -93,6 +100,7 @@ _download:
 		-U eeprom:r:$$I-eeprom.hex:i \
 		-U flash:r:$$I.hex:i \
 		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
+	@\
 	$(ll) OK $@ "Download completed successfully" $$I-*
 
 _uctest:
@@ -472,7 +480,7 @@ _arduino:
 		BOARD=$(BRD) \
 		make -f $$p/arduino.mk $(TARGETS)
 
-arduino: TARGETS := clean all
+arduino: TARGETS := target
 arduino: _arduino
 
 jeenode: BRD := atmega328
@@ -789,6 +797,11 @@ lcd1602_i2c: P := Misc/I2C_LCD_CustomChars_mjkdz
 lcd1602_i2c: I := Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.hex
 lcd1602_i2c: _arduino upload
 
+i2cpir: C := m328p
+i2cpir: P := Mpe/I2CPIR/
+i2cpir: I := Mpe/I2CPIR/I2CPIR.hex
+i2cpir: jeenode upload
+
 all_i2c: C := m328p
 all_i2c: BRD := atmega328
 all_i2c: P := Mpe/i2c_all/
@@ -886,6 +899,11 @@ mmc: P := Prototype/MMC/
 mmc: I := Prototype/MMC/MMC.hex
 mmc: jeenode upload
 
+jproomnode: C := m328p
+jproomnode: P := libraries/JeeLib/examples/RF12/roomNode/
+jproomnode: I := libraries/JeeLib/examples/RF12/roomNode/roomNode.hex
+jproomnode: jeenode upload
+
 roomnode: C := m328p
 roomnode: P := Mpe/RoomNode/
 roomnode: I := Mpe/RoomNode/RoomNode.hex
@@ -916,9 +934,10 @@ node: I := Prototype/Node/Node.hex
 node: jeenode upload
 
 sensornode: C := m328p
+sensornode: M := arduino
 sensornode: P := Prototype/SensorNode/
 sensornode: I := Prototype/SensorNode/SensorNode.hex
-sensornode: jeenode upload
+sensornode: jeenode _upload
 
 relaybox: C := m328p
 relaybox: P := Prototype/RelayBox/

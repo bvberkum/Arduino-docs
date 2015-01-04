@@ -41,18 +41,8 @@ During the idle and stdby timers various schemes are possible,
 depends on the used hardware etc.
 
 */
-// Definition of interrupt names
-#include < avr/io.h >
-// ISR interrupt service routine
-#include < avr/interrupt.h >
 
-#include <DotmpeLib.h>
-#include <JeeLib.h>
-#include <OneWire.h>
-#include <PCD8544.h>
-
-
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
@@ -66,21 +56,37 @@ depends on the used hardware etc.
 #define MAXLENLINE      79
 							
 
+// Definition of interrupt names
+#include < avr/io.h >
+// ISR interrupt service routine
+#include < avr/interrupt.h >
 
-static String sketch = "X-LogReader84x48";
-static String version = "0";
+#include <DotmpeLib.h>
+#include <JeeLib.h>
+#include <OneWire.h>
+#include <PCD8544.h>
+
+
+const String sketch = "X-LogReader84x48";
+const int version = 0;
 static String node = "logreader-1";
+// determined upon handshake 
+char node_id[7];
 
+
+/* IO pins */
 static const byte ledPin = 13;
 static const byte backlightPin = 9;
 
-static int tick = 0;
-static int pos = 0;
+
+MpeSerial mpeser (57600);
+
 static bool ui;
 
 volatile bool ui_irq;
 
-MpeSerial mpeser (57600);
+/* InputParser {{{ */
+
 
 MilliTimer idle, stdby;
 
@@ -88,10 +94,38 @@ extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-/* Scheduled tasks */
-enum { MEASURE, REPORT, PING };
-static word schedbuf[PING];
-Scheduler scheduler (schedbuf, PING);
+/* }}} *** */
+
+/* *** Report variables *** {{{ */
+
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+struct {
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+} payload;
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
+	MEASURE,
+	REPORT,
+	PING,
+	END
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[END];
+Scheduler scheduler (schedbuf, END);
+
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
@@ -119,8 +153,18 @@ bool schedRunning()
 }
 
 
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+#endif
+
+#if _DHT
+#endif //_DHT
 
 #if _LCD84x48
+/* Nokkia 5110 display */
 
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
@@ -141,114 +185,45 @@ static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x
 
 static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
-#endif //_LCD84x48
+
+#endif // _LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 
-/* Report variables */
 
-static byte reportCount;    // count up until next report, i.e. packet send
+#endif // _DS
 
-struct {
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree     :16;
-#endif
-} payload;
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
+#endif //_NRF24
 
-/** AVR routines */
+#if _HMC5883L
+/* Digital magnetometer I2C module */
 
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
+#endif //_HMC5883L
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 
-/** ATmega routines */
+#endif //_NRF24
 
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
+#if _LCD
+#endif //_LCD
 
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
+#if _RTC
+#endif //_RTC
 
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
+#if _HMC5883L
+/* Digital magnetometer I2C module */
 
-	delay(20);            // wait for voltages to become stable.
+#endif //_HMC5883L
 
-	ADCSRA |= _BV(ADSC);  // Start the ADC
+/* *** /Peripheral devices *** }}} */
 
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink (int led, int count, int length) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-	}
-}
-
-static void showNibble (byte nibble) {
-	char c = '0' + (nibble & 0x0F);
-	if (c > '9')
-		c += 7;
-	Serial.print(c);
-}
-
-bool useHex = 0;
-
-static void showByte (byte value) {
-	if (useHex) {
-		showNibble(value >> 4);
-		showNibble(value);
-	} else {
-		Serial.print((int) value);
-	}
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
 
 //ISR(INT0_vect) 
 void irq0()
@@ -257,48 +232,24 @@ void irq0()
 	//Sleepy::watchdogInterrupts(0);
 }
 
+/* *** Peripheral hardware routines *** {{{ */
 
-/* Initialization routines */
 
-
-/* Run-time handlers */
-
-bool doAnnounce()
-{
-}
-
-static void doMeasure()
-{
-	byte firstTime = payload.ctemp == 0; // special case to init running avg
-
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
-
-#if _MEM
-	payload.memfree = freeRam();
-#if SERIAL && DEBUG_MEASURE
-	Serial.print("MEM free ");
-	Serial.println(payload.memfree);
+/* *** PIR support *** {{{ */
+#if PIR_PORT
 #endif
-#endif
+/* *** /PIR support *** }}} */
 
-	serialFlush();
-}
 
-static void doReport(void)
-{
-#if SERIAL
-	Serial.print(node);
-	Serial.print(" ");
-	Serial.print((int) payload.ctemp);
-	Serial.print(' ');
-#if _MEM
-	Serial.print((int) payload.memfree);
-	Serial.print(' ');
-#endif
-	Serial.println();
-	serialFlush();
-#endif//SERIAL
-}
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // _DHT
+
+#if _LCD84x48
+
 
 void lcd_start()
 {
@@ -334,10 +285,104 @@ void lcd_printTicks(void)
 	lcd.setCursor(42, 3);
 	lcd.print(stdby.remaining());
 }
+#endif //_LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+
+#endif // _DS
+
+#if _NRF24
+/* Nordic nRF24L01+ routines */
+
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+#endif //_HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
+
+/* *** Initialization routines *** {{{ */
+
+void doConfig(void)
+{
+}
+
+void initLibs()
+{
+
+}
+
+
+/* *** /Initialization routines *** }}} */
+
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	tick = 0;
+
+	doConfig();
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	ui_irq = false;
+	tick = 0;
+}
+
+bool doAnnounce()
+{
+	return false;
+}
+
+void doMeasure()
+{
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+
+#if _MEM
+	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
+#endif
+
+	serialFlush();
+}
+
+void doReport(void)
+{
+#if SERIAL
+	Serial.print(node);
+	Serial.print(" ");
+	Serial.print((int) payload.ctemp);
+	Serial.print(' ');
+#if _MEM
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+	Serial.println();
+	serialFlush();
+#endif//SERIAL
+}
 
 void start_ui() 
 {
-	debug("Irq");
+	debugline("Irq");
 	ui_irq = false;
 	idle.set(UI_IDLE);
 	if (!ui) {
@@ -356,31 +401,42 @@ void runScheduler(char task)
 		//	scheduler.timer(IDLE, IDLE_DELAY);
 		//	break;
 		case MEASURE:
-			debug("MEASURE");
+			debugline("MEASURE");
 			//printSchedRunning();
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			scheduler.timer(PING, 10);
 			//printSchedRunning();
 			doMeasure();
+
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
 			serialFlush();
 			break;
+
 		case REPORT:
-			debug("REPORT");
+			debugline("REPORT");
 			doReport();
 			serialFlush();
 			break;
-		case PING:
-			debug("PING");
+
+		case STDBY:
+			debugline("STDBY");
 			serialFlush();
 			break;
-		case 0xFF:
+
+		case PING:
+			debugline("PING");
+			serialFlush();
+			break;
+
+		case WAITING:
+		case IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
+
 		default:
 			Serial.print("0x");
 			Serial.print(task, HEX);
@@ -388,17 +444,6 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 	}
-}
-
-static void reset(void)
-{
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
-	ui_irq = false;
-	tick = 0;
 }
 
 void debug_task(char task) {
@@ -411,25 +456,11 @@ void debug_task(char task) {
 	//}
 }
 
-void debug_ticks(void)
-{
-#if DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers **** {{{ */
 
 #if SERIAL
-
-/* InputParser handlers */
 
 static void helpCommand () {
 	Serial.println("Help!");
@@ -470,7 +501,10 @@ InputParser::Commands cmdTab[] = {
 
 #endif // SERIAL
 
-/* Main */
+/* *** /InputParser handlers **** }}} */
+
+/* *** Main *** {{{ */
+
 
 void setup(void)
 {
@@ -478,7 +512,7 @@ void setup(void)
 	mpeser.startAnnounce(sketch, version);
 	serialFlush();
 	delay(500);
-	reset();
+	doReset();
 	attachInterrupt(INT0, irq0, RISING);
 	ui_irq = true;
 }
@@ -524,4 +558,5 @@ void loop(void)
 	}
 }
 
+/* }}} *** */
 

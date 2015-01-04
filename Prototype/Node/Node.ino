@@ -38,31 +38,21 @@ Serial config
 
   */
 
-#include <SoftwareSerial.h>
-#include <DotmpeLib.h>
-#include <EEPROM.h>
-//#include <util/crc16.h>
-
-#include <JeeLib.h>
-
-
 /* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
 							
-#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
-#define SRAM_SIZE       512
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE       1024
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE       2048
-#define EEPROM_SIZE     1024
-#endif
-							
+
+#include <SoftwareSerial.h>
+#include <EEPROM.h>
+//#include <util/crc16.h>
+
+#include <JeeLib.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
 
 const String sketch = "Node";
 const int version = 0;
@@ -77,32 +67,96 @@ static const byte ledPin = 13;
 
 //SoftwareSerial virtSerial(11, 12); // RX, TX
 
+MpeSerial mpeser (57600);
 
-/* Command parser */
+
+/* InputParser {{{ */
+
 Stream& cmdIo = Serial;//virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
-/* *** Device params *** {{{ */
 
-
-/* }}} */
+/* }}} *** */
 
 /* *** Report variables *** {{{ */
 
 
-/* }}} */
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+#if _DHT
+	int rhum    :7;  // 0..100 (avg'd)
+#if DHT_HIGH
+/* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
+	int temp    :10; // -500..+500 (int value of tenths avg)
+//#else
+///* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
+//	int temp    :10; // -500..+500 (tenths, .5 resolution)
+#endif // DHT_HIGH
+#endif //_DHT
+
+	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree :16;
+#endif
+#if _RFM12LOBAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
+} payload;
+
+
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
+/* *** /Scheduled tasks *** }}} */
 
-/* }}} *** */
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+#endif // DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+#endif // DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
+#endif // NRF24
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 #define CONFIG_VERSION "nx1"
 #define CONFIG_START 0
+
 
 struct Config {
 	char node[4];
@@ -158,82 +212,50 @@ void writeConfig(Config &c)
 	}
 }
 
-/* }}} *** */
 
-/* *** AVR routines *** {{{ */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-/* }}} *** */
-
-/* *** ATmega routines *** {{{ */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-/* }}} *** */
-
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=-1) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		(length_off > -1) ? delay(length_off) : delay(length);
-	}
-}
-
-/* }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
-/* }}} *** */
+
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
+
+#if _LCD84x48
+#endif //_LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+#endif //_HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -253,19 +275,28 @@ void doConfig(void)
 
 void initLibs()
 {
+#if _RFM12B
+#endif // RFM12B
+
+#if _DHT
+#endif // DHT
 }
 
-/* }}} *** */
+
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
+	tick = 0;
+
 	doConfig();
 }
 
 bool doAnnounce()
 {
+	return false;
 }
 
 // readout all the sensors and other values
@@ -285,10 +316,10 @@ void runScheduler(char task)
 	// no-op, see SensorNode
 }
 
-/* }}} *** */
 
+/* *** /Run-time handlers *** }}} */
 
-/* InputParser handlers {{{ */
+/* *** InputParser handlers *** {{{ */
 
 static void helpCmd() {
 	cmdIo.println("n: print Node ID");
@@ -395,15 +426,17 @@ InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 
-/* }}} *** */
+
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 	//virtSerial.begin(4800);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
@@ -430,6 +463,7 @@ void loop(void)
 	// FIXME: seems virtSerial receive is not working
 	//if (virtSerial.available())
 	//	virtSerial.write(virtSerial.read());
+	debug_ticks();
 	parser.poll();
 }
 

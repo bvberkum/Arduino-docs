@@ -27,7 +27,8 @@ PORTS := $(wildcard /dev/tty.usbserial-* /dev/ttyUSB*)
 # get list of actually connected devices, select one
 port ?= 1
 PORT := $(word $(port),$(PORTS))
-$(info PORT = PORTS[$(port)] = $(PORT))
+$(info $(shell $(call log,header2,PORTS[$(port)],$(PORT))))
+
 
 ports:
 	@\
