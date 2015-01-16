@@ -7,21 +7,9 @@
  - Running key-scan code, interrupts.	
  */
 
-// Definition of interrupt names
-#include < avr/io.h >
-// ISR interrupt service routine
-#include < avr/interrupt.h >
-
-#include <mpelib.h>
-#include <DotmpeLib.h>
-#include <JeeLib.h>
-#include <OneWire.h>
-#include <PCD8544.h>
-// Adafruit DHT
-#include <DHT.h>
 
 
-/** Globals and sketch configuration  */
+/* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
@@ -40,13 +28,34 @@
 #define ATMEGA_CTEMP_ADJ 311
 							
 
-static String sketch = "X-ThermoLog84x48";
-static String version = "0";
+// Definition of interrupt names
+#include <avr/io.h>
+// ISR interrupt service routine
+#include <avr/interrupt.h>
+
+#include <JeeLib.h>
+#include <OneWire.h>
+#include <PCD8544.h>
+// Adafruit DHT
+#include <DHT.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
+
+const String sketch = "X-ThermoLog84x48";
+//const int version = 0;
+const String version = "0";
+volatile bool ui_irq;
+
+static bool ui;
+
+//char node[]
 static String node = "templg";
 
 // determined upon handshake 
 char node_id[7];
 
+/* IO pins */
 static const byte ledPin = 13;
 static const byte backlightPin = 9;
 #if _DHT
@@ -57,24 +66,67 @@ MpeSerial mpeser (57600);
 
 MilliTimer debounce, idle, stdby;
 
-/* Scheduled tasks */
-enum { MEASURE, REPORT };
+/* *** Report variables *** {{{ */
+
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+struct {
+#if _DHT
+	int rhum    :7;  // 0..100 (avg'd)
+#if DHT_HIGH
+/* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
+	int temp    :10; // -500..+500 (int value of tenths avg)
+#else
+/* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
+	int temp    :10; // -500..+500 (tenths, .5 resolution)
+#endif
+#endif
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+} payload;
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
+	MEASURE, 
+	REPORT 
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
 static word schedbuf[REPORT];
 Scheduler scheduler (schedbuf, REPORT);
+
+// has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-volatile bool ui_irq;
-static bool ui;
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+#endif
 
 #if _DHT
+/* DHT temp/rh sensor */
 #if DHT_HIGH
 DHT dht (DHT_PIN, DHT22);
 #else
 DHT dht (DHT_PIN, DHT11);
 #endif
-#endif //_DHT
+#endif // DHT
 
 #if _LCD84x48
+/* Nokkia 5110 display */
+
 // The dimensions of the LCD (in pixels)...
 static const byte LCD_WIDTH = 84;
 static const byte LCD_HEIGHT = 48;
@@ -92,72 +144,41 @@ static const byte THERMO_HEIGHT = 2;
 static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x02, 0x05, 0x02,
 	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
 
-static PCD8544 lcd(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
+static PCD8544 lcd84x48(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
-#endif //_LCD84x48
 
-/* Report variables */
+#endif // LCD84x48
 
-static byte reportCount;    // count up until next report, i.e. packet send
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-struct {
-#if _DHT
-	int rhum    :7;  // 0..100 (avg'd)
-#if DHT_HIGH
-/* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
-	int temp    :10; // -500..+500 (int value of tenths avg)
-#else
-/* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
-	int temp    :10; // -500..+500 (tenths, .5 resolution)
-#endif
-#endif
-	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree :16;
-#endif
-} payload;
+
+
+#endif // DS
 
 #if _NRF24
-#endif // RF24 funcs
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-/** Generic routines */
-
-#if defined(ARDUINO) && ARDUINO >= 100
-#define printByte(args)  write(args);
-#else
-#define printByte(args)  print(args,BYTE);
-#endif
-
-
-static void showNibble (byte nibble) {
-	char c = '0' + (nibble & 0x0F);
-	if (c > '9')
-		c += 7;
-	Serial.print(c);
-}
-
-bool useHex = 0;
-
-static void showByte (byte value) {
-	if (useHex) {
-		showNibble(value >> 4);
-		showNibble(value);
-	} else {
-		Serial.print((int) value);
-	}
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
+#endif // NRF24
 
 #if _LCD
 #endif //_LCD
 
 #if _RTC
 #endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices }}} *** */
+
+/* *** EEPROM config *** {{{ */
+
+/* *** /EEPROM config *** }}} */
+
 
 //ISR(INT0_vect) 
 void irq0()
@@ -191,13 +212,107 @@ ISR(PCINT1_vect) {
 	else if (digitalRead(A2) == 1)  Serial.println("A2");
 }
 
+/* *** Peripheral hardware routines *** {{{ */
 
-static void doConfig(void)
+#if LDR_PORT
+#endif
+
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
+
+#if _LCD84x48
+
+
+void lcd_start()
+{
+	lcd84x48.begin(LCD_WIDTH, LCD_HEIGHT);
+
+	// Register the custom symbol...
+	lcd84x48.createChar(DEGREES_CHAR, degrees_glyph);
+
+	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
+	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
+//    lcd84x48.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
+//    lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
+	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
+
+	pinMode(backlightPin, OUTPUT);
+	analogWrite(backlightPin, 0xaf);
+}
+
+void lcd_printWelcome(void)
+{
+	lcd84x48.setCursor(6, 0);
+	lcd84x48.print(node);
+	lcd84x48.setCursor(0, 5);
+	lcd84x48.print(sketch);
+}
+
+void lcd_printDHT()
+{
+	lcd84x48.setCursor(12, 2);
+	lcd84x48.print((float)payload.temp/10, 1);
+	lcd84x48.print("\001C ");
+	lcd84x48.setCursor(LCD_WIDTH/1.5, 2);
+	lcd84x48.print(payload.rhum, 1);
+	lcd84x48.print("%");
+}
+#endif //_LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+#endif // RF24 funcs
+
+#if _LCD
+#endif //_LCD
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+#endif //_HMC5883L
+
+
+void start_ui() 
+{
+	debug("Irq");
+	ui_irq = false;
+	idle.set(UI_IDLE);
+	if (!ui) {
+		ui = true;
+		digitalWrite(backlightPin, HIGH);
+		lcd_start();
+		lcd_printWelcome();
+	}
+}
+/* *** /Peripheral hardware routines }}} *** */
+
+/* *** Initialization routines *** {{{ */
+
+void doConfig(void)
 {
 }
 
-
-void setupLibs()
+void initLibs()
 {
 #if _DHT
 	dht.begin();
@@ -206,11 +321,28 @@ void setupLibs()
 	buttons_start();
 }
 
-static bool doAnnounce()
+
+/* *** /Initialization routines *** }}} */
+
+/* *** Run-time handlers *** {{{ */
+
+void doReset(void)
 {
+	pinMode(ledPin, OUTPUT);
+	pinMode(backlightPin, OUTPUT);
+	digitalWrite(backlightPin, LOW);
+	ui_irq = false;
+	tick = 0;
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
-static void doMeasure()
+bool doAnnounce()
+{
+	return false;
+}
+
+void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -256,7 +388,7 @@ static void doMeasure()
 #endif
 }
 
-static void doReport(void)
+void doReport(void)
 {
 #if SERIAL
 	Serial.print(node);
@@ -277,55 +409,6 @@ static void doReport(void)
 #endif//SERIAL
 }
 
-#if _LCD84x48
-void lcd_start()
-{
-	lcd.begin(LCD_WIDTH, LCD_HEIGHT);
-
-	// Register the custom symbol...
-	lcd.createChar(DEGREES_CHAR, degrees_glyph);
-
-	lcd.send( LOW, 0x21 );  // LCD Extended Commands on
-	lcd.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-//    lcd.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
-//    lcd.send( LOW, 0x0C );  // LCD in normal mode.
-	lcd.send( LOW, 0x20 );  // LCD Extended Commands toggle off
-
-	pinMode(backlightPin, OUTPUT);
-	analogWrite(backlightPin, 0xaf);
-}
-
-void lcd_printWelcome(void)
-{
-	lcd.setCursor(6, 0);
-	lcd.print(node);
-	lcd.setCursor(0, 5);
-	lcd.print(sketch);
-}
-
-void lcd_printDHT()
-{
-	lcd.setCursor(12, 2);
-	lcd.print((float)payload.temp/10, 1);
-	lcd.print("\001C ");
-	lcd.setCursor(LCD_WIDTH/1.5, 2);
-	lcd.print(payload.rhum, 1);
-	lcd.print("%");
-}
-#endif //_LCD84x48
-
-void start_ui() 
-{
-	debug("Irq");
-	ui_irq = false;
-	idle.set(UI_IDLE);
-	if (!ui) {
-		ui = true;
-		digitalWrite(backlightPin, HIGH);
-		lcd_start();
-		lcd_printWelcome();
-	}
-}
 
 void runScheduler(char task)
 {
@@ -361,35 +444,36 @@ void runScheduler(char task)
 	}
 }
 
-static void runCommand()
+void runCommand()
 {
 }
 
-static void reset(void)
-{
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
-	ui_irq = false;
-	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
-}
 
-/* Main */
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers *** {{{ */
+
+/* *** /InputParser handlers *** }}} */
+
+/* *** Main *** {{{ */
+
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
-	delay(500);
+#endif
 
-	setupLibs();
+	initLibs();
 
-	reset();
-
-	attachInterrupt(INT0, irq0, RISING);
+	doReset();
+	//attachInterrupt(INT0, irq0, RISING);
 	ui_irq = true;
 }
 
@@ -415,8 +499,8 @@ void loop(void)
 		} else if (stdby.poll()) {
 			debug("StdBy");
 			digitalWrite(backlightPin, LOW);
-			lcd.clear();
-			lcd.stop();
+			lcd84x48.clear();
+			lcd84x48.stop();
 			ui = false;
 		}
 	} else {
@@ -430,3 +514,6 @@ void loop(void)
 		}
 	}
 }
+
+/* }}} *** */
+

@@ -1,28 +1,25 @@
 /* 
 
-SD Card log reader with 84x48 display.
+RF24Node
 
-Current targets:
-	- Display menu
-	- SD card file log
-	- Serial mpe-bus slave version
 
-2014-06-15 - Started
-2014-06-22 - Created Lcd84x48 based on this.
+2015-01-15 - Started based on LogReader84x48,
+		integrating RF24Network helloworld_tx example.
 
  */
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
+#define DEBUG           0 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
 #define _LCD84x48       1
+#define _NRF24          1
 							
-#define REPORT_EVERY    5   // report every N measurement cycles
+#define REPORT_EVERY    2   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  10  // how often to measure, in tenths of seconds
 #define SCHEDULER_DELAY 100 //ms
 #define UI_DELAY        10000
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
@@ -38,19 +35,29 @@ Current targets:
 #include <JeeLib.h>
 #include <OneWire.h>
 #include <PCD8544.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <RF24Network.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
 
-const String sketch = "X-LogReader84x48";
+const String sketch = "X-RF24Node";
 const int version = 0;
 
-char node[] = "lr";
+char node[] = "rf24n";
 
 
 /* IO pins */
+#       define SCLK 3
+#       define SDIN 4
+#       define DC 5
+#       define RESET 6
+#       define SCE 7
+#       define CS       8
+#       define CE       9
 static const byte ledPin = 13;
-static const byte backlightPin = 9;
+static const byte backlightPin = 11;
 
 
 volatile bool ui_irq;
@@ -196,7 +203,7 @@ static const byte THERMO_HEIGHT = 2;
 static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x02, 0x05, 0x02,
 	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
 
-static PCD8544 lcd84x48(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
+static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE); /* SCLK, SDIN, DC, RESET, SCE */
 
 
 #endif // LCD84x48
@@ -210,6 +217,26 @@ static PCD8544 lcd84x48(3, 4, 5, 6, 7); /* SCLK, SDIN, DC, RESET, SCE */
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+RF24 radio(CE, CS);
+
+// Network uses that radio
+RF24Network network(radio);
+
+// Address of our node
+const uint16_t this_node = 1;
+
+// Address of the other node
+const uint16_t other_node = 0;
+
+// How often to send 'hello world to the other unit
+const unsigned long interval = 2000; //ms
+
+// When did we last send?
+unsigned long last_sent;
+
+// How many have we sent already
+unsigned long packets_sent;
 
 #endif // NRF24
 
@@ -369,7 +396,11 @@ void doConfig(void)
 
 void initLibs()
 {
-
+#if _NRF24
+	SPI.begin();
+	radio.begin();
+	network.begin(/*channel*/ 90, /*node address*/ this_node);
+#endif // NRF24
 }
 
 
@@ -429,6 +460,16 @@ void doReport(void)
 	Serial.println();
 	serialFlush();
 #endif//SERIAL
+
+#if _NRF24
+	//payload_t payload = { millis(), packets_sent++ };
+	RF24NetworkHeader header(/*to node*/ other_node);
+	bool ok = network.write(header, &payload, sizeof(payload));
+	if (ok)
+		Serial.println("ok.");
+	else
+		Serial.println("failed.");
+#endif // NRF24
 }
 
 void uiStart() 
@@ -530,7 +571,7 @@ void setup(void)
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
+	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -543,6 +584,7 @@ void setup(void)
 
 void loop(void)
 {
+	network.update();
 	if (ui_irq) {
 		debugline("Irq");
 		ui_irq = false;
@@ -581,4 +623,5 @@ void loop(void)
 }
 
 /* }}} *** */
+
 

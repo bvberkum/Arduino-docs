@@ -25,8 +25,10 @@
 
 #include <avr/sleep.h>
 
-#include <DHT.h> // Adafruit DHT
+// Adafruit DHT
+#include <DHT.h>
 #include <DotmpeLib.h>
+//include <mpelib.h>
 #include <JeeLib.h>
 #include <PCD8544.h>
 
@@ -37,13 +39,13 @@
 #define DEBUG_MEASURE   1
 
 
-static String sketch = "PCD8544_Thermometer";
-static String node = "";
-static String version = "0";
+const String sketch = "PCD8544_Thermometer";
+const String node = "";
+const int version = 0;
 
-static const byte backlight = 9;
-static const byte sensorPin = A3;
-static const byte ledPin = 13;
+const byte backlight = 9;
+const byte sensorPin = A3;
+const byte ledPin = 13;
 
 
 MpeSerial mpeser (57600);
@@ -117,7 +119,8 @@ void irq0()
 
 void setup(void)
 {
-	mpeser.begin(sketch, version);
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
 	serialFlush();
 	attachInterrupt(INT0, irq0, RISING);
 

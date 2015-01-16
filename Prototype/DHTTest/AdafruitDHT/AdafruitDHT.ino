@@ -84,9 +84,9 @@ struct {
 	int temp2    :10; // -500..+500 (int value of tenths avg)
 #endif //_DHT2
 
-	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree :16;
+	int memfree     :16;
 #endif
 #if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
@@ -157,7 +157,6 @@ DHT dht2 (DHT2_PIN, DHT11);
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-
 #endif // NRF24
 
 #if _LCD
@@ -172,7 +171,7 @@ DHT dht2 (DHT2_PIN, DHT11);
 #endif // HMC5883L
 
 
-/* *** /Peripheral devices *** }}} */
+/* *** /Peripheral devices }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
@@ -200,7 +199,9 @@ DHT dht2 (DHT2_PIN, DHT11);
 #endif //_LCD84x48
 
 #if _DS
-/* Dallas DS18B20 thermometer routines */
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+
 #endif // DS
 
 #if _NRF24

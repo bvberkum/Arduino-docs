@@ -609,7 +609,7 @@ rf24ping: P := libraries/RF24/examples/pingpair/
 rf24ping: I := libraries/RF24/examples/pingpair/pingpair.hex
 rf24ping: jeenode upload
 
-#rf24hwtx: C := m8
+rf24hwtx: C := m328p
 #rf24hwtx: BRD := atmega8
 rf24hwtx: P := libraries/RF24Network/examples/helloworld_tx/
 rf24hwtx: I := libraries/RF24Network/examples/helloworld_tx/helloworld_tx.hex
@@ -883,6 +883,11 @@ thermo5110: C := m328p
 thermo5110: P := Prototype/ThermoLog84x48/
 thermo5110: I := Prototype/ThermoLog84x48/ThermoLog84x48.hex
 thermo5110: jeenode upload
+
+rf24node: C := m328p
+rf24node: P := Prototype/RF24Node
+rf24node: I := Prototype/RF24Node/RF24Node.hex
+rf24node: jeenode upload
 
 eeprom: C := m328p
 eeprom: P := Prototype/AtmegaEEPROM/
