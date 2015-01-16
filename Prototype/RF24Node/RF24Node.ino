@@ -10,7 +10,7 @@ RF24Node
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           0 /* Enable trace statements */
+#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
@@ -19,7 +19,7 @@ RF24Node
 							
 #define REPORT_EVERY    2   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  10  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  3  // how often to measure, in tenths of seconds
 #define SCHEDULER_DELAY 100 //ms
 #define UI_DELAY        10000
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
@@ -228,15 +228,6 @@ const uint16_t this_node = 1;
 
 // Address of the other node
 const uint16_t other_node = 0;
-
-// How often to send 'hello world to the other unit
-const unsigned long interval = 2000; //ms
-
-// When did we last send?
-unsigned long last_sent;
-
-// How many have we sent already
-unsigned long packets_sent;
 
 #endif // NRF24
 
@@ -462,13 +453,12 @@ void doReport(void)
 #endif//SERIAL
 
 #if _NRF24
-	//payload_t payload = { millis(), packets_sent++ };
 	RF24NetworkHeader header(/*to node*/ other_node);
 	bool ok = network.write(header, &payload, sizeof(payload));
 	if (ok)
-		Serial.println("ok.");
+		debugline("ACK");
 	else
-		Serial.println("failed.");
+		debugline("NACK");
 #endif // NRF24
 }
 
@@ -584,7 +574,7 @@ void setup(void)
 
 void loop(void)
 {
-	network.update();
+	//network.update();
 	if (ui_irq) {
 		debugline("Irq");
 		ui_irq = false;
