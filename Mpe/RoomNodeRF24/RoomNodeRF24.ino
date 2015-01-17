@@ -1,16 +1,8 @@
 /* 
- * nRF24L01+ testing
- *
- * Work in progress.
- *
- * - 
- */
-#include <DotmpeLib.h>
-#include <JeeLib.h>
-#include <SPI.h>
-#include <RF24.h>
 
-#include "printf.h"
+RoomNodeRF24
+
+ */
 
 
 /* *** Globals and sketch configuration *** */
@@ -22,67 +14,83 @@
 #define PIR_PORT        0   // defined if PIR is connected to a port's DIO pin
 #define _MEM            1   // Report free memory 
 #define _RFM12B         0
-#define _RFM12BLOBAT    0
 #define _NRF24          1
 							
-#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-							
-#define MAXLENLINE      79
-#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__)
-#define SRAM_SIZE       512
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE       1024
-#define EEPROM_SIZE     512
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE       2048
-//#define SRAM_SIZE       0x800 // atmega328, for debugging
-#define EEPROM_SIZE     1024
-#endif
+#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 							
 
-const String sketch = "RF24Test";
+
+#include <JeeLib.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
+#include "printf.h"
+
+
+
+const String sketch = "RoomNodeRF24";
 const int version = 0;
 
-String node_id = "rf24tst-1";
+char node[] = "rn24";
 
-int tick = 0;
-int pos = 0;
+String node_id = "rn24-1";
+
 
 /* IO pins */
-const byte ledPin = 13; // XXX shared with nrf24 SCK
-#if _NRF24
-const byte rf24_ce = 9;
-const byte rf24_csn = 8;
-#endif
+#       define CE       9  // NRF24
+#       define CS       10 // NRF24
+//define _DEBUG_LED 13
+
 
 MpeSerial mpeser (57600);
 
 
-/* Scheduled tasks */
-enum { 
+/* *** Report variables *** {{{ */
+
+
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+} payload;
+
+
+/* *** /Report variables *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
 	MEASURE,
 	REPORT,
-	STDBY
+	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[STDBY];
-Scheduler scheduler (schedbuf, STDBY);
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduled tasks *** }}} */
 
 
 /* *** EEPROM config *** {{{ */
 
 /* }}} *** */
 
-// Other variables used in various places in the code:
+/* *** Peripheral devices *** {{{ */
+
 #if SHT11_PORT
 SHT11 sht11 (SHT11_PORT);
 #endif
@@ -90,22 +98,30 @@ SHT11 sht11 (SHT11_PORT);
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
+
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
 */
+#endif // DHT
 
-#endif //_DHT
+#if _LCD84x48
+/* Nokkia 5110 display */
+
+
+#endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-#endif // _DS
+
+
+#endif // DS
+
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-// Set up nRF24L01 radio on SPI bus plus two extra pins
-RF24 radio(rf24_ce, rf24_csn); /* CE, CSN */
+RF24 radio(CE, CS);
 
 // nRF24L01 addresses: one for broadcast, one for listening
 const uint64_t pipes[2] = { 
@@ -113,146 +129,43 @@ const uint64_t pipes[2] = {
 	0xF0F0F0F0D2LL /* src id: local node */
 };
 
-#endif //_NRF24
+#endif // NRF24
 
 
-/* Report variables */
-
-static byte reportCount;    // count up until next report, i.e. packet send
-//static byte myNodeID;       // node ID used for this unit
-
-// This defines the structure of the packets which get sent out by wireless:
-
-struct {
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree     :16;
-#endif
-#if _RFM12BLOBAT
-	byte lobat :1;  // supply voltage dropped under 3.1V: 0..1
-#endif
-} payload;
-
-/* *** AVR routines *** {{{ */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-/* }}} *** */
-
-/* *** ATmega routines *** {{{ */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-/* }}} *** */
-
-/* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=0) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-		(length_off > 0) ? delay(length_off) : delay(length);
-	}
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	// a bit less for non-waiting loops or always..?
-	if ((tick % 20) == 0) {
-		blink(ledPin, 1, 15);
-	}
-#if SERIAL
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-#endif
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debugline(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
-
-/* }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
+
+#if LDR_PORT
+#endif
 
 #if PIR_PORT
 
 #endif // PIR_PORT
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio */
 
 #endif //_RFM12B
 
+#if _LCD84x48
+
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+
+#endif // DS
+
 #if _NRF24
-/* Nordic nRF24L01+ routines */
+/* Nordic nRF24L01+ radio routines */
 
 void rf24_init()
 {
@@ -297,9 +210,18 @@ void rf24_run()
 		}
 	}
 }
-#endif //_NRF24
 
-/* }}} *** */
+#endif // NRF24 funcs
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+#endif //_HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -311,16 +233,28 @@ void initLibs()
 {
 #if _NRF24
 	radio.begin();
-#endif //_NRF24
+#endif // NRF24
 
 #if SERIAL && DEBUG
 	printf_begin();
 #endif
 }
 
-/* }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
+
+void doReset(void)
+{
+	tick = 0;
+
+#if _NRF24
+	rf24_init();
+#endif //_NRF24
+
+	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
+}
 
 bool doAnnounce()
 {
@@ -335,18 +269,6 @@ bool doAnnounce()
 #endif
 #endif
 	return false;
-}
-
-void doReset(void)
-{
-	tick = 0;
-
-#if _NRF24
-	rf24_init();
-#endif //_NRF24
-
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 
@@ -373,9 +295,6 @@ void doMeasure()
 #endif
 #endif
 
-#if _RFM12BLOBAT
-	payload.lobat = rf12_lowbat();
-#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -412,14 +331,13 @@ bool doReport(void)
 	return ok;
 }
 
-void runScheduler(byte task)
+void runScheduler(char task)
 {
 	switch (task) {
 
 		case MEASURE:
-			// reschedule these measurements periodically
 			debugline("MEASURE");
-
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 
 			// every so often, a report needs to be sent out
@@ -465,6 +383,7 @@ void doTrigger()
 
 /* *** Main *** {{{ */
 
+
 void setup(void)
 {
 #if SERIAL
@@ -485,12 +404,17 @@ void setup(void)
 
 void loop(void)
 {
+#if _NRF24
+	// Pump the network regularly
+	network.update();
+#endif
 	debug_ticks();
 	serialFlush();
-	byte task = scheduler.pollWaiting();
-	if (task == 0xFF) {} // -1
-	else if (task == 0xFE) {} // -2
-	else runScheduler(task);
+	char task = scheduler.pollWaiting();
+	debugline("Wakeup");
+	if (-1 < task && task < IDLE) {
+		runScheduler(task);
+	}
 }
 
 /* }}} *** */

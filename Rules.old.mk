@@ -884,6 +884,11 @@ thermo5110: P := Prototype/ThermoLog84x48/
 thermo5110: I := Prototype/ThermoLog84x48/ThermoLog84x48.hex
 thermo5110: jeenode upload
 
+rf24link: C := m328p
+rf24link: P := Prototype/RadioLinkRF24
+rf24link: I := Prototype/RadioLinkRF24/RadioLinkRF24.hex
+rf24link: jeenode upload
+
 rf24node: C := m328p
 rf24node: P := Prototype/RF24Node
 rf24node: I := Prototype/RF24Node/RF24Node.hex

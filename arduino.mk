@@ -322,7 +322,7 @@ all: target
 target: $(TARGET).hex
 
 upload: target
-	@$(call alog,attention,$@,"Uploading...",$(SERIALDEV))
+	@$(call alog,attention,$@,Uploading...,$(SERIALDEV))
 	@test -n "$(SERIALDEV)" || { \
 		echo "error: SERIALDEV could not be determined automatically." >&2; \
 		exit 1; }
@@ -333,7 +333,7 @@ upload: target
 	$(AVRDUDE) $(AVRDUDEFLAGS) -U flash:w:$(TARGET).hex:i
 
 clean:
-	@$(call alog,attention,$@,"Cleaning...",$(SERIALDEV))
+	@$(call alog,attention,$@,Cleaning...,$(SERIALDEV))
 	@rm -f $(OBJECTS) $(TARGET).elf $(TARGET).hex $(ARDUINOLIB) *~
 	@rm -rf .lib/$(ARDUINOCOREDIR) .dep
 
@@ -361,7 +361,7 @@ size: $(TARGET).elf
 # building the target
 
 $(TARGET).hex: $(TARGET).elf
-	@$(call alog,attention,$@,"Building image...",$^)
+	@$(call alog,attention,$@,Building image...,$^)
 	@$(OBJCOPY) -O ihex -R .eeprom $< $@
 	@$(call alog,ok,$@,Done)
 
@@ -370,7 +370,7 @@ $(TARGET).hex: $(TARGET).elf
 #$(info $(COMPILE.cpp) $(CPPDEPFLAGS))
 
 $(TARGET).elf: $(ARDUINOLIB) $(OBJECTS)
-	@$(call alog,attention,$@,"Packing...",$^)
+	@$(call alog,attention,$@,Packing...,$^)
 	$(CC) $(LINKFLAGS) $(OBJECTS) $(ARDUINOLIB) -lm -o $@
 	@$(call alog,ok,$@,Done)
 

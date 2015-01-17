@@ -5,7 +5,8 @@ RF24Node
 
 2015-01-15 - Started based on LogReader84x48,
 		integrating RF24Network helloworld_tx example.
-
+2015-01-17 - Simple RF24Network send working together 
+		with Lcd84x48 sketch.
  */
 
 
@@ -19,12 +20,13 @@ RF24Node
 							
 #define REPORT_EVERY    2   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  3  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
 #define SCHEDULER_DELAY 100 //ms
 #define UI_DELAY        10000
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
+#define BL_INVERTED     0xFF
 							
 
 // Definition of interrupt names
@@ -48,18 +50,6 @@ const int version = 0;
 char node[] = "rf24n";
 
 
-/* IO pins */
-#       define SCLK 3
-#       define SDIN 4
-#       define DC 5
-#       define RESET 6
-#       define SCE 7
-#       define CS       8
-#       define CE       9
-static const byte ledPin = 13;
-static const byte backlightPin = 11;
-
-
 volatile bool ui_irq;
 
 static bool ui;
@@ -67,6 +57,22 @@ static bool ui;
 byte bl_level = 0xff;
 
 int out = 20;
+
+/* IO pins */
+//             INT0     2     UI IRQ
+#       define SCLK     3  // LCD84x48
+#       define SDIN     4  // LCD84x48
+#       define DC       5  // LCD84x48
+#       define RESET    6  // LCD84x48
+#       define SCE      7  // LCD84x48
+#       define CS       8  // NRF24
+#       define CE       9  // NRF24
+#       define BL       10 // PWM Backlight
+//             MOSI     11    NRF24
+//             MISO     12    NRF24
+//             SCK      13    NRF24
+//define _DEBUG_LED 13
+
 
 MpeSerial mpeser (57600);
 
@@ -231,9 +237,6 @@ const uint16_t other_node = 0;
 
 #endif // NRF24
 
-#if _LCD
-#endif //_LCD
-
 #if _RTC
 #endif //_RTC
 
@@ -312,6 +315,11 @@ void printKeys(void) {
 
 #endif // DHT
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
+
 #if _LCD84x48
 
 
@@ -324,12 +332,11 @@ void lcd_start()
 
 	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
 	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-    lcd84x48.send( LOW, 0x14 );  // LCD bias mode 1:48. //0x13
+    lcd84x48.send( LOW, 0x13 );  // LCD bias mode 1:48. //0x13
     lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
 	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
 
-	pinMode(backlightPin, OUTPUT);
-	analogWrite(backlightPin, 0x1f);
+	analogWrite(BL, 0xAF ^ BL_INVERTED);
 }
 
 void lcd_printWelcome(void)
@@ -342,14 +349,17 @@ void lcd_printWelcome(void)
 
 void lcd_printTicks(void)
 {
-	lcd84x48.setCursor(30, 2);
+	lcd84x48.setCursor(10, 2);
+	lcd84x48.print("tick ");
 	lcd84x48.print(tick);
-	lcd84x48.setCursor(0, 3);
+	lcd84x48.setCursor(10, 3);
+	lcd84x48.print("idle ");
 	lcd84x48.print(idle.remaining());
-	lcd84x48.setCursor(42, 3);
+	lcd84x48.setCursor(10, 4);
+	lcd84x48.print("stdby ");
 	lcd84x48.print(stdby.remaining());
 }
-#endif //_LCD84x48
+#endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
@@ -360,10 +370,15 @@ void lcd_printTicks(void)
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-#endif // RF24 funcs
+void rf24_init()
+{
+}
 
-#if _LCD
-#endif //_LCD
+void rf24_run()
+{
+}
+
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
@@ -403,13 +418,20 @@ void doReset(void)
 {
 	doConfig();
 
-	pinMode(ledPin, OUTPUT);
-	pinMode(backlightPin, OUTPUT);
-	digitalWrite(backlightPin, LOW);
+#if _DEBUG_LED
+	pinMode(_DEBUG_LED, OUTPUT);
+#endif
+	pinMode(BL, OUTPUT);
+	digitalWrite(BL, LOW ^ BL_INVERTED);
 	attachInterrupt(INT0, irq0, RISING);
 	ui_irq = false;
 	ui_irq = true;
 	tick = 0;
+
+#if _NRF24
+	rf24_init();
+#endif //_NRF24
+
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
@@ -419,11 +441,14 @@ bool doAnnounce()
 	return false;
 }
 
+
+// readout all the sensors and other values
 void doMeasure()
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	payload.ctemp = smoothedAverage(payload.ctemp, internalTemp(), firstTime);
+	int ctemp = internalTemp();
+	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -462,12 +487,11 @@ void doReport(void)
 #endif // NRF24
 }
 
-void uiStart() 
+void uiStart()
 {
 	idle.set(UI_IDLE);
 	if (!ui) {
 		ui = true;
-		digitalWrite(backlightPin, HIGH);
 		lcd_start();
 		lcd_printWelcome();
 	}
@@ -482,6 +506,7 @@ void runScheduler(char task)
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 
+			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
@@ -536,7 +561,7 @@ static void measureCmd() {
 
 static void stdbyCmd() {
 	ui = false;
-	digitalWrite(backlightPin, LOW);
+	digitalWrite(BL, LOW ^ BL_INVERTED);
 }
 
 InputParser::Commands cmdTab[] = {
@@ -574,7 +599,10 @@ void setup(void)
 
 void loop(void)
 {
-	//network.update();
+#if _NRF24
+	// Pump the network regularly
+	network.update();
+#endif
 	if (ui_irq) {
 		debugline("Irq");
 		ui_irq = false;
@@ -589,19 +617,20 @@ void loop(void)
 		parser.poll();
 		if (idle.poll()) {
 			debugline("Idle");
-			digitalWrite(backlightPin, 0);
-			analogWrite(backlightPin, 0xaf);
+			analogWrite(BL, 0x1F ^ BL_INVERTED);
 			stdby.set(UI_STDBY);
 		} else if (stdby.poll()) {
 			debugline("StdBy");
-			digitalWrite(backlightPin, HIGH);
+			digitalWrite(BL, LOW ^ BL_INVERTED);
 			lcd84x48.clear();
 			lcd84x48.stop();
 			ui = false;
 		}
 		lcd_printTicks();
 	} else {
-		blink(ledPin, 1, 15);
+#ifdef _DEBUG_LED
+		blink(_DEBUG_LED, 1, 15);
+#endif
 		debugline("Sleep");
 		serialFlush();
 		char task = scheduler.pollWaiting();
@@ -613,5 +642,4 @@ void loop(void)
 }
 
 /* }}} *** */
-
 
