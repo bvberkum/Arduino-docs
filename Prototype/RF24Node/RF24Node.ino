@@ -332,11 +332,9 @@ void lcd_start()
 
 	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
 	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-    lcd84x48.send( LOW, 0x13 );  // LCD bias mode 1:48. //0x13
+    lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
     lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
 	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
-
-	analogWrite(BL, 0xAF ^ BL_INVERTED);
 }
 
 void lcd_printWelcome(void)
@@ -354,10 +352,10 @@ void lcd_printTicks(void)
 	lcd84x48.print(tick);
 	lcd84x48.setCursor(10, 3);
 	lcd84x48.print("idle ");
-	lcd84x48.print(idle.remaining());
+	lcd84x48.print(idle.remaining()/100);
 	lcd84x48.setCursor(10, 4);
 	lcd84x48.print("stdby ");
-	lcd84x48.print(stdby.remaining());
+	lcd84x48.print(stdby.remaining()/100);
 }
 #endif // LCD84x48
 
@@ -607,6 +605,7 @@ void loop(void)
 		debugline("Irq");
 		ui_irq = false;
 		uiStart();
+		analogWrite(BL, 0xAF ^ BL_INVERTED);
 	}
 	debug_ticks();
 	char task = scheduler.poll();
