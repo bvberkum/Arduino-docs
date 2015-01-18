@@ -7,6 +7,7 @@ RF24Node
 		integrating RF24Network helloworld_tx example.
 2015-01-17 - Simple RF24Network send working together 
 		with Lcd84x48 sketch.
+
  */
 
 
@@ -21,8 +22,6 @@ RF24Node
 #define REPORT_EVERY    2   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
-#define SCHEDULER_DELAY 100 //ms
-#define UI_DELAY        10000
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
@@ -71,7 +70,7 @@ int out = 20;
 //             MOSI     11    NRF24
 //             MISO     12    NRF24
 //             SCK      13    NRF24
-//define _DEBUG_LED 13
+//#       define _DEBUG_LED 13
 
 
 MpeSerial mpeser (57600);
@@ -209,7 +208,7 @@ static const byte THERMO_HEIGHT = 2;
 static const byte thermometer[] = { 0x00, 0x00, 0x48, 0xfe, 0x01, 0xfe, 0x00, 0x02, 0x05, 0x02,
 	0x00, 0x00, 0x62, 0xff, 0xfe, 0xff, 0x60, 0x00, 0x00, 0x00};
 
-static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE); /* SCLK, SDIN, DC, RESET, SCE */
+static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 
 #endif // LCD84x48
@@ -422,7 +421,6 @@ void doReset(void)
 	pinMode(BL, OUTPUT);
 	digitalWrite(BL, LOW ^ BL_INVERTED);
 	attachInterrupt(INT0, irq0, RISING);
-	ui_irq = false;
 	ui_irq = true;
 	tick = 0;
 
@@ -438,7 +436,6 @@ bool doAnnounce()
 {
 	return false;
 }
-
 
 // readout all the sensors and other values
 void doMeasure()
@@ -501,6 +498,7 @@ void runScheduler(char task)
 
 		case MEASURE:
 			debugline("MEASURE");
+			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 
@@ -519,11 +517,17 @@ void runScheduler(char task)
 			break;
 
 		case WAITING:
+		case IDLE:
+			Serial.print("!");
+			serialFlush();
 			break;
 
 		default:
+			Serial.print("0x");
 			Serial.print(task, HEX);
-			Serial.println('?');
+			Serial.println(" ?");
+			serialFlush();
+			break;
 	}
 }
 
@@ -624,6 +628,9 @@ void loop(void)
 			lcd84x48.clear();
 			lcd84x48.stop();
 			ui = false;
+		} else if (!stdby.idle()) {
+			// XXX toggle UI stdby Power, got to some lower power mode..
+			delay(30);
 		}
 		lcd_printTicks();
 	} else {
