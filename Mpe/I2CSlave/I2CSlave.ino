@@ -5,19 +5,6 @@
 #include <Wire.h>
 
 
-void setup()
-{
-  //Serial.begin(9600);           // start serial for output
-  Wire.begin(2);                // join i2c bus with address #2
-  Wire.onRequest(requestEvent); // register event
-  Wire.onReceive(receiveEvent); // register event
-}
-
-void loop()
-{
-  delay(100);
-}
-
 // function that executes whenever data is requested by master
 // this function is registered as an event, see setup()
 void requestEvent()
@@ -38,3 +25,22 @@ void receiveEvent(int howMany)
   int x = Wire.read();    // receive byte as an integer
   //Serial.println(x);         // print the integer
 }
+
+/* *** Main *** {{{ */
+
+
+void setup(void)
+{
+  //Serial.begin(9600);           // start serial for output
+  Wire.begin(2);                // join i2c bus with address #2
+  Wire.onRequest(requestEvent); // register event
+  Wire.onReceive(receiveEvent); // register event
+}
+
+void loop(void)
+{
+  delay(100);
+}
+
+/* }}} *** */
+

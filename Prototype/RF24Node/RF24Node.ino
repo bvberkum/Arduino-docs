@@ -2,6 +2,10 @@
 
 RF24Node
 
+- Low power scheduled node with UI loop
+  and serial UI.
+
+TODO: get NRF24 client stuff running
 
 2015-01-15 - Started based on LogReader84x48,
 		integrating RF24Network helloworld_tx example.
@@ -12,7 +16,7 @@ RF24Node
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
+#define SERIAL          1   // set to 1 to enable serial interface
 #define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
@@ -24,8 +28,9 @@ RF24Node
 #define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
-#define MAXLENLINE      79
 #define BL_INVERTED     0xFF
+							
+#define MAXLENLINE      79
 							
 
 // Definition of interrupt names
@@ -44,15 +49,14 @@ RF24Node
 
 
 
+
 const String sketch = "X-RF24Node";
 const int version = 0;
 
 char node[] = "rf24n";
 
-
 volatile bool ui_irq;
-
-static bool ui;
+bool ui;
 
 byte bl_level = 0xff;
 
@@ -103,7 +107,7 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 struct {
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
+#ifdef _MEM
 	int memfree     :16;
 #endif
 } payload;
@@ -114,6 +118,7 @@ struct {
 /* *** Scheduled tasks *** {{{ */
 
 enum {
+	ANNOUNCE,
 	MEASURE,
 	REPORT,
 	TASK_END
@@ -147,6 +152,21 @@ bool schedRunning()
 
 /* *** EEPROM config *** {{{ */
 
+// See Prototype Node or SensorNode
+//#define CONFIG_VERSION "nx1"
+//#define CONFIG_START 0
+
+
+struct Config {
+	char node[4];
+	int node_id;
+	int version;
+	char config_id[4];
+} static_config = {
+	/* default values */
+//	{ node[0], node[1], 0, 0 }, 0, version, CONFIG_VERSION
+};
+
 bool loadConfig(Config &c)
 {
 }
@@ -163,6 +183,11 @@ void writeConfig(Config &c)
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support }}} *** */
 
 #if _DHT
 /* DHT temp/rh sensor 
@@ -185,6 +210,11 @@ DHT dht (DHT_PIN, DHT11);
 #if _DHT2
 DHT dht2 (DHT2_PIN, DHT11);
 #endif
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -215,7 +245,6 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 
-
 #endif // DS
 
 #if _NRF24
@@ -224,7 +253,7 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 RF24 radio(CE, CS);
 
 // Network uses that radio
-RF24Network network(radio);
+RF24Network/*Debug*/ network(radio);
 
 // Address of our node
 const uint16_t this_node = 1;
@@ -235,7 +264,7 @@ const uint16_t other_node = 0;
 #endif // NRF24
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
@@ -244,53 +273,6 @@ const uint16_t other_node = 0;
 
 
 /* *** /Peripheral devices }}} *** */
-
-/* *** UI *** {{{ */
-
-//ISR(INT0_vect) 
-void irq0()
-{
-	ui_irq = true;
-	//Sleepy::watchdogInterrupts(0);
-}
-
-byte SAMPLES = 0x1f;
-uint8_t keysamples = SAMPLES;
-static uint8_t keyactive = 4;
-static uint8_t keypins[4] = {
-	8, 11, 10, 2
-};
-uint8_t keysample[4] = { 0, 0, 0, 0 };
-bool keys[4];
-
-void readKeys(void) {
-	for (int i=0;i<4;i++) {
-		if (digitalRead(keypins[i])) {
-			keysample[i]++;
-		}
-	}
-}
-bool keyActive(void) {
-	keysamples = SAMPLES;
-	for (int i=0;i<4;i++) {
-		keys[i] = (keysample[i] > keyactive);
-		keysample[i] = 0;
-	}
-	for (int i=0;i<4;i++) {
-		if (keys[i])
-			return true;
-	}
-	return false;
-}
-void printKeys(void) {
-	for (int i=0;i<4;i++) {
-		Serial.print(keys[i]);
-		Serial.print(" ");
-	}
-	Serial.println();
-}
-
-/* *** /UI }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -302,7 +284,6 @@ void printKeys(void) {
 #endif
 /* *** /PIR support *** }}} */
 
-
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
@@ -311,9 +292,10 @@ void printKeys(void) {
 #endif // DHT
 
 #if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
+/* HopeRF RFM12B 868Mhz digital radio routines */
 
-#endif //_RFM12B
+
+#endif // RFM12B
 
 #if _LCD84x48
 
@@ -358,6 +340,34 @@ void lcd_printTicks(void)
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
+static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
+}
+
+static int ds_conv_temp_c(uint8_t data[8], int SignBit) {
+}
+
+static int readDS18B20(uint8_t addr[8]) {
+
+}
+
+static uint8_t readDSCount() {
+}
+
+static void updateDSCount(uint8_t new_count) {
+}
+
+static void writeDSAddr(uint8_t addr[8]) {
+}
+
+static void readDSAddr(int a, uint8_t addr[8]) {
+}
+
+static void printDSAddrs(void) {
+}
+
+static void findDS18B20s(void) {
+}
+
 
 #endif // DS
 
@@ -372,26 +382,116 @@ void rf24_run()
 {
 }
 
+
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
 
+void Init_HMC5803L(void)
+{
+}
 
+int HMC5803L_Read(byte Axis)
+{
+	int Result;
+
+	return Result;
+}
 #endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
 
+/* *** UI *** {{{ */
+
+//ISR(INT0_vect) 
+void irq0()
+{
+	ui_irq = true;
+	//Sleepy::watchdogInterrupts(0);
+}
+
+byte SAMPLES = 0x1f;
+uint8_t keysamples = SAMPLES;
+static uint8_t keyactive = 4;
+static uint8_t keypins[4] = {
+	8, 11, 10, 2
+};
+uint8_t keysample[4] = { 0, 0, 0, 0 };
+bool keys[4];
+
+void readKeys(void) {
+	for (int i=0;i<4;i++) {
+		if (digitalRead(keypins[i])) {
+			keysample[i]++;
+		}
+	}
+}
+
+bool keyActive(void) {
+	keysamples = SAMPLES;
+	for (int i=0;i<4;i++) {
+		keys[i] = (keysample[i] > keyactive);
+		keysample[i] = 0;
+	}
+	for (int i=0;i<4;i++) {
+		if (keys[i])
+			return true;
+	}
+	return false;
+}
+
+void printKeys(void) {
+	for (int i=0;i<4;i++) {
+		Serial.print(keys[i]);
+		Serial.print(" ");
+	}
+	Serial.println();
+}
+
+
+/* *** /UI }}} *** */
+
 /* UART commands {{{ */
+
+void helpCmd() {
+	Serial.println("Help!");
+	idle.set(UI_IDLE);
+}
+
+void valueCmd () {
+	int v;
+	parser >> v;
+	Serial.print("value = ");
+	Serial.println(v);
+	idle.set(UI_IDLE);
+}
+
+void reportCmd () {
+	doReport();
+	idle.set(UI_IDLE);
+}
+
+void measureCmd() {
+	doMeasure();
+	idle.set(UI_IDLE);
+}
+
+void stdbyCmd() {
+	ui = false;
+	digitalWrite(BL, LOW ^ BL_INVERTED);
+}
 
 
 /* UART commands }}} */
 
 /* Wire init {{{ */
+
+// See I2CPIR
 
 /* Wire init }}} */
 
@@ -404,12 +504,19 @@ void rf24_run()
 
 /* *** Initialization routines *** {{{ */
 
+void initConfig(void)
+{
+	// See Prototype/Node
+	//sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+}
+
 void doConfig(void)
 {
 	/* load valid config or reset default config */
 	//if (!loadConfig(static_config)) {
 	//	writeConfig(static_config);
 	//}
+	initConfig();
 }
 
 void initLibs()
@@ -422,7 +529,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines *** }}} */
+/* *** /Initialization routines }}} *** */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -469,9 +576,7 @@ void doMeasure()
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
-#endif
-
-	serialFlush();
+#endif //_MEM
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -479,7 +584,7 @@ void doReport(void)
 {
 #if SERIAL
 	Serial.print(node);
-	Serial.print(" ");
+	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
 #if _MEM
@@ -488,9 +593,12 @@ void doReport(void)
 #endif
 	Serial.println();
 	serialFlush();
-#endif//SERIAL
+#endif// SERIAL
 
-#if _NRF24
+#ifdef _RFM12B
+#endif
+
+#ifdef _NRF24
 	RF24NetworkHeader header(/*to node*/ other_node);
 	bool ok = network.write(header, &payload, sizeof(payload));
 	if (ok)
@@ -514,11 +622,16 @@ void runScheduler(char task)
 {
 	switch (task) {
 
+		case ANNOUNCE:
+			// TODO: see SensorNode
+			Serial.println("HANDSHAKE");
+			Serial.print(node);
+			Serial.println();
+			serialFlush();
+			break;
+
 		case MEASURE:
 			debugline("MEASURE");
-#ifdef _DBG_LED
-			blink(_DBG_LED, 1, 15);
-#endif
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
@@ -528,7 +641,12 @@ void runScheduler(char task)
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
+#if SERIAL
 			serialFlush();
+#endif
+#ifdef _DBG_LED
+			blink(_DBG_LED, 2, 25);
+#endif
 			break;
 
 		case REPORT:
@@ -537,6 +655,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
+#if DEBUG && SERIAL
 		case WAITING:
 		case IDLE:
 			Serial.print("!");
@@ -549,6 +668,8 @@ void runScheduler(char task)
 			Serial.println(" ?");
 			serialFlush();
 			break;
+#endif
+
 	}
 }
 
@@ -559,34 +680,6 @@ void runScheduler(char task)
 
 #if SERIAL
 
-void helpCmd() {
-	Serial.println("Help!");
-	idle.set(UI_IDLE);
-}
-
-void valueCmd () {
-	int v;
-	parser >> v;
-	Serial.print("value = ");
-	Serial.println(v);
-	idle.set(UI_IDLE);
-}
-
-void reportCmd () {
-	doReport();
-	idle.set(UI_IDLE);
-}
-
-void measureCmd() {
-	doMeasure();
-	idle.set(UI_IDLE);
-}
-
-void stdbyCmd() {
-	ui = false;
-	digitalWrite(BL, LOW ^ BL_INVERTED);
-}
-
 InputParser::Commands cmdTab[] = {
 	{ 'h', 0, helpCmd },
 	{ 'v', 2, valueCmd },
@@ -595,8 +688,8 @@ InputParser::Commands cmdTab[] = {
 	{ 's', 0, stdbyCmd },
 	{ 'x', 0, doReset },
 };
-
 #endif // SERIAL
+
 
 /* *** /InputParser handlers }}} *** */
 
@@ -622,6 +715,9 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
+#endif
 #if _NRF24
 	// Pump the network regularly
 	network.update();
@@ -633,6 +729,7 @@ void loop(void)
 		analogWrite(BL, 0xAF ^ BL_INVERTED);
 	}
 	debug_ticks();
+
 	char task = scheduler.poll();
 	if (-1 < task && task < IDLE) {
 		runScheduler(task);
@@ -656,7 +753,7 @@ void loop(void)
 		lcd_printTicks();
 	} else {
 #ifdef _DBG_LED
-		blink(_DBG_LED, 1, 15);
+		blink(_DBG_LED, 1, 25);
 #endif
 		debugline("Sleep");
 		serialFlush();

@@ -245,18 +245,6 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** UI *** {{{ */
-
-//ISR(INT0_vect) 
-void irq0()
-{
-	ui_irq = true;
-	//Sleepy::watchdogInterrupts(0);
-}
-
-
-/* *** /UI }}} *** */
-
 /* *** Peripheral hardware routines *** {{{ */
 
 #if LDR_PORT
@@ -342,6 +330,18 @@ void lcd_printTicks(void)
 
 
 /* *** /Peripheral hardware routines }}} *** */
+
+/* *** UI *** {{{ */
+
+//ISR(INT0_vect) 
+void irq0()
+{
+	ui_irq = true;
+	//Sleepy::watchdogInterrupts(0);
+}
+
+
+/* *** /UI }}} *** */
 
 /* *** Initialization routines *** {{{ */
 

@@ -3,8 +3,13 @@ CarrierCase
 
 - Generally based on roomNode, probably can be made compatible with other environmental sensor nodes.
 - Two moisture probes.
+- Low power scheduled node. No UI yet.
+
 - Later to have shift register and analog switchting for mre inputs, perhaps.
   Make SDA/SCL free for I2C or other bus?
+
+TODO: DallasTempBus
+TODO: other wire, relay
 
 Current pin assignments:
 
@@ -69,31 +74,32 @@ ToDo
 #define DEBUG_DHT 1
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
-#include <DHT.h> // Adafruit DHT
-#include <DotmpeLib.h>
-//#include <EEPROM.h>
-// include EEPROMEx.h
-#include <JeeLib.h>
-#include <OneWire.h>
-#include <Wire.h>
-#include <stdlib.h>
-#include <avr/eeprom.h>
-#include <avr/pgmspace.h>
-#include <avr/sleep.h>
-#include <util/atomic.h>
-
-#include "EmBencode.h"
-
-/** Globals and sketch configuration  */
-#define DEBUG           1 /* Enable trace statements */
+/* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
+#define _MEM            1   // Report free memory 
+#define _RFM12B         1
+#define _RFM12BLOBAT    1   // Use JeeNode lowbat measurement
+#define _NRF24          0
+#define _HMC5883L       1
+#define _DHT            0
+#define _DS             0
+#define DS_PIN          A5
+#define DEBUG_DS        1
+//#define FIND_DS    1
+#define PIR_PORT        0
+#define DHT_PIN         0   // DIO for DHTxx
+#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
+							
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
+#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_STDBY        8000  // ms
 							
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
@@ -101,43 +107,111 @@ ToDo
 // mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
 							
-#define _MEM            1   // Report free memory 
-#define _RFM12B         0
-#define _RFM12BLOBAT    1   // Use JeeNode lowbat measurement
-#define _NRF24          0
-#define _HMC5883L       1
-#define _DHT            0
-#define DHT_PIN         0   // DIO for DHTxx
-#define _DS             0
-#define DS_PIN          A5
-#define DEBUG_DS        1
-//#define FIND_DS    1
-#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
-#define PIR_PORT        0
-							
 
-String sketch = "CarrierCase";
-String version = "0";
+#include <stdlib.h>
+#include <avr/eeprom.h>
+#include <avr/pgmspace.h>
+#include <avr/sleep.h>
+#include <util/atomic.h>
+
+// Adafruit DHT
+#include <DHT.h>
+#include <Wire.h>
+#include <JeeLib.h>
+#include <OneWire.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
+//#include <EEPROM.h>
+// include EEPROMEx.h
+#include "EmBencode.h"
+
+
+
+
+const String sketch = "CarrierCase";
+const int version = 0;
 
 String node_id = "cc-1";
 
-int tick = 0;
-int pos = 0;
+
+/* IO pins */
+//              RXD      0
+//              TXD      1
+//              INT0     2
+#       define _DBG_LED2 8 // B0, yellow
+#       define _DBG_LED 9  // B1, orange
+#       define BL       10 // PWM Backlight
+
+//              MOSI     11
+//              MISO     12
+//              SCK 13 
+
 
 MpeSerial mpeser (57600);
 
-/* Scheduled tasks */
-enum { ANNOUNCE, MEASURE, REPORT };
+MilliTimer idle, stdby;
 
-static word schedbuf[REPORT];
-Scheduler scheduler (schedbuf, REPORT);
+
+/* *** Report variables *** {{{ */
+
+
+enum { ANNOUNCE_MSG, REPORT_MSG };
+
+static byte reportCount;    // count up until next report, i.e. packet send
+static byte rf12_id;       // node ID used for this unit
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+	int msgtype     :8; // XXX: incorporated, but not the right place..
+#if LDR_PORT
+	byte light      :8;     // light sensor: 0..255
+#endif
+#if PIR_PORT
+	byte moved      :1;  // motion detector: 0..1
+#endif
+#ifdef _DHT
+	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
+	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
+#endif
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#ifdef _HMC5883L
+	int magnx;
+	int magny;
+	int magnz;
+#endif //_HMC5883L
+#ifdef _MEM
+	int memfree     :16;
+#endif
+#ifdef _RFM12BLOBAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
+} payload;
+
+
+/* *** /Report variables }}} *** */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
+	ANNOUNCE,
+	MEASURE,
+	REPORT,
+	TASK_END
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-/* RFM12 message types */
-enum { ANNOUNCE_MSG, REPORT_MSG };
 
+/* *** /Scheduled tasks }}} *** */
+
+/* *** EEPROM config *** {{{ */
 
 /* Atmega EEPROM stuff */
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
@@ -145,6 +219,111 @@ should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
+void writeConfig()
+{
+#if _RFM12B
+	eeprom_write_byte(RF12_EEPROM_ADDR, 4);
+	eeprom_write_byte(RF12_EEPROM_ADDR+1, 5);
+	//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
+	// JeeLib RF12_EEPROM_ADDR is at 20
+	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
+	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+
+	Serial.print("nodeId: ");
+	Serial.println(nodeId);
+	Serial.print("group: ");
+	Serial.println(group);
+	serialFlush();
+#endif //_RFM12B
+}
+
+
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+
+#define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
+#define PIR_HOLD_TIME   30  // hold PIR value this many seconds after change
+
+/// Interface to a Passive Infrared motion sensor.
+class PIR : public Port {
+	volatile byte value, changed;
+	volatile uint32_t lastOn;
+public:
+	PIR (byte portnum)
+		: Port (portnum), value (0), changed (0), lastOn (0) {}
+
+	// this code is called from the pin-change interrupt handler
+	void poll() {
+		// see http://talk.jeelabs.net/topic/811#post-4734 for PIR_INVERTED
+		byte pin = digiRead() ^ PIR_INVERTED;
+		// if the pin just went on, then set the changed flag to report it
+		if (pin) {
+			if (!state()) {
+				changed = 1;
+			}
+			lastOn = millis();
+		}
+		value = pin;
+	}
+
+	// state is true if curr value is still on or if it was on recently
+	byte state() const {
+		byte f = value;
+		if (lastOn > 0)
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+				if (millis() - lastOn < 1000 * PIR_HOLD_TIME)
+					f = 1;
+			}
+		return f;
+	}
+
+	// return true if there is new motion to report
+	byte triggered() {
+		byte f = changed;
+		changed = 0;
+		return f;
+	}
+};
+
+PIR pir (PIR_PORT);
+
+// the PIR signal comes in via a pin-change interrupt
+ISR(PCINT2_vect) { pir.poll(); }
+
+#endif
+/* *** /PIR support }}} *** */
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+//DHTxx dht (DHT_PIN); // JeeLib DHT
+
+#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT22   // DHT 22  (AM2302)
+
+DHT dht (DHT_PIN, DHTTYPE); // DHT lib
+#endif // DHT
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif //_RFM12B
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+
+
+#endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
@@ -156,20 +335,16 @@ volatile int ds_value[ds_count];
 volatile int ds_value[8]; // take on 8 DS sensors in report
 
 enum { DS_OK, DS_ERR_CRC };
-#endif //_DS
-#if LDR_PORT
-Port ldr (LDR_PORT);
-#endif
-#if _DHT
-//DHTxx dht (DHT_PIN); // JeeLib DHT
 
-#define DHTTYPE DHT11   // DHT 11 
-//#define DHTTYPE DHT22   // DHT 22  (AM2302)
+#endif // DS
 
-DHT dht (DHT_PIN, DHTTYPE); // DHT lib
-#endif //_DHT
 #if _NRF24
-#endif //_NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+#endif // NRF24
+
+#if _RTC
+#endif //_RTC
+
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
@@ -181,149 +356,11 @@ DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 #define Y 7
 #define Z 5
 
-#endif //_HMC5883L
 
-/* Report variables */
-
-static byte reportCount;    // count up until next report, i.e. packet send
-static byte rf12_id;       // node ID used for this unit
-
-// This defines the structure of the packets which get sent out by wireless:
-
-struct {
-	int msgtype     :8; // XXX: incorporated, but not the right place..
-#if LDR_PORT
-	byte light      :8;     // light sensor: 0..255
-#endif
-#if PIR_PORT
-	byte moved      :1;  // motion detector: 0..1
-#endif
-#if _DHT
-	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
-	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
-#endif
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#if _HMC5883L
-	int magnx;
-	int magny;
-	int magnz;
-#endif //_HMC5883L
-#if _MEM
-	int memfree     :16;
-#endif
-#if _RFM12BLOBAT
-	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
-#endif
-} payload;
+#endif // HMC5883L
 
 
-/** AVR routines */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-
-/** ATmega routines */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-	}
-}
-
-static void showNibble (byte nibble) {
-	char c = '0' + (nibble & 0x0F);
-	if (c > '9')
-		c += 7;
-	Serial.print(c);
-}
-
-bool useHex = 0;
-
-static void showByte (byte value) {
-	if (useHex) {
-		showNibble(value >> 4);
-		showNibble(value);
-	} else {
-		Serial.print((int) value);
-	}
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
+/* *** /Peripheral devices }}} *** */
 
 // spend a little time in power down mode while the SHT11 does a measurement
 static void lpDelay () {
@@ -380,104 +417,22 @@ void freeEmbencBuff() {
 }
 
 
-#if PIR_PORT
+/* *** Peripheral hardware routines *** {{{ */
 
-#define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
-#define PIR_HOLD_TIME   30  // hold PIR value this many seconds after change
-/// Interface to a Passive Infrared motion sensor.
-    class PIR : public Port {
-        volatile byte value, changed;
-    public:
-        volatile uint32_t lastOn;
-        PIR (byte portnum)
-            : Port (portnum), value (0), changed (0), lastOn (0) {}
-
-        // this code is called from the pin-change interrupt handler
-        void poll() {
-            // see http://talk.jeelabs.net/topic/811#post-4734 for PIR_INVERTED
-            byte pin = digiRead() ^ PIR_INVERTED;
-            // if the pin just went on, then set the changed flag to report it
-            if (pin) {
-                if (!state())
-                    changed = 1;
-                lastOn = millis();
-            }
-            value = pin;
-        }
-
-        // state is true if curr value is still on or if it was on recently
-        byte state() const {
-            byte f = value;
-            if (lastOn > 0)
-                ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-                    if (millis() - lastOn < 1000 * PIR_HOLD_TIME)
-                        f = 1;
-                }
-            return f;
-        }
-
-        // return true if there is new motion to report
-        byte triggered() {
-            byte f = changed;
-            changed = 0;
-            return f;
-        }
-    };
-
-PIR pir (PIR_PORT);
-
-// the PIR signal comes in via a pin-change interrupt
-ISR(PCINT2_vect) { pir.poll(); }
-
+#if LDR_PORT
 #endif
 
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
 
-// XXX: just an example, not actually used 
-static void sendSomeData () {
-  EmBencode encoder;
-  // send a simple string
-  encoder.push("abcde");
-  // send a number of bytes, could be binary
-  encoder.push("123", 3);
-  // send an integer
-  encoder.push(12345);
-  // send a list with an int, a nested list, and an int
-  encoder.startList();
-    encoder.push(987);
-    encoder.startList();
-      encoder.push(654);
-    encoder.endList();
-    encoder.push(321);
-  encoder.endList();
-  // send a large integer
-  encoder.push(999999999);
-  // send a dictionary with two entries
-  encoder.startDict();
-    encoder.push("one");
-    encoder.push(11);
-    encoder.push("two");
-    encoder.push(22);
-  encoder.endDict();
-  // send one last string
-  encoder.push("bye!");
-}
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
 
-static void writeConfig() {
-#if _RFM12B
-	eeprom_write_byte(RF12_EEPROM_ADDR, 4);
-	eeprom_write_byte(RF12_EEPROM_ADDR+1, 5);
-	//	eeprom_write_byte(RF12_EEPROM_ADDR+2, );
-	// JeeLib RF12_EEPROM_ADDR is at 20
-	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
-	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
-
-	Serial.print("nodeId: ");
-	Serial.println(nodeId);
-	Serial.print("group: ");
-	Serial.println(group);
-	serialFlush();
-#endif //_RFM12B
-}
+#endif // DHT
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
@@ -495,9 +450,15 @@ static bool waitForAck() {
     }
     return 0;
 }
-#endif //_RFM12B
-#if _NRF24
-#endif //_NRF24
+
+
+#endif // RFM12B
+
+#if _LCD84x48
+
+
+#endif // LCD84x48
+
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
@@ -614,7 +575,7 @@ static void readDSAddr(int a, uint8_t addr[8]) {
 	}
 }
 
-static void printDSAddrs() {
+static void printDSAddrs(void) {
 	for (int q=0;q<ds_count;q++) {
 		Serial.print("Mem Address=");
 		int l = 4 + ( q * 8 );
@@ -677,9 +638,56 @@ static void findDS18B20s(void) {
 	writeDSAddr(addr);
 }
 
-#endif // _DS
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+void rf24_init()
+{
+}
+
+void rf24_run()
+{
+}
+
+// XXX: just an example, not actually used 
+static void sendSomeData () {
+  EmBencode encoder;
+  // send a simple string
+  encoder.push("abcde");
+  // send a number of bytes, could be binary
+  encoder.push("123", 3);
+  // send an integer
+  encoder.push(12345);
+  // send a list with an int, a nested list, and an int
+  encoder.startList();
+    encoder.push(987);
+    encoder.startList();
+      encoder.push(654);
+    encoder.endList();
+    encoder.push(321);
+  encoder.endList();
+  // send a large integer
+  encoder.push(999999999);
+  // send a dictionary with two entries
+  encoder.startDict();
+    encoder.push("one");
+    encoder.push(11);
+    encoder.push("two");
+    encoder.push(22);
+  encoder.endDict();
+  // send one last string
+  encoder.push("bye!");
+}
+
+#endif // NRF24 funcs
+
+#if _RTC
+#endif // RTC
+
 #if _HMC5883L
-/* Digital magnetometer I2C module */
+/* Digital magnetometer I2C routines */
 
 /* This function will initialise the module and only needs to be run once
    after the module is first powered up or reset */
@@ -695,7 +703,6 @@ void Init_HMC5803L(void)
 	Wire.write(0xA0);
 	Wire.endTransmission();
 }
-
 
 /* This function will read once from one of the 3 axis data registers
    and return the 16 bit signed result. */
@@ -722,10 +729,27 @@ int HMC5803L_Read(byte Axis)
 
 	return Result;
 }
-#endif //_HMC5883L
+#endif // HMC5883L
 
 
-/* Initialization routines */
+/* *** /Peripheral hardware routines }}} *** */
+
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
+
+/* UART commands {{{ */
+
+/* UART commands }}} */
+
+/* *** Wire *** {{{ */
+/* *** Wire }}} *** */
+
+/* *** Initialization routines *** {{{ */
+
+void initConfig(void)
+{
+}
 
 void doConfig(void)
 {
@@ -733,16 +757,16 @@ void doConfig(void)
 	// JeeLib RF12_EEPROM_ADDR is at 20
 	int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
 	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
+#endif //_RFM12B
 
 	// Read embencoded from eeprom
 	int specByteCnt= eeprom_read_byte(RF12_EEPROM_ADDR + 2);
-	uint8_t specRaw [specByteCnt]; 
+	uint8_t specRaw [specByteCnt];
 	eeprom_read_block( 
 			(void*)specRaw, 
-			(const void*)RF12_EEPROM_ADDR + 3,
+			RF12_EEPROM_ADDR + 3,
 			specByteCnt 
 		);
-#endif //_RFM12B
 
 	char embuf [200];
 	EmBdecode decoder (embuf, sizeof embuf);
@@ -804,20 +828,27 @@ void initLibs()
 #endif
 }
 
+
+/* *** /Initialization routines }}} *** */
+
+/* *** Run-time handlers *** {{{ */
+
 void doReset(void)
 {
-	//pinMode(ledPin, OUTPUT);
-	//pinMode(backlightPin, OUTPUT);
-	//digitalWrite(backlightPin, LOW);
+	doConfig();
 
+#ifdef _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
 	tick = 0;
+
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	//scheduler.timer(ANNOUNCE, 0);
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
-/* Run-time handlers */
-
+/* After init, before going to regular scheduling first confer config with
+ * central node */
 bool doAnnounce()
 {
 #if SERIAL
@@ -907,7 +938,6 @@ bool doAnnounce()
 
 	Serial.println();
 	for (int i=0; i<embencBuffLen; i++) {
-		//showByte(embencBuff[i]);
 		if (i > 0) Serial.print(' ');
 		Serial.print((int)embencBuff[i]);
 	}
@@ -921,7 +951,7 @@ bool doAnnounce()
 	// FIXME: need to send in chunks
 	}
 
-#if _RFM12B
+#ifdef _RFM12B
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(
 		(rf12_id & RF12_HDR_MASK) | RF12_HDR_ACK,
@@ -987,7 +1017,7 @@ void doMeasure()
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
-#endif //_LDR
+#endif // LDR
 #if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
@@ -1104,57 +1134,10 @@ void doReport(void)
 #endif //SERIAL
 }
 
-void runScheduler(char task)
-{
-	switch (task) {
-
-		case ANNOUNCE:
-			if (doAnnounce()) {
-				scheduler.timer(MEASURE, 0);
-			} else {
-				scheduler.timer(ANNOUNCE, 100);
-			}
-			break;
-
-		case MEASURE:
-			// reschedule these measurements periodically
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
-			doMeasure();
-			// every so often, a report needs to be sent out
-			if (++reportCount >= REPORT_EVERY) {
-				reportCount = 0;
-				scheduler.timer(REPORT, 0);
-			}
-			serialFlush();
-			break;
-
-		case REPORT:
-			payload.msgtype = REPORT_MSG;
-			doReport();
-			serialFlush();
-			break;
-
-#if DEBUG
-		default:
-			Serial.print("0x");
-			Serial.print(task, HEX);
-			Serial.println(" ?");
-			serialFlush();
-			break;
-#endif
-
-	}
-}
-
-void runCommand()
-{
-}
-
-
 #if PIR_PORT
 
 // send packet and wait for ack when there is a motion trigger
-void doTrigger()
+void doTrigger(void)
 {
 #if DEBUG
 	Serial.print("PIR ");
@@ -1165,6 +1148,7 @@ void doTrigger()
 	serialFlush();
 #endif
 
+#ifdef _RFM12B
 	for (byte i = 0; i < RETRY_LIMIT; ++i) {
 		rf12_sleep(RF12_WAKEUP);
 		rf12_sendNow(RF12_HDR_ACK, &payload, sizeof payload);
@@ -1185,6 +1169,7 @@ void doTrigger()
 
 		delay(RETRY_PERIOD * 100);
 	}
+#endif
 	scheduler.timer(MEASURE, MEASURE_PERIOD);
 #if DEBUG
 	Serial.println(" no ack!");
@@ -1193,23 +1178,93 @@ void doTrigger()
 }
 #endif // PIR_PORT
 
+// Add UI or not..
+//void uiStart()
+//{
+//	idle.set(UI_IDLE);
+//	if (!ui) {
+//		ui = true;
+//	}
+//}
+
+void runScheduler(char task)
+{
+	switch (task) {
+
+		case ANNOUNCE:
+			if (doAnnounce()) {
+				scheduler.timer(MEASURE, 0);
+			} else {
+				scheduler.timer(ANNOUNCE, 100);
+			}
+			break;
+
+		case MEASURE:
+			debugline("MEASURE");
+			// reschedule these measurements periodically
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+			doMeasure();
+
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+#if SERIAL
+			serialFlush();
+#endif
+#ifdef _DBG_LED
+			blink(_DBG_LED, 2, 25);
+#endif
+			break;
+
+		case REPORT:
+			debugline("REPORT");
+			payload.msgtype = REPORT_MSG;
+			doReport();
+			serialFlush();
+			break;
+
+#if DEBUG && SERIAL
+		case WAITING:
+		case IDLE:
+			Serial.print("!");
+			serialFlush();
+			break;
+
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			break;
+#endif
+
+	}
+}
 
 
-/* Main */
+/* *** /Run-time handlers }}} *** */
+
+
+/* *** Main *** {{{ */
+
 
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
-	serialFlush();
-#if DEBUG
-	Serial.print(F("SRAM used: "));
-	Serial.println(usedRam());
-	byte rf12_show = 1;
-#else
-	byte rf12_show = 0;
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
 #endif
+	serialFlush();
+//#if DEBUG
+//	byte rf12_show = 1;
+//#else
+//	byte rf12_show = 0;
+//#endif
 #endif
 
 	//writeConfig();
@@ -1225,11 +1280,13 @@ void setup(void)
     
 	rf12_sleep(RF12_SLEEP); // power down
 
+#if PIR_PORT
 	// PIR pull down and interrupt 
 	pir.digiWrite(0);
 	// PCMSK2 = PCIE2 = PCINT16-23 = D0-D7
 	bitSet(PCMSK2,  3 + PIR_PORT); // DIO1
 	bitSet(PCICR, PCIE2); // enable PCMSK2 for PCINT at DIO1-4 (D4-7)
+#endif
 
 	/* warn out of bound if _EEPROMEX_DEBUG */
   //EEPROM.setMemPool(memBase, memCeiling);
@@ -1255,6 +1312,9 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 3, 10);
+#endif
 	//doMeasure();
 	//doReport();
 	//delay(15000);
@@ -1280,8 +1340,11 @@ void loop(void)
 #endif
 
 	char task = scheduler.poll();
-	if (task == 0xFF) {} // -1
-	else if (task == 0xFE) {} // -2
-	else runScheduler(task);
+	if (-1 < task && task < IDLE) {
+		runScheduler(task);
+	}
 
 }
+
+/* }}} *** */
+

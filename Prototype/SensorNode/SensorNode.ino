@@ -11,7 +11,7 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
+#define SERIAL          1   // set to 1 to enable serial interface
 #define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
@@ -32,6 +32,7 @@
 #include <JeeLib.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
+
 
 
 
@@ -60,10 +61,10 @@ static const byte DS_PIN = 8;
 
 MpeSerial mpeser (57600);
 
-/* *** InputParser {{{ */
+/* *** InputParser *** {{{ */
 
 
-/* }}} *** */
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -72,6 +73,10 @@ static byte reportCount;    // count up until next report, i.e. packet send
 
 // This defines the structure of the packets which get sent out by wireless:
 struct {
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#ifdef _MEM
+	int memfree     :16;
+#endif
 } payload;
 
 
@@ -106,7 +111,7 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 struct Config {
 	char node[3];
-	int node_id; 
+	int node_id;
 	int version;
 	char config_id[4];
 } static_config = {
@@ -117,7 +122,7 @@ struct Config {
 
 Config config;
 
-bool loadConfig(Config &c) 
+bool loadConfig(Config &c)
 {
 	int w = sizeof(c);
 
@@ -211,10 +216,6 @@ enum { DS_OK, DS_ERR_CRC };
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** UI *** {{{ */
-
-/* *** /UI }}} *** */
-
 /* *** Peripheral hardware routines *** {{{ */
 
 #if LDR_PORT
@@ -267,7 +268,17 @@ enum { DS_OK, DS_ERR_CRC };
 
 /* *** /Peripheral hardware routines }}} *** */
 
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
+
 /* *** Initialization routines *** {{{ */
+
+void initConfig(void)
+{
+	// See Prototype/Node
+	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+}
 
 void doConfig(void)
 {
@@ -275,6 +286,7 @@ void doConfig(void)
 	if (!loadConfig(static_config)) {
 		writeConfig(static_config);
 	}
+	initConfig();
 }
 
 void initLibs()
@@ -293,7 +305,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines *** }}} */
+/* *** /Initialization routines }}} *** */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -301,7 +313,7 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DBG_LED
+#ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
 	tick = 0;
@@ -310,7 +322,7 @@ void doReset(void)
 	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
 	return false;
 }
@@ -318,13 +330,41 @@ bool doAnnounce()
 // readout all the sensors and other values
 void doMeasure()
 {
-	// TODO doMeasure
+	byte firstTime = payload.ctemp == 0; // special case to init running avg
+
+	int ctemp = internalTemp();
+	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+
+#if _MEM
+	payload.memfree = freeRam();
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("MEM free ");
+	Serial.println(payload.memfree);
+#endif
+#endif //_MEM
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
-	// none, see RadioNode
+#if SERIAL
+	Serial.print(node);
+	Serial.print(' ');
+	Serial.print((int) payload.ctemp);
+	Serial.print(' ');
+#if _MEM
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
+	Serial.println();
+	serialFlush();
+#endif// SERIAL
+
+#ifdef _RFM12B
+#endif
+
+#ifdef _NRF24
+#endif // NRF24
 }
 
 void runScheduler(char task)
@@ -348,6 +388,7 @@ void runScheduler(char task)
 
 		case MEASURE:
 			debugline("MEASURE");
+			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 
@@ -356,16 +397,21 @@ void runScheduler(char task)
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
+#if SERIAL
 			serialFlush();
+#endif
+#ifdef _DBG_LED
+			blink(_DBG_LED, 2, 25);
+#endif
 			break;
 
 		case REPORT:
 			debugline("REPORT");
-//			payload.msgtype = REPORT_MSG;
 			doReport();
 			serialFlush();
 			break;
 
+#if DEBUG && SERIAL
 		case WAITING:
 		case IDLE:
 			Serial.print("!");
@@ -378,11 +424,13 @@ void runScheduler(char task)
 			Serial.println(" ?");
 			serialFlush();
 			break;
+#endif
+
 	}
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
@@ -412,13 +460,19 @@ void setup(void)
 
 void loop(void)
 {
-#if _DBG_LED 
+#ifdef _DBG_LED
 	blink(_DBG_LED, 1, 15);
 #endif
 	debug_ticks();
 	serialFlush();
-	char task = scheduler.pollWaiting();
-	runScheduler(task);
+
+		debugline("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debugline("Wakeup");
+		if (-1 < task && task < IDLE) {
+			runScheduler(task);
+		}
 }
 
 /* }}} *** */

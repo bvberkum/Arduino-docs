@@ -14,8 +14,8 @@ Current targets:
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
 #define _LCD84x48       1
@@ -42,6 +42,7 @@ Current targets:
 #include <mpelib.h>
 
 
+
 const String sketch = "X-LogReader84x48";
 const int version = 0;
 
@@ -57,27 +58,32 @@ byte bl_level = 0xff;
 int out = 20;
 
 /* IO pins */
-//             INT0     2     UI IRQ
+//              RXD      0
+//              TXD      1
+//              INT0     2     UI IRQ
 #       define SCLK     3  // LCD84x48
 #       define SDIN     4  // LCD84x48
 #       define DC       5  // LCD84x48
 #       define RESET    6  // LCD84x48
 #       define SCE      7  // LCD84x48
 #       define BL       10 // PWM Backlight
-//define _DEBUG_LED 13
+//              MOSI     11
+//              MISO     12
+#       define _DBG_LED 13 // SCK
 
 
 MpeSerial mpeser (57600);
 
 MilliTimer idle, stdby;
 
-/* *** InputParser {{{ */
+/* *** InputParser *** {{{ */
 
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-/* }}} *** */
+
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -93,7 +99,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -127,32 +133,12 @@ bool schedRunning()
 }
 
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduled tasks }}} *** */
 
-bool hex_output = true;
+/* *** EEPROM config *** {{{ */
 
-static void showNibble (byte nibble) {
-    char c = '0' + (nibble & 0x0F);
-    if (c > '9')
-        c += 7;
-    Serial.print(c);
-}
 
-static void showByte (byte value) {
-    if (hex_output) {
-        showNibble(value >> 4);
-        showNibble(value);
-    } else
-        Serial.print((word) value);
-}
-
-void debug_task(char task) {
-	if (task == -2) { // nothing running
-		Serial.print('n');
-	} else if (task == -1) { // waiting
-		Serial.print('w');
-	}
-}
+/* *** /EEPROM config }}} *** */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -230,10 +216,92 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** EEPROM config *** {{{ */
+/* *** Peripheral hardware routines *** {{{ */
 
-/* *** /EEPROM config *** }}} */
+#if LDR_PORT
+#endif
 
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
+
+#if _LCD84x48
+
+void lcd_start()
+{
+	lcd84x48.begin(LCD_WIDTH, LCD_HEIGHT);
+
+	// Register the custom symbol...
+	lcd84x48.createChar(DEGREES_CHAR, degrees_glyph);
+
+	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
+	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
+    lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
+    lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
+	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
+}
+
+void lcd_printWelcome(void)
+{
+	lcd84x48.setCursor(6, 0);
+	lcd84x48.print(node);
+	lcd84x48.setCursor(0, 5);
+	lcd84x48.print(sketch);
+}
+
+void lcd_printTicks(void)
+{
+	lcd84x48.setCursor(10, 2);
+	lcd84x48.print("tick ");
+	lcd84x48.print(tick);
+	lcd84x48.setCursor(10, 3);
+	lcd84x48.print("idle ");
+	lcd84x48.print(idle.remaining()/100);
+	lcd84x48.setCursor(10, 4);
+	lcd84x48.print("stdby ");
+	lcd84x48.print(stdby.remaining()/100);
+}
+
+
+#endif // LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+
+
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+#endif // NRF24 funcs
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
+
+/* *** UI *** {{{ */
 
 //ISR(INT0_vect) 
 void irq0()
@@ -278,89 +346,7 @@ void printKeys(void) {
 	Serial.println();
 }
 
-/* *** Peripheral hardware routines *** {{{ */
-
-#if LDR_PORT
-#endif
-
-
-/* *** PIR support *** {{{ */
-#if PIR_PORT
-#endif
-/* *** /PIR support *** }}} */
-
-
-#if _DHT
-/* DHT temp/rh sensor 
- - AdafruitDHT
-*/
-
-#endif // DHT
-
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
-
-#endif //_RFM12B
-
-#if _LCD84x48
-
-
-void lcd_start()
-{
-	lcd84x48.begin(LCD_WIDTH, LCD_HEIGHT);
-
-	// Register the custom symbol...
-	lcd84x48.createChar(DEGREES_CHAR, degrees_glyph);
-
-	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
-	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-    lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
-    lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
-	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
-}
-
-void lcd_printWelcome(void)
-{
-	lcd84x48.setCursor(6, 0);
-	lcd84x48.print(node);
-	lcd84x48.setCursor(0, 5);
-	lcd84x48.print(sketch);
-}
-
-void lcd_printTicks(void)
-{
-	lcd84x48.setCursor(10, 2);
-	lcd84x48.print("tick ");
-	lcd84x48.print(tick);
-	lcd84x48.setCursor(10, 3);
-	lcd84x48.print("idle ");
-	lcd84x48.print(idle.remaining()/100);
-	lcd84x48.setCursor(10, 4);
-	lcd84x48.print("stdby ");
-	lcd84x48.print(stdby.remaining()/100);
-}
-#endif // LCD84x48
-
-#if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-
-#endif // DS
-
-#if _NRF24
-/* Nordic nRF24L01+ radio routines */
-
-#endif // NRF24 funcs
-
-#if _RTC
-#endif //_RTC
-
-#if _HMC5883L
-/* Digital magnetometer I2C routines */
-#endif //_HMC5883L
-
-
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /UI }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -386,8 +372,8 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DEBUG_LED
-	pinMode(_DEBUG_LED, OUTPUT);
+#ifdef _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
 #endif
 	pinMode(BL, OUTPUT);
 	digitalWrite(BL, LOW ^ BL_INVERTED);
@@ -419,7 +405,9 @@ void doMeasure()
 #endif
 #endif
 
+#if SERIAL
 	serialFlush();
+#endif
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -463,6 +451,9 @@ void runScheduler(char task)
 				scheduler.timer(REPORT, 0);
 			}
 			serialFlush();
+#ifdef _DBG_LED
+			blink(_DBG_LED, 2, 25);
+#endif
 			break;
 
 		case REPORT:
@@ -472,27 +463,33 @@ void runScheduler(char task)
 			break;
 
 		case WAITING:
+		case IDLE:
+			Serial.print("!");
+			serialFlush();
 			break;
 
 		default:
+			Serial.print("0x");
 			Serial.print(task, HEX);
-			Serial.println('?');
+			Serial.println(" ?");
+			serialFlush();
+			break;
 	}
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
 #if SERIAL
 
-static void helpCmd() {
+void helpCmd() {
 	Serial.println("Help!");
 	idle.set(UI_IDLE);
 }
 
-static void valueCmd () {
+void valueCmd () {
 	int v;
 	parser >> v;
 	Serial.print("value = ");
@@ -500,17 +497,17 @@ static void valueCmd () {
 	idle.set(UI_IDLE);
 }
 
-static void reportCmd () {
+void reportCmd () {
 	doReport();
 	idle.set(UI_IDLE);
 }
 
-static void measureCmd() {
+void measureCmd() {
 	doMeasure();
 	idle.set(UI_IDLE);
 }
 
-static void stdbyCmd() {
+void stdbyCmd() {
 	ui = false;
 	digitalWrite(BL, LOW ^ BL_INVERTED);
 }
@@ -526,7 +523,7 @@ InputParser::Commands cmdTab[] = {
 
 #endif // SERIAL
 
-/* *** /InputParser handlers *** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -537,7 +534,7 @@ void setup(void)
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
+	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -550,6 +547,9 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
+#endif
 	if (ui_irq) {
 		debugline("Irq");
 		ui_irq = false;
@@ -576,8 +576,8 @@ void loop(void)
 		}
 		lcd_printTicks();
 	} else {
-#ifdef _DEBUG_LED
-		blink(_DEBUG_LED, 1, 15);
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 15);
 #endif
 		debugline("Sleep");
 		serialFlush();

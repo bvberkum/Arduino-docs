@@ -38,32 +38,42 @@ JeeLib RF12
 */
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
+/* *** Globals and sketch configuration *** */
+#define SERIAL          1   // set to 1 to enable serial interface
+#define DEBUG           1 /* Enable trace statements */
+							
+#define DEBUG_DS   0
+#define FIND_DS    0
+							
+#define REPORT_EVERY    5   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
+#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT     5   // maximum number of times to retry
+#define ACK_TIME        10  // number of milliseconds to wait for an ack
+#define RADIO_SYNC_MODE 2
+#define COLLECT 0x20 // collect mode, i.e. pass incoming without sending acks
+							
+
 #include <avr/sleep.h>
 #include <util/crc16.h>
 #include <avr/eeprom.h>
+
 //include <EEPROM.h>
 //include EEPROMEx.h
 #include <JeeLib.h>
 #include <OneWire.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
 
-#define DEBUG   1   // set to 1 to display each loop() run and PIR trigger
-#define DEBUG_DS   0
-#define FIND_DS    0
 
-#define SERIAL  1   // set to 1 to enable serial interface
 
-#define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
 
-#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
-#define RETRY_LIMIT     5   // maximum number of times to retry
+const String sketch = "ThreeWayMeter";
+const int version = 0;
 
-#define ACK_TIME        10  // number of milliseconds to wait for an ack
-
-#define RADIO_SYNC_MODE 2
-
-#define COLLECT 0x20 // collect mode, i.e. pass incoming without sending acks
+String node_id = "";
+String inputString = "";         // a string to hold incoming data
 
 const char helpText1[] PROGMEM = 
   "\n"
@@ -178,10 +188,6 @@ volatile int ds_value[ds_count];
 
 enum { DS_OK, DS_ERR_CRC };
 
-/* Custom */
-String node_id = "";
-String inputString = "";         // a string to hold incoming data
-
 // The scheduler makes it easy to perform various tasks at various times:
 
 enum { ANNOUNCE, MEASURE, REPORT, TASK_END };
@@ -189,85 +195,38 @@ enum { ANNOUNCE, MEASURE, REPORT, TASK_END };
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
-// Other variables used in various places in the code:
-
 static byte reportCount;    // count up until next report, i.e. packet send
 
 // This defines the structure of the packets which get sent out by wireless:
-
 struct {
 //	int probe1 :10;  // moisture detector: 0..100?
 //	int probe2 :10; 
 //	int temp1  :10;  // temperature: -500..+500 (tenths)
 //	int temp2  :10;  // temperature: -500..+500 (tenths)
-	int ctemp  :10;  // atmega temperature: -500..+500 (tenths)
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
 	byte lobat :1;   // supply voltage dropped under 3.1V: 0..1
 } payload;
 
 
+/* *** /Report variables }}} *** */
+
+/* *** Scheduled tasks *** {{{ */
+
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif  
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
+/* *** /Scheduled tasks }}} *** */
 
-void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-  }
-}
 
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
 
-/* ATmega328 internal temperature */
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
 
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
+/* *** /Peripheral devices }}} *** */
 
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
+/* *** Peripheral hardware routines *** {{{ */
 
-	delay(20);            // wait for voltages to become stable.
+#if _DS
+/* Dallas DS18B20 thermometer routines */
 
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-/* 
-   Dallas DS18B20 thermometer 
- */
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
 	byte present = 0;
@@ -431,7 +390,8 @@ static void printDS18B20s(void) {
 #endif
 }
 
-static void doConfig() {
+void doConfig(void)
+{
 }
 
 static byte waitForAck() {
@@ -446,6 +406,39 @@ static byte waitForAck() {
         sleep_mode();
     }
     return 0;
+}
+
+bool doAnnounce(void) {
+	byte test = 0x3f;
+
+	Serial.println("Making announce. ");
+	serialFlush();
+
+	rf12_sendNow(
+		(rf12_config.nodeId & RF12_HDR_MASK) | RF12_HDR_ACK,
+		&test, 
+		sizeof test);
+	rf12_sendWait(RADIO_SYNC_MODE);
+	byte acked = waitForAck();
+	rf12_sleep(RF12_SLEEP);
+
+	if (acked) {
+		Serial.println("3ACK");
+		scheduler.timer(MEASURE, 0);
+	} else {
+		Serial.println("3NACK");
+		scheduler.timer(ANNOUNCE, 100);
+	}
+	serialFlush();
+
+	// report a new node or reinitialize node with central link node
+	// fixme: put probe config here?
+	//for ( int x=0; x<ds_count; x++) {
+	//	Serial.print("SEN ");
+	//	Serial.print(node_id);
+	//	Serial.println("");
+	//}
+	serialFlush();
 }
 
 // readout all the sensors and other values
@@ -479,17 +472,17 @@ static void doMeasure() {
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-static void doReport() {
-	rf12_sleep(RF12_WAKEUP);
-	rf12_sendNow(0, &payload, sizeof payload);
-	rf12_sendWait(RADIO_SYNC_MODE);
-	rf12_sleep(RF12_SLEEP);
-	/* no working radio */
+void doReport(void)
+{
 #if SERIAL
 	Serial.print(node_id);
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
 	Serial.print(' ');
+#if _MEM
+	Serial.print((int) payload.memfree);
+	Serial.print(' ');
+#endif
 //	Serial.print((int) payload.probe1);
 //	Serial.print(' ');
 //	Serial.print((int) payload.probe2);
@@ -501,40 +494,17 @@ static void doReport() {
 	Serial.print((int) payload.lobat);
 	Serial.println();
 	serialFlush();
-#endif
-}
+#endif// SERIAL
 
-static void doAnnounce() {
-	byte test = 0x3f;
-
-	Serial.println("Making announce. ");
-	serialFlush();
-
-	rf12_sendNow(
-		(rf12_config.nodeId & RF12_HDR_MASK) | RF12_HDR_ACK,
-		&test, 
-		sizeof test);
+#ifdef _RFM12B
+	rf12_sleep(RF12_WAKEUP);
+	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
-	byte acked = waitForAck();
 	rf12_sleep(RF12_SLEEP);
+#endif
 
-	if (acked) {
-		Serial.println("3ACK");
-		scheduler.timer(MEASURE, 0);
-	} else {
-		Serial.println("3NACK");
-		scheduler.timer(ANNOUNCE, 100);
-	}
-	serialFlush();
-
-	// report a new node or reinitialize node with central link node
-	// fixme: put probe config here?
-	//for ( int x=0; x<ds_count; x++) {
-	//	Serial.print("SEN ");
-	//	Serial.print(node_id);
-	//	Serial.println("");
-	//}
-	serialFlush();
+#ifdef _NRF24
+#endif // NRF24
 }
 
 static void showString (PGM_P s) {
@@ -570,12 +540,46 @@ void serialEvent() {
 		}
 	}
 }
+		
+	switch (scheduler.pollWaiting()) {
+
+		case ANNOUNCE:
+			doAnnounce();
+			break;
+
+		case MEASURE:
+			// reschedule these measurements periodically
+			scheduler.timer(MEASURE, MEASURE_PERIOD);
+
+			doMeasure();
+
+			// every so often, a report needs to be sent out
+			if (++reportCount >= REPORT_EVERY) {
+				reportCount = 0;
+				scheduler.timer(REPORT, 0);
+			}
+			break;
+
+		case REPORT:
+			doReport();
+			break;
+	}
+}
+
+
+
+/* *** Main *** {{{ */
+
 
 void setup()
 {
-#if SERIAL || DEBUG
-	Serial.begin(57600);
-	Serial.println("ThreeWayMeter");
+#if SERIAL
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
+#if DEBUG || _MEM
+	Serial.print("Free RAM: ");
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 	byte rf12_show = 1;
 #else
@@ -613,42 +617,26 @@ void setup()
 	scheduler.timer(ANNOUNCE, 0);
 }
 
-void loop(){
-
+void loop(void)
+{
 #if FIND_DS
 	printDS18B20s();
 	return;
 #endif
-
-#if DEBUG
-	Serial.print('.');
-	serialFlush();
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
 #endif
-		
-	switch (scheduler.pollWaiting()) {
+	debug_ticks();
+	serialFlush();
 
-		case ANNOUNCE:
-			doAnnounce();
-			break;
-
-		case MEASURE:
-			// reschedule these measurements periodically
-			scheduler.timer(MEASURE, MEASURE_PERIOD);
-
-			doMeasure();
-
-			// every so often, a report needs to be sent out
-			if (++reportCount >= REPORT_EVERY) {
-				reportCount = 0;
-				scheduler.timer(REPORT, 0);
-			}
-			break;
-
-		case REPORT:
-			doReport();
-			break;
-	}
+		debugline("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debugline("Wakeup");
+		if (-1 < task && task < IDLE) {
+			runScheduler(task);
+		}
 }
 
-
+/* }}} *** */
 

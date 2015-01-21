@@ -4,8 +4,8 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 
 
 /* *** Globals and sketch configuration *** */
+#define SERIAL          1   // set to 1 to enable serial interface
 #define DEBUG           1 /* Enable trace statements */
-#define SERIAL          1 /* Enable serial */
 							
 #define _MEM            1   // Report free memory 
 #define _DHT            0
@@ -35,18 +35,17 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 void receiveEvent(int howMany);
 
 
+
 const String sketch = "X-DallasTempBus";
 const int version = 0;
 
 
 /* IO pins */
-static const byte ledPin = 13;
 #if _DS
 static const byte DS_PIN = 8;
 #endif
 
 MpeSerial mpeser (57600);
-
 
 /* *** Report variables *** {{{ */
 
@@ -57,12 +56,18 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduled tasks }}} *** */
+
+/* *** EEPROM config *** {{{ */
+
+
+
+/* *** /EEPROM config }}} *** */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -71,7 +76,7 @@ Port ldr (LDR_PORT);
 #endif
 
 #if _DHT
-#endif //_DHT
+#endif // DHT
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -95,64 +100,53 @@ uint8_t ds_search = 0;
 enum { DS_OK, DS_ERR_CRC };
 
 
-#endif // _DS
+#endif // DS
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-#endif //_NRF24
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-
-#endif //_NRF24
-
-#if _LCD
-#endif //_LCD
+#endif // NRF24
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
-#endif //_HMC5883L
-
-/* *** /Peripheral devices *** }}} */
-
-/* *** EEPROM config *** {{{ */
+#endif // HMC5883L
 
 
-
-/* *** /EEPROM config *** }}} */
+/* *** /Peripheral devices }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
 
+#if LDR_PORT
+#endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
 #endif
 /* *** /PIR support *** }}} */
 
-
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
 */
 
-#endif // _DHT
+#endif // DHT
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+#endif //_RFM12B
 
 #if _LCD84x48
-#endif //_LCD84x48
+
+
+#endif // LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+/* Dallas DS18B20 thermometer routines */
 
 static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	byte i;
@@ -265,7 +259,6 @@ static void readDSAddr(int a, uint8_t addr[8]) {
 	}
 }
 
-
 // TODO see CarrierCase for more up to date code
 static void printDS18B20s(void) {
 	byte i;
@@ -350,25 +343,38 @@ static void printDS18B20s(void) {
 }
 
 
-#endif // _DS
+#endif // DS
 
 #if _NRF24
-/* Nordic nRF24L01+ routines */
+/* Nordic nRF24L01+ radio routines */
 
-#endif // RF24 funcs
+void rf24_init()
+{
+}
 
-#if _LCD
-#endif //_LCD
+void rf24_run()
+{
+}
+
+
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
 
 #if _HMC5883L
-/* Digital magnetometer I2C module */
-#endif //_HMC5883L
+/* Digital magnetometer I2C routines */
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
+
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
+
 
 /* *** Initialization routines *** {{{ */
 
@@ -385,15 +391,15 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines *** }}} */
+/* *** /Initialization routines }}} *** */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
+
+	tick = 0;
 }
 
 bool doAnnounce()
@@ -415,7 +421,7 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 #if I2C_SLAVE
 void receiveEvent(int howMany)
@@ -429,8 +435,6 @@ void receiveEvent(int howMany)
 	      Serial.println(x);         // print the integer
 }
 #endif
-
-
 
 /* *** Main *** {{{ */
 
@@ -461,6 +465,9 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
+#endif
 #if _DS
 	bool ds_reset = digitalRead(7);
 	if (ds_search || ds_reset) {

@@ -3,15 +3,35 @@
  */
 
 #include <Wire.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
 
-void setup()
+
+const String sketch = "I2CMaster";
+const int version = 0;
+
+
+/* *** Main *** {{{ */
+
+
+void setup(void)
 {
+#if SERIAL
+	mpeser.begin();
+	mpeser.startAnnounce(sketch, version);
+#if DEBUG || _MEM
+	Serial.print("Free RAM: ");
+	Serial.println(freeRam());
+#endif
+	serialFlush();
+#endif
+
   Wire.begin();        // join i2c bus (address optional for master)
-  Serial.begin(9600);  // start serial for output
-  Serial.println("I2CMaster");
+  //Serial.begin(9600);  // start serial for output
+  //Serial.println("I2CMaster");
 }
 
-void loop()
+void loop(void)
 {
     Serial.println("Data request");
 
@@ -37,5 +57,8 @@ void loop()
   //x++;
   //delay(500);
   
+
 }
+
+/* }}} *** */
 

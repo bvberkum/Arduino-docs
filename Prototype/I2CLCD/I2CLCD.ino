@@ -78,8 +78,7 @@ void loop()   /*----( LOOP: RUNS CONSTANTLY )----*/
     }
   }
 
-}/* --(end main loop )-- */
+}
 
-
-/* ( THE END ) */
+/* }}} *** */
 

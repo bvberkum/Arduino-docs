@@ -1,8 +1,8 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 
 #include <SPI.h>
@@ -13,7 +13,6 @@
 
 
 
-
 const String sketch = "RadioLink24";
 const int version = 0;
 
@@ -21,27 +20,20 @@ char node[] = "rl24";
 
 
 /* IO pins */
+//              RXD      0
+//              TXD      1
+//              INT0     2     UI IRQ
 #if _NRF24
-#       define CE       9
-#       define CS       10
+#       define CE       9  // NRF24
+#       define CS       10 // NRF24
 #endif
-#       define BAUD     57600
 
 // Address of our node
 const uint16_t this_node = 0;
 
-// Address of the other node
-//const uint16_t other_node = 12;
 
 
 /* *** Peripheral devices *** {{{ */
-
-
-
-/* *** /Peripheral devices }}} *** */
-
-
-/* *** Peripheral hardware routines *** {{{ */
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -54,17 +46,31 @@ RF24Network/*Debug*/ network(radio);
 
 #endif // NRF24
 
+
+/* *** /Peripheral devices }}} *** */
+
 /* *** Peripheral hardware routines *** {{{ */
+
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
 
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-#endif // RF24 funcs
+
+#endif // NRF24 funcs
 
 
 
 /* *** /Peripheral hardware routines }}} *** */
+
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -88,27 +94,26 @@ void initLibs()
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
+
+#ifdef _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
+	tick = 0;
 
 #if _NRF24
 	rf24_init();
 #endif //_NRF24
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
 
-
-/* *** /Run-time handlers *** }}} */
-
-
-
-/* }}} *** */
+/* *** /Run-time handlers }}} *** */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
@@ -129,6 +134,9 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
+#endif
 #if _NRF24
 	// Pump the network regularly
 	network.update();

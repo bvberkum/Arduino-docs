@@ -39,10 +39,12 @@ Serial config
   */
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
+#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_STDBY        8000  // ms
 							
 
 #include <SoftwareSerial.h>
@@ -54,6 +56,8 @@ Serial config
 #include <mpelib.h>
 
 
+
+
 const String sketch = "Node";
 const int version = 0;
 
@@ -61,21 +65,26 @@ char node[] = "nx";
 // determined upon handshake 
 char node_id[7];
 
+volatile bool ui_irq;
+bool ui;
+
 
 /* IO pins */
-//             RXD      0
-//             TXD      1
-//             INT0     2
+//              RXD      0
+//              TXD      1
+//              INT0     2
 //              MOSI     11
 //              MISO     12
 //#       define _DBG_LED 13 // SCK
+
 
 //SoftwareSerial virtSerial(11, 12); // RX, TX
 
 MpeSerial mpeser (57600);
 
+MilliTimer idle, stdby;
 
-/* *** InputParser *** j{{{ */
+/* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;//virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
@@ -83,7 +92,7 @@ byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
 
-/* }}} *** */
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -103,9 +112,9 @@ struct {
 #endif // DHT_HIGH
 #endif //_DHT
 
-	int ctemp   :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree :16;
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#ifdef _MEM
+	int memfree     :16;
 #endif
 #if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
@@ -117,10 +126,26 @@ struct {
 
 /* *** Scheduled tasks *** {{{ */
 
+enum {
+	MEASURE,
+	REPORT,
+	TASK_END
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
 /* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
+// See Prototype Node or SensorNode
 #define CONFIG_VERSION "nx1"
 #define CONFIG_START 0
 
@@ -137,7 +162,7 @@ struct Config {
 
 Config config;
 
-bool loadConfig(Config &c) 
+bool loadConfig(Config &c)
 {
 	unsigned int w = sizeof(c);
 
@@ -228,7 +253,6 @@ Port ldr (LDR_PORT);
 #endif
 /* *** /PIR support *** }}} */
 
-
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
@@ -237,7 +261,9 @@ Port ldr (LDR_PORT);
 #endif // DHT
 
 #if _LCD84x48
-#endif //_LCD84x48
+
+
+#endif // LCD84x48
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
@@ -289,7 +315,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines *** }}} */
+/* *** /Initialization routines }}} *** */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -297,9 +323,10 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DBG_LED
+#ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
+	ui_irq = false;
 	tick = 0;
 }
 
@@ -320,13 +347,21 @@ void doReport(void)
 	// none, see RadioNode
 }
 
+void uiStart()
+{
+	idle.set(UI_IDLE);
+	if (!ui) {
+		ui = true;
+	}
+}
+
 void runScheduler(char task)
 {
 	// no-op, see SensorNode
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
@@ -469,11 +504,45 @@ void setup(void)
 
 void loop(void)
 {
+#ifdef _DBG_LED
+	blink(_DBG_LED, 3, 10);
+#endif
 	// FIXME: seems virtSerial receive is not working
 	//if (virtSerial.available())
 	//	virtSerial.write(virtSerial.read());
+	if (ui_irq) {
+		debugline("Irq");
+		ui_irq = false;
+		uiStart();
+	}
 	debug_ticks();
-	parser.poll();
+
+	char task = scheduler.poll();
+	runScheduler(task);
+	if (ui) {
+		parser.poll();
+		if (idle.poll()) {
+			debugline("Idle");
+			stdby.set(UI_STDBY);
+		} else if (stdby.poll()) {
+			debugline("StdBy");
+			ui = false;
+		} else if (!stdby.idle()) {
+			// XXX toggle UI stdby Power, got to some lower power mode..
+			delay(30);
+		}
+	} else {
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 25);
+#endif
+		debugline("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debugline("Wakeup");
+		if (-1 < task && task < IDLE) {
+			runScheduler(task);
+		}
+	}
 }
 
 /* }}} *** */

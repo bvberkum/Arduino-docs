@@ -42,18 +42,18 @@ char node[] = "adadht";
 char node_id[7];
 
 /* IO pins */
-static const byte ledPin = 13;
 #if _DHT
 static const byte DHT_PIN = 7;
 #endif
 #if _DHT2
 static const byte DHT2_PIN = 6;
 #endif
+#       define _DBG_LED 13 // SCK
+
 
 MpeSerial mpeser (57600);
 
 /* *** InputParser {{{ */
-
 
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
@@ -101,15 +101,14 @@ struct {
 enum {
 	MEASURE,
 	REPORT,
-	STDBY,
-	END
+	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[END];
-Scheduler scheduler (schedbuf, END);
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
@@ -152,15 +151,14 @@ DHT dht2 (DHT2_PIN, DHT11);
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
+
+
 #endif // DS
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 #endif // NRF24
-
-#if _LCD
-#endif //_LCD
 
 #if _RTC
 #endif //_RTC
@@ -179,7 +177,6 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 /* *** Peripheral hardware routines *** {{{ */
 
-
 #if LDR_PORT
 #endif
 
@@ -195,8 +192,13 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 #endif // DHT
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
+
 #if _LCD84x48
-#endif //_LCD84x48
+#endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
@@ -206,10 +208,8 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
-#endif // RF24 funcs
 
-#if _LCD
-#endif //_LCD
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
@@ -256,16 +256,19 @@ void initLibs()
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
+
+#if _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
+	tick = 0;
 
 #if _NRF24
 	rf24_init();
 #endif //_NRF24
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
 bool doAnnounce()
@@ -394,6 +397,7 @@ void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif
+
 #if SERIAL
 	serialFlush();
 #endif
@@ -447,7 +451,6 @@ void runScheduler(char task)
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
 
-			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
@@ -457,24 +460,16 @@ void runScheduler(char task)
 
 		case REPORT:
 			debugline("REPORT");
-//			payload.msgtype = REPORT_MSG;
 			doReport();
 			serialFlush();
 			break;
 
-		case STDBY:
-			debugline("STDBY");
-			serialFlush();
+		case WAITING:
 			break;
 
-		case WAITING:
-			scheduler.timer(STDBY, STDBY_PERIOD);
-			break;
-		
-		case IDLE:
-			scheduler.timer(STDBY, STDBY_PERIOD);
-			break;
-		
+		default:
+			Serial.print(task, HEX);
+			Serial.println('?');
 	}
 }
 
@@ -542,7 +537,9 @@ void setup(void)
 
 void loop(void)
 {
-	//blink(ledPin, 1, 15);
+#ifdef _DBG_LED
+	blink(_DBG_LED, 1, 15);
+#endif
 	debug_ticks();
 /*
 	doMeasure();
@@ -552,10 +549,14 @@ void loop(void)
 	delay(50);
 	return;
 */	
-	parser.poll();
-	serialFlush();
-	char task = scheduler.pollWaiting();
-	runScheduler(task);
+		parser.poll();
+		debugline("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debugline("Wakeup");
+		if (-1 < task && task < IDLE) {
+			runScheduler(task);
+		}
 }
 
 /* }}} *** */
