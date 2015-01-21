@@ -9,8 +9,8 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
 #define _DHT            1
@@ -55,16 +55,29 @@ volatile bool ui_irq;
 static bool ui;
 
 /* IO pins */
+//             RXD      0
+//             TXD      1
 //             INT0     2     UI IRQ
 #       define SCLK     3  // LCD84x48
 #       define SDIN     4  // LCD84x48
 #       define DC       5  // LCD84x48
 #       define RESET    6  // LCD84x48
 #       define SCE      7  // LCD84x48
-#       define _DEBUG_LED 13
+//       define B0       8
+//       define B1       9
+//       define SS       10
+//              MOSI     11
+//              MISO     12
+#       define _DBG_LED 13 // SCK
+//#       define          A0
+//#       define          A1
+//#       define          A2
 #if _DHT
-#       define DHT_PIN = A3;
+#       define DHT_PIN  A3
 #endif
+//#       define          A4
+//#       define          A5
+
 
 MpeSerial mpeser (57600);
 
@@ -93,7 +106,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -113,7 +126,11 @@ Scheduler scheduler (schedbuf, TASK_END);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduled tasks }}} *** */
+
+/* *** EEPROM config *** {{{ */
+
+/* *** /EEPROM config }}} *** */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -177,10 +194,7 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** EEPROM config *** {{{ */
-
-/* *** /EEPROM config *** }}} */
-
+/* *** UI *** {{{ */
 
 //ISR(INT0_vect) 
 void irq0()
@@ -214,11 +228,12 @@ ISR(PCINT1_vect) {
 	else if (digitalRead(A2) == 1)  Serial.println("A2");
 }
 
+/* *** /UI }}} *** */
+
 /* *** Peripheral hardware routines *** {{{ */
 
 #if LDR_PORT
 #endif
-
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
@@ -235,7 +250,6 @@ ISR(PCINT1_vect) {
 
 #if _LCD84x48
 
-
 void lcd_start()
 {
 	lcd84x48.begin(LCD_WIDTH, LCD_HEIGHT);
@@ -245,8 +259,8 @@ void lcd_start()
 
 	lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
 	lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-    lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
-    lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
+	lcd84x48.send( LOW, 0x13 );  // LCD bias mode 1:48. //0x13
+	lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
 	lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
 }
 
@@ -267,10 +281,12 @@ void lcd_printDHT(void)
 	lcd84x48.print(payload.rhum, 1);
 	lcd84x48.print("%");
 }
+
+
 #endif // LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+/* Dallas DS18B20 thermometer routines */
 
 
 #endif // DS
@@ -285,7 +301,9 @@ void lcd_printDHT(void)
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
-#endif //_HMC5883L
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
@@ -312,8 +330,10 @@ void initLibs()
 
 void doReset(void)
 {
-#if _DEBUG_LED
-	pinMode(_DEBUG_LED, OUTPUT);
+	doConfig();
+
+#ifdef _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
 #endif
 	pinMode(BL, OUTPUT);
 	digitalWrite(BL, LOW ^ BL_INVERTED);
@@ -413,8 +433,8 @@ void runScheduler(char task)
 
 		case MEASURE:
 			debugline("MEASURE");
-#ifdef _DEBUG_LED
-			blink(_DEBUG_LED, 1, 15);
+#ifdef _DBG_LED
+			blink(_DBG_LED, 1, 15);
 #endif
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
@@ -444,16 +464,12 @@ void runScheduler(char task)
 	}
 }
 
-void runCommand()
-{
-}
 
-
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
-/* *** /InputParser handlers *** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -505,8 +521,8 @@ void loop(void)
 			ui = false;
 		}
 	} else {
-#ifdef _DEBUG_LED
-		blink(_DEBUG_LED, 1, 15);
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 15);
 #endif
 		debugline("Sleep");
 		serialFlush();

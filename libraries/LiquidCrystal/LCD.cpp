@@ -29,7 +29,6 @@
 //
 // @version API 1.1.0
 //
-// 2012.03.29 bperrybap - changed comparision to use LCD_5x8DOTS rather than 0
 // @author F. Malpartida - fmalpartida@gmail.com
 // ---------------------------------------------------------------------------
 #include <stdio.h>
@@ -84,7 +83,7 @@ void LCD::begin(uint8_t cols, uint8_t lines, uint8_t dotsize)
    
    // for some 1 line displays you can select a 10 pixel high font
    // ------------------------------------------------------------
-   if ((dotsize != LCD_5x8DOTS) && (lines == 1)) 
+   if ((dotsize != 0) && (lines == 1)) 
    {
       _displayfunction |= LCD_5x10DOTS;
    }
@@ -94,8 +93,8 @@ void LCD::begin(uint8_t cols, uint8_t lines, uint8_t dotsize)
    // before sending commands. Arduino can turn on way before 4.5V so we'll wait 
    // 50
    // ---------------------------------------------------------------------------
-   delay (100); // 100ms delay
-   
+   delayMicroseconds(100000); 
+      
    //put the LCD into 4 bit or 8 bit mode
    // -------------------------------------
    if (! (_displayfunction & LCD_8BITMODE)) 
@@ -104,19 +103,19 @@ void LCD::begin(uint8_t cols, uint8_t lines, uint8_t dotsize)
       // figure 24, pg 46
       
       // we start in 8bit mode, try to set 4 bit mode
-      send(0x03, FOUR_BITS);
+      command ( 0x03 );
       delayMicroseconds(4500); // wait min 4.1ms
       
       // second try
-      send ( 0x03, FOUR_BITS );
+      command ( 0x03 );
       delayMicroseconds(4500); // wait min 4.1ms
       
       // third go!
-      send( 0x03, FOUR_BITS );
+      command ( 0x03 ); 
       delayMicroseconds(150);
       
       // finally, set to 4-bit interface
-      send ( 0x02, FOUR_BITS ); 
+      command ( 0x02 ); 
    } 
    else 
    {
@@ -149,9 +148,7 @@ void LCD::begin(uint8_t cols, uint8_t lines, uint8_t dotsize)
    _displaymode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
    // set the entry mode
    command(LCD_ENTRYMODESET | _displaymode);
-
-   backlight();
-
+   
 }
 
 // Common LCD Commands
@@ -188,7 +185,7 @@ void LCD::setCursor(uint8_t col, uint8_t row)
    {
       command(LCD_SETDDRAMADDR | (col + row_offsetsDef[row]));
    }
-   
+
 }
 
 // Turn the display on/off
@@ -294,36 +291,6 @@ void LCD::createChar(uint8_t location, uint8_t charmap[])
       write(charmap[i]);      // call the virtual write method
       delayMicroseconds(40);
    }
-}
-
-//
-// Switch on the backlight
-void LCD::backlight ( void )
-{
-   setBacklight(255);
-}
-
-//
-// Switch off the backlight
-void LCD::noBacklight ( void )
-{
-   setBacklight(0);
-}
-
-//
-// Switch fully on the LCD (backlight and LCD)
-void LCD::on ( void )
-{
-   display();
-   backlight();
-}
-
-//
-// Switch fully off the LCD (backlight and LCD) 
-void LCD::off ( void )
-{
-   noBacklight();
-   noDisplay();
 }
 
 // General LCD commands - generic methods used by the rest of the commands

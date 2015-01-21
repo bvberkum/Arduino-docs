@@ -11,8 +11,8 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
 #define _DHT            0
@@ -22,9 +22,9 @@
 #define _LCD84x48       0
 #define _NRF24          0
 							
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define STDBY_PERIOD    60
 							
 
@@ -44,18 +44,25 @@ char node_id[7];
 
 
 /* IO pins */
-static const byte ledPin = 13;
+//             RXD      0
+//             TXD      1
+//             INT0     2
 #if _DHT
 static const byte DHT_PIN = 7;
 #endif
 #if _DS
 static const byte DS_PIN = 8;
 #endif
+//              MOSI     11
+//              MISO     12
+//             SCK      13    NRF24
+#       define _DBG_LED 13 // SCK
 
 MpeSerial mpeser (57600);
 
+/* *** InputParser {{{ */
 
-/* InputParser {{{ */
+
 /* }}} *** */
 
 /* *** Report variables *** {{{ */
@@ -68,7 +75,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -76,85 +83,20 @@ enum {
 	HANDSHAKE,
 	MEASURE,
 	REPORT,
-	STDBY,
-	END
+	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[END];
-Scheduler scheduler (schedbuf, END);
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-
-/* *** /Scheduled tasks *** }}} */
-
-/* *** Peripheral devices *** {{{ */
-
-#if LDR_PORT
-Port ldr (LDR_PORT);
-#endif
-
-#if _DHT
-#endif //_DHT
-
-#if _LCD84x48
-/* Nokkia 5110 display */
-#endif // LCD84x48
-
-#if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-OneWire ds(DS_PIN);
-
-uint8_t ds_count = 0;
-uint8_t ds_search = 0;
-
-//uint8_t ds_addr[ds_count][8] = {
-//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
-//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
-//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
-//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
-//};
-enum { DS_OK, DS_ERR_CRC };
-
-
-#endif // _DS
-
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-#endif //_NRF24
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-
-#endif //_NRF24
-
-#if _LCD
-#endif //_LCD
-
-#if _RTC
-#endif //_RTC
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-
-/* *** /Peripheral devices *** }}} */
+/* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
@@ -218,10 +160,62 @@ void writeConfig(Config &c)
 }
 
 
-/* *** /EEPROM config *** }}} */
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+#endif // DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+OneWire ds(DS_PIN);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
+
+//uint8_t ds_addr[ds_count][8] = {
+//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
+//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
+//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
+//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
+//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
+//};
+enum { DS_OK, DS_ERR_CRC };
+
+
+#endif // DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+#endif // NRF24
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices }}} *** */
+
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
-
 
 #if LDR_PORT
 #endif
@@ -239,8 +233,15 @@ void writeConfig(Config &c)
 
 #endif // DHT
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
+
 #if _LCD84x48
-#endif //_LCD84x48
+
+
+#endif // LCD84x48
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
@@ -249,19 +250,19 @@ void writeConfig(Config &c)
 #endif // DS
 
 #if _NRF24
-/* Nordic nRF24L01+ routines */
+/* Nordic nRF24L01+ radio routines */
 
-#endif // RF24 funcs
 
-#if _LCD
-#endif //_LCD
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
 
 #if _HMC5883L
-/* Digital magnetometer I2C module */
-#endif //_HMC5883L
+/* Digital magnetometer I2C routines */
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
@@ -298,13 +299,15 @@ void initLibs()
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
 
+#if _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
+	tick = 0;
+
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
 bool doAnnounce()
@@ -363,27 +366,29 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-		case STDBY:
-			debugline("STDBY");
+		case WAITING:
+		case IDLE:
+			Serial.print("!");
 			serialFlush();
 			break;
 
-		case WAITING:
-		case IDLE:
-			scheduler.timer(STDBY, STDBY_PERIOD);
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
 			break;
-		
 	}
 }
 
 
 /* *** /Run-time handlers *** }}} */
 
-/* *** InputParser handlers **** {{{ */
+/* *** InputParser handlers *** {{{ */
 
 
 
-/* *** /InputParser handlers **** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -394,7 +399,7 @@ void setup(void)
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
+	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -407,7 +412,9 @@ void setup(void)
 
 void loop(void)
 {
-	blink(ledPin, 1, 15);
+#if _DBG_LED 
+	blink(_DBG_LED, 1, 15);
+#endif
 	debug_ticks();
 	serialFlush();
 	char task = scheduler.pollWaiting();

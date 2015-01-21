@@ -363,13 +363,7 @@ class = {
   };
   cp-ref     = {
     ref-type = derived;
-    ref-id   = 'class_liquid_crystal___s_r2_w';
-    ref-prot = public;
-    ref-virt = non-virtual;
-  };
-  cp-ref     = {
-    ref-type = derived;
-    ref-id   = 'class_liquid_crystal___s_r3_w';
+    ref-id   = 'class_liquid_crystal___s_r___l_c_d3';
     ref-prot = public;
     ref-virt = non-virtual;
   };
@@ -385,7 +379,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'autoscroll';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '354';
+      sec-mem-desc-line = '324';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -401,33 +395,6 @@ _EnD_oF_dEf_TeXt_;
     the LCD.
 
     @param      none
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1aba8867fe2210cbfa8db869208709be10';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'backlight';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '402';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch-on the LCD backlight.
-    @discussion Switch-on the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin. 
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -461,7 +428,7 @@ LCD_5x8DOTS
 _EnD_oF_dEf_TeXt_;
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '196';
+      sec-mem-desc-line = '166';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -472,13 +439,12 @@ _EnD_oF_dEf_TeXt_;
     initializes the LCD, therefore, it MUST be called prior to using any other
     method from this class.
 
-    This method is abstract, a base implementation is available common to all LCD
-    drivers. Should it not be compatible with some other LCD driver, a derived
-    implementation should be done on the driver specif class.
+    This method is pure abstract, it is dependent on each derived class from
+    this base class to implement the internals of how the LCD is initialized
+    and configured.
 
     @param      cols[in] the number of columns that the display has
     @param      rows[in] the number of rows that the display has
-    @param      charsize[in] character size, default==LCD_5x8DOTS
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -491,7 +457,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'blink';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '260';
+      sec-mem-desc-line = '230';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -514,7 +480,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'clear';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '208';
+      sec-mem-desc-line = '178';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -527,6 +493,38 @@ _EnD_oF_dEf_TeXt_;
     This operation is time consuming for the LCD.
 
     @param      none
+_EnD_oF_dEf_TeXt_;
+    }; /* sec-member */
+    sec-member = {
+      sec-mem-kind = 'function';
+      sec-mem-id   = 'class_l_c_d_1a31a0cb42497d83cdc9cb8000828f7190';
+      sec-mem-virt = normal;
+      sec-mem-prot = public;
+      sec-mem-type = <<_EnD_oF_dEf_TeXt_
+void
+_EnD_oF_dEf_TeXt_;
+      sec-mem-name = 'command';
+      sec-mem-param = {
+        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
+uint8_t
+_EnD_oF_dEf_TeXt_;
+        sec-mem-param-declname = 'value';
+      }; /*        sec-mem-param--param */
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
+      sec-mem-desc-line = '377';
+      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
+    @function
+    @abstract   Send a command to the LCD.
+    @discussion This method sends a command to the LCD by setting the Register
+    select line of the LCD.
+
+    This command shouldn't be used to drive the LCD, only to implement any other
+    feature that is not available on this library.
+
+    @param      value[in] Command value to send to the LCD.
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -552,7 +550,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-array = '[]';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '382';
+      sec-mem-desc-line = '352';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -583,7 +581,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'cursor';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '278';
+      sec-mem-desc-line = '248';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -606,7 +604,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'display';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '242';
+      sec-mem-desc-line = '212';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -630,7 +628,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'home';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '221';
+      sec-mem-desc-line = '191';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -656,7 +654,7 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'LCD';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '179';
+      sec-mem-desc-line = '150';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -677,7 +675,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'leftToRight';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '309';
+      sec-mem-desc-line = '279';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -703,7 +701,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'moveCursorLeft';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '330';
+      sec-mem-desc-line = '300';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -724,7 +722,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'moveCursorRight';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '339';
+      sec-mem-desc-line = '309';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -745,7 +743,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'noAutoscroll';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '364';
+      sec-mem-desc-line = '334';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -760,33 +758,6 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a2a331b4e142734411b2f1cfaffe7a488';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'noBacklight';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '411';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch-off the LCD backlight.
-    @discussion Switch-off the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin. 
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
       sec-mem-id   = 'class_l_c_d_1a3b755c4b397b5985752be8c30ee1a9b5';
       sec-mem-virt = normal;
       sec-mem-prot = public;
@@ -795,7 +766,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'noBlink';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '250';
+      sec-mem-desc-line = '220';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -816,7 +787,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'noCursor';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '268';
+      sec-mem-desc-line = '238';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -837,7 +808,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'noDisplay';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '231';
+      sec-mem-desc-line = '201';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -852,60 +823,6 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a191639be183be1476c9bfe6d455d23b2';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'off';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '429';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch off the LCD module.
-    @discussion Switch off the LCD module, it will switch off the LCD controller
-    and the backlight. This method has the same effect of calling noDisplay and
-    noBacklight. @see display, @see backlight
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a718da3a638deb59bd1c7a5222a52d98a';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'on';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '420';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch on the LCD module.
-    @discussion Switch on the LCD module, it will switch on the LCD controller
-    and the backlight. This method has the same effect of calling display and
-    backlight. @see display, @see backlight
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
       sec-mem-id   = 'class_l_c_d_1ac014830eadc26bfd86308ea8734f4428';
       sec-mem-virt = normal;
       sec-mem-prot = public;
@@ -914,7 +831,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'rightToLeft';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '322';
+      sec-mem-desc-line = '292';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -940,7 +857,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'scrollDisplayLeft';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '287';
+      sec-mem-desc-line = '257';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -962,7 +879,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'scrollDisplayRight';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '296';
+      sec-mem-desc-line = '266';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -976,7 +893,47 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a3305570d7b37eb93f2cf840263c15828';
+      sec-mem-id   = 'class_l_c_d_1a8a5b6f6f448a6ca6eeb3466c370d47ab';
+      sec-mem-virt = virtual;
+      sec-mem-prot = public;
+      sec-mem-type = <<_EnD_oF_dEf_TeXt_
+virtual void
+_EnD_oF_dEf_TeXt_;
+      sec-mem-name = 'send';
+      sec-mem-param = {
+        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
+uint8_t
+_EnD_oF_dEf_TeXt_;
+        sec-mem-param-declname = 'value';
+      }; /*        sec-mem-param--param */
+      sec-mem-param = {
+        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
+uint8_t
+_EnD_oF_dEf_TeXt_;
+        sec-mem-param-declname = 'mode';
+      }; /*        sec-mem-param--param */
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
+      sec-mem-desc-line = '438';
+      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
+    @function
+    @abstract   Send a particular value to the LCD.
+    @discussion Sends a particular value to the LCD. This is a pure abstract
+    method, therefore, it is implementation dependent of each derived class how
+    to physically write to the LCD.
+
+    Users should never call this method.
+
+    @param      value[in] Value to send to the LCD.
+    @result     mode LOW - write to the LCD CGRAM, HIGH - write a command to
+    the LCD.
+_EnD_oF_dEf_TeXt_;
+    }; /* sec-member */
+    sec-member = {
+      sec-mem-kind = 'function';
+      sec-mem-id   = 'class_l_c_d_1a4660b37d1f7f4e1eb61de043988dd902';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -987,34 +944,28 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
+        sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '463';
+      sec-mem-desc-line = '393';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
     @function
-    @abstract   Sets the pin to control the backlight.
-    @discussion Sets the pin in the device to control the backlight. The behaviour
-    of this method is very dependent on the device. Some controllers support
-    dimming some don't. Please read the actual header file for each individual
-    device. The setBacklightPin method has to be called before setting the backlight
-    or the adequate backlight control constructor.
-    @see setBacklightPin.
+    @abstract   Switch-on/off the LCD backlight.
+    @discussion Switch-on/off the LCD backlight.
+    The setBacklightPin has to be called before setting the backlight for
+    this method to work. @see setBacklightPin. This method is device dependent
+    and can be programmed on each subclass. An empty function call is provided
+    that does nothing.
 
-    NOTE: The prefered methods to control the backlight are "backlight" and
-    "noBacklight".
-
-    @param      0..255 - the value is very dependent on the LCD. However, 
-    BACKLIGHT_OFF will be interpreted as off and BACKLIGHT_ON will drive the
-    backlight on.
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a53f4ee9b39d9ab3d7ae4d9f8dedca3bc';
+      sec-mem-id   = 'class_l_c_d_1a2871297d458e3384538008541192af27';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -1025,16 +976,10 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
+        sec-mem-param-declname = 'pin';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '444';
+      sec-mem-desc-line = '404';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1045,8 +990,7 @@ _EnD_oF_dEf_TeXt_;
     This method is device dependent and can be programmed on each subclass. An 
     empty function call is provided that does nothing.
 
-    @param      value: pin associated to backlight control.
-    @param      pol: backlight polarity control (POSITIVE, NEGATIVE)
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -1071,7 +1015,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'row';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '393';
+      sec-mem-desc-line = '363';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1101,7 +1045,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'value';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '477';
+      sec-mem-desc-line = '418';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1130,7 +1074,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_cols';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '497';
+      sec-mem-desc-line = '458';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1148,7 +1092,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_displaycontrol';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '493';
+      sec-mem-desc-line = '454';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1166,7 +1110,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_displayfunction';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '491';
+      sec-mem-desc-line = '452';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1184,7 +1128,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_displaymode';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '495';
+      sec-mem-desc-line = '456';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1202,111 +1146,17 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_numlines';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '496';
+      sec-mem-desc-line = '457';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
 
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_l_c_d_1a990338759d2abe10b0fb1743b7789566';
-      sec-mem-virt = normal;
-      sec-mem-prot = protected;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_polarity';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '498';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-  }; /* cp-section */
-  cp-section = {
-    sec-kind = 'private-func';
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a31a0cb42497d83cdc9cb8000828f7190';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'command';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '513';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Send a command to the LCD.
-    @discussion This method sends a command to the LCD by setting the Register
-    select line of the LCD.
-
-    This command shouldn't be used to drive the LCD, only to implement any other
-    feature that is not available on this library.
-
-    @param      value[in] Command value to send to the LCD (COMMAND, DATA or
-    FOUR_BITS).
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_l_c_d_1a8a5b6f6f448a6ca6eeb3466c370d47ab';
-      sec-mem-virt = virtual;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-virtual void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'send';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'mode';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      sec-mem-desc-line = '529';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Send a particular value to the LCD.
-    @discussion Sends a particular value to the LCD. This is a pure abstract
-    method, therefore, it is implementation dependent of each derived class how
-    to physically write to the LCD.
-
-    Users should never call this method.
-
-    @param      value[in] Value to send to the LCD.
-    @result     mode LOW - write to the LCD CGRAM, HIGH - write a command to
-    the LCD.
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
   cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-  cp-fileline  = '170';
+  cp-fileline  = '141';
   cp-briefdesc = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1356,20 +1206,9 @@ _EnD_oF_dEf_TeXt_;
       }; /* node */
       node = {
         node-id    = 6;
-        node-label = 'LiquidCrystal_SR2W';
+        node-label = 'LiquidCrystal_SR_LCD3';
         node-link = {
-          node-link-id = 'class_liquid_crystal___s_r2_w';
-        };
-        node-child = {
-          child-id = '2';
-          relation = public-inheritance;
-        }; /* node-child */
-      }; /* node */
-      node = {
-        node-id    = 7;
-        node-label = 'LiquidCrystal_SR3W';
-        node-link = {
-          node-link-id = 'class_liquid_crystal___s_r3_w';
+          node-link-id = 'class_liquid_crystal___s_r___l_c_d3';
         };
         node-child = {
           child-id = '2';
@@ -1460,7 +1299,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'd7';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '55';
+      sec-mem-desc-line = '57';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1547,7 +1386,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'd7';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '58';
+      sec-mem-desc-line = '60';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1557,103 +1396,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1ae0c3c8f7661634b1400f00a1c9c02c26';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'enable';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd0';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd1';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd2';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd3';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlightPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '68';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1a52a4de3d866e347208a32dfc9d797729';
+      sec-mem-id   = 'class_liquid_crystal_1a23124e6dd5ac4a9b6147629b96e91953';
       sec-mem-virt = normal;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -1696,20 +1439,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'd3';
       }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlightPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '86';
+      sec-mem-desc-line = '71';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1769,7 +1500,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'd3';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '76';
+      sec-mem-desc-line = '69';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -1778,222 +1509,6 @@ _EnD_oF_dEf_TeXt_;
     @abstract   4 bit LCD constructors.
     @discussion Defines the pin assignment that the LCD will have.
     The constructor does not initialize the LCD.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1a8b90122c67a6d14b967c8a11ba490670';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'enable';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd0';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd1';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd2';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd3';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlightPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '83';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1a23124e6dd5ac4a9b6147629b96e91953';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'enable';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd0';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd1';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd2';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd3';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '78';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1aff2330186495fde93370d46c0ca2cbf0';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'enable';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd0';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd1';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd2';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd3';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlightPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '64';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -2018,7 +1533,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '99';
+      sec-mem-desc-line = '85';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2037,7 +1552,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1aa2b898366e1c656ac313b9007c98cebd';
+      sec-mem-id   = 'class_liquid_crystal_1a170c6ed996f3e84bf63dcd5cb1471428';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2048,10 +1563,10 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
+        sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '125';
+      sec-mem-desc-line = '96';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2060,19 +1575,14 @@ _EnD_oF_dEf_TeXt_;
     @abstract   Switch-on/off the LCD backlight.
     @discussion Switch-on/off the LCD backlight.
     The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin. For dimming control of the
-    backlight, the configuration pin must be a PWM output pin. Dim control
-    is achieved by passing a value from 1 to 255 as a parameter. If the
-    pin configured when calling the setBacklightPin does not support PWM,
-    then: (0) backlight off, (1..255) backlight on.
+    this method to work. @see setBacklightPin.
 
-    @param      value: backlight value. 0: off, 1..255: dim control of the 
-    backlight. For negative logic 255: off, 254..0: dim control.
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal_1a63740dc1198d8169a39d9c6daff0efc9';
+      sec-mem-id   = 'class_liquid_crystal_1aa78ed97905615b34e685170c086e3d9d';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2085,14 +1595,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'pin';
       }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '109';
+      sec-mem-desc-line = '105';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2101,8 +1605,7 @@ _EnD_oF_dEf_TeXt_;
     @abstract   Sets the pin to control the backlight.
     @discussion Sets the pin in the device to control the backlight.
 
-    @param      pin: pin assigned to the backlight
-    @param      pol: backlight pin control polarity (POSITIVE, NEGATIVE).
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
@@ -2190,7 +1693,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'd7';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '136';
+      sec-mem-desc-line = '117';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2210,7 +1713,7 @@ void
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'pulseEnable';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '152';
+      sec-mem-desc-line = '133';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2243,7 +1746,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'numBits';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '144';
+      sec-mem-desc-line = '125';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2267,7 +1770,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_backlightPin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '158';
+      sec-mem-desc-line = '139';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2285,7 +1788,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_data_pins';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '157';
+      sec-mem-desc-line = '138';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2303,7 +1806,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_enable_pin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '156';
+      sec-mem-desc-line = '137';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2321,7 +1824,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_rs_pin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '154';
+      sec-mem-desc-line = '135';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2339,7 +1842,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_rw_pin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      sec-mem-desc-line = '155';
+      sec-mem-desc-line = '136';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2349,7 +1852,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
   cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-  cp-fileline  = '45';
+  cp-fileline  = '47';
   cp-briefdesc = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2358,20 +1861,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 10;
+        node-id    = 9;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 9;
+        node-id    = 8;
         node-label = 'LiquidCrystal';
         node-link = {
           node-link-id = 'class_liquid_crystal';
         };
         node-child = {
-          child-id = '10';
+          child-id = '9';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
@@ -2379,20 +1882,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 12;
+        node-id    = 11;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 11;
+        node-id    = 10;
         node-label = 'LiquidCrystal';
         node-link = {
           node-link-id = 'class_liquid_crystal';
         };
         node-child = {
-          child-id = '12';
+          child-id = '11';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
@@ -2441,7 +1944,7 @@ LCD_5x8DOTS
 _EnD_oF_dEf_TeXt_;
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '110';
+      sec-mem-desc-line = '127';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2464,7 +1967,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1a9fc9bc519ebbf7503dadc11622e02ed6';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1aac537d195557e0b8afac1a71441a484c';
       sec-mem-virt = normal;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2477,140 +1980,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'lcd_Addr';
       }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlighPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '53';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1add1f2da7de4ec9b9cd5c9b5fab712464';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_I2C';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'lcd_Addr';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlighPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '70';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1a7d9b54d3a91fa0e0e50db27cda6b4654';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_I2C';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'lcd_Addr';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '89';
+      sec-mem-desc-line = '75';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2622,13 +1993,6 @@ _EnD_oF_dEf_TeXt_;
 
     @param      lcd_Addr[in] I2C address of the IO expansion module. For I2CLCDextraIO,
     the address can be configured using the on board jumpers.
-    @param      En[in] LCD En (Enable) pin connected to the IO extender module
-    @param      Rw[in] LCD Rw (Read/write) pin connected to the IO extender module
-    @param      Rs[in] LCD Rs (Reset) pin connected to the IO extender module
-    @param      d4[in] LCD data 0 pin map on IO extender module
-    @param      d5[in] LCD data 1 pin map on IO extender module
-    @param      d6[in] LCD data 2 pin map on IO extender module
-    @param      d7[in] LCD data 3 pin map on IO extender module
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -2665,7 +2029,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'Rs';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '67';
+      sec-mem-desc-line = '89';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2684,7 +2048,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1ab15622287533de7a47f3e2012ebf18be';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1ac235f66c3d56320fca89545d0176caf5';
       sec-mem-virt = normal;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2719,64 +2083,28 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
+        sec-mem-param-declname = 'd0';
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
+        sec-mem-param-declname = 'd1';
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
+        sec-mem-param-declname = 'd2';
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlighPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
+        sec-mem-param-declname = 'd3';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '93';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1aac537d195557e0b8afac1a71441a484c';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_I2C';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'lcd_Addr';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '51';
+      sec-mem-desc-line = '109';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2788,6 +2116,13 @@ _EnD_oF_dEf_TeXt_;
 
     @param      lcd_Addr[in] I2C address of the IO expansion module. For I2CLCDextraIO,
     the address can be configured using the on board jumpers.
+    @param      En[in] LCD En (Enable) pin connected to the IO extender module
+    @param      Rw[in] LCD Rw (Read/write) pin connected to the IO extender module
+    @param      Rs[in] LCD Rs (Reset) pin connected to the IO extender module
+    @param      d0[in] LCD data 0 pin map on IO extender module
+    @param      d1[in] LCD data 1 pin map on IO extender module
+    @param      d2[in] LCD data 2 pin map on IO extender module
+    @param      d3[in] LCD data 3 pin map on IO extender module
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -2812,7 +2147,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '124';
+      sec-mem-desc-line = '141';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2831,7 +2166,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1af11b8fa0082616e2b6e6e4238589d8a8';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1a2f248fc841812e850f29114667f41440';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2842,10 +2177,10 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
+        sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '145';
+      sec-mem-desc-line = '152';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -2856,12 +2191,12 @@ _EnD_oF_dEf_TeXt_;
     The setBacklightPin has to be called before setting the backlight for
     this method to work. @see setBacklightPin.
 
-    @param      value: backlight mode (HIGH|LOW)
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1a2eaf86f62d1f169b3763b03fbf88f70b';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1a715027a10c1141fe5442fe58cb3a405a';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -2872,109 +2207,24 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
+        sec-mem-param-declname = 'pin';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '134';
+      sec-mem-desc-line = '161';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
     @function
     @abstract   Sets the pin to control the backlight.
-    @discussion Sets the pin in the device to control the backlight. This device
-    doesn't support dimming backlight capability.
+    @discussion Sets the pin in the device to control the backlight.
 
-    @param      0: backlight off, 1..255: backlight on.
+    @param      mode: backlight mode (HIGH|LOW)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
   cp-section = {
     sec-kind = 'private-func';
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1adb997350478bdc0ab8eb5cc5623a2ad9';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'config';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'lcd_Addr';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '172';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Initialises class private variables
-    @discussion This is the class single point for initialising private variables.
-
-    @param      lcd_Addr[in] I2C address of the IO expansion module. For I2CLCDextraIO,
-    the address can be configured using the on board jumpers.
-    @param      En[in] LCD En (Enable) pin connected to the IO extender module
-    @param      Rw[in] LCD Rw (Read/write) pin connected to the IO extender module
-    @param      Rs[in] LCD Rs (Reset) pin connected to the IO extender module
-    @param      d4[in] LCD data 0 pin map on IO extender module
-    @param      d5[in] LCD data 1 pin map on IO extender module
-    @param      d6[in] LCD data 2 pin map on IO extender module
-    @param      d7[in] LCD data 3 pin map on IO extender module
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
       sec-mem-id   = 'class_liquid_crystal___i2_c_1a459c4fa106fb7bac5940e3c6aea736af';
@@ -2985,7 +2235,7 @@ int
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = 'init';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '154';
+      sec-mem-desc-line = '171';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3008,10 +2258,10 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-defname = 'data';
+        sec-mem-param-defname = '_data';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '190';
+      sec-mem-desc-line = '189';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3044,7 +2294,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '182';
+      sec-mem-desc-line = '181';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3070,7 +2320,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_Addr';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '193';
+      sec-mem-desc-line = '192';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3080,13 +2330,13 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1a9d59c16cde5c3ffb30a881e9a61c9a32';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1af8c4ad9619a092d19dbc4b04414c341a';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_backlightPinMask';
+      sec-mem-name = '_backlightMask';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
       sec-mem-desc-line = '194';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
@@ -3098,15 +2348,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___i2_c_1a0eaa7c2ac1040a1786960618866c066e';
+      sec-mem-id   = 'class_liquid_crystal___i2_c_1ab0874cf104abef0fba5580c85ddd610f';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_backlightStsMask';
+      sec-mem-name = '_backlightPin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '195';
+      sec-mem-desc-line = '193';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3124,7 +2374,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_data_pins';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '200';
+      sec-mem-desc-line = '199';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3142,7 +2392,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_En';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '197';
+      sec-mem-desc-line = '196';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3160,7 +2410,7 @@ I2CIO
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_i2cio';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '196';
+      sec-mem-desc-line = '195';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3178,7 +2428,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_Rs';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '199';
+      sec-mem-desc-line = '198';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3196,7 +2446,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_Rw';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-      sec-mem-desc-line = '198';
+      sec-mem-desc-line = '197';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3206,7 +2456,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
   cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
-  cp-fileline  = '39';
+  cp-fileline  = '63';
   cp-briefdesc = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3215,20 +2465,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 14;
+        node-id    = 13;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 13;
+        node-id    = 12;
         node-label = 'LiquidCrystal_I2C';
         node-link = {
           node-link-id = 'class_liquid_crystal___i2_c';
         };
         node-child = {
-          child-id = '14';
+          child-id = '13';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
@@ -3236,24 +2486,24 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 16;
+        node-id    = 15;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 15;
+        node-id    = 14;
         node-label = 'LiquidCrystal_I2C';
         node-link = {
           node-link-id = 'class_liquid_crystal___i2_c';
         };
         node-child = {
-          child-id = '16';
+          child-id = '15';
           relation = public-inheritance;
         }; /* node-child */
         node-child = {
-          child-id = '17';
+          child-id = '16';
           relation = usage;
           edgelabel = <<_EnD_oF_dEf_TeXt_
 _i2cio
@@ -3261,7 +2511,7 @@ _EnD_oF_dEf_TeXt_;
         }; /* node-child */
       }; /* node */
       node = {
-        node-id    = 17;
+        node-id    = 16;
         node-label = 'I2CIO';
         node-link = {
           node-link-id = 'class_i2_c_i_o';
@@ -3283,7 +2533,7 @@ class = {
     sec-kind = 'public-func';
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r_1ac3fe0b48f8d4c1c941d82d1333495cfc';
+      sec-mem-id   = 'class_liquid_crystal___s_r_1a40bca9b97ad5c1e938c7dee1fd0850f2';
       sec-mem-virt = normal;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -3307,12 +2557,9 @@ _EnD_oF_dEf_TeXt_;
 uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'enable';
-        sec-mem-param-defval = <<_EnD_oF_dEf_TeXt_
-TWO_WIRE
-_EnD_oF_dEf_TeXt_;
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '108';
+      sec-mem-desc-line = '103';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3325,7 +2572,7 @@ _EnD_oF_dEf_TeXt_;
 
     @param srdata[in]   pin for shiftregister data line.
     @param srclock[in]  pin for shiftregister clock line.
-    @param enable[in]   optional direct enable pin for the LCD
+    @param enable[in]   enable pin for the shiftregister.
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
@@ -3350,7 +2597,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '122';
+      sec-mem-desc-line = '117';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3383,7 +2630,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '145';
+      sec-mem-desc-line = '128';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3399,7 +2646,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r_1a5bfc0dcc1f042bcb59992493a3a7231d';
+      sec-mem-id   = 'class_liquid_crystal___s_r_1a3025b6e19c6b9c28991b13fa16ef58c9';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -3412,14 +2659,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'pin';
       }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '134';
+      sec-mem-desc-line = '137';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3427,10 +2668,8 @@ _EnD_oF_dEf_TeXt_;
     @function
     @abstract   Sets the pin to control the backlight.
     @discussion Sets the pin in the device to control the backlight.
-    @warning    Currently not supported
 
     @param      mode: backlight mode (HIGH|LOW)
-    @param      pol: backlight polarity
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
@@ -3476,7 +2715,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'font';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '155';
+      sec-mem-desc-line = '149';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3502,7 +2741,7 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'val';
       }; /*        sec-mem-param--param */
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '161';
+      sec-mem-desc-line = '155';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3524,7 +2763,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_enable_pin';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '163';
+      sec-mem-desc-line = '157';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3542,7 +2781,7 @@ fio_bit
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srClockBit';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '169';
+      sec-mem-desc-line = '163';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3560,7 +2799,7 @@ fio_register
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srClockRegister';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '168';
+      sec-mem-desc-line = '162';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3578,7 +2817,7 @@ fio_bit
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srDataBit';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '167';
+      sec-mem-desc-line = '161';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3596,7 +2835,7 @@ fio_register
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srDataRegister';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '166';
+      sec-mem-desc-line = '160';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3614,7 +2853,7 @@ fio_bit
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srEnableBit';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '171';
+      sec-mem-desc-line = '165';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3632,7 +2871,7 @@ fio_register
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_srEnableRegister';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '170';
+      sec-mem-desc-line = '164';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3650,7 +2889,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       sec-mem-name = '_two_wire';
       sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      sec-mem-desc-line = '164';
+      sec-mem-desc-line = '158';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3660,7 +2899,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
   cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-  cp-fileline  = '95';
+  cp-fileline  = '90';
   cp-briefdesc = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3669,18 +2908,18 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 18;
+        node-id    = 17;
         node-label = 'LiquidCrystal_SR';
         node-link = {
           node-link-id = 'class_liquid_crystal___s_r';
         };
         node-child = {
-          child-id = '19';
+          child-id = '18';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
       node = {
-        node-id    = 19;
+        node-id    = 18;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
@@ -3690,18 +2929,18 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 20;
+        node-id    = 19;
         node-label = 'LiquidCrystal_SR';
         node-link = {
           node-link-id = 'class_liquid_crystal___s_r';
         };
         node-child = {
-          child-id = '21';
+          child-id = '20';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
       node = {
-        node-id    = 21;
+        node-id    = 20;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
@@ -3711,8 +2950,8 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
 }; /* class */
 class = {
-  cp-id     = 'class_liquid_crystal___s_r2_w';
-  cp-name   = 'LiquidCrystal_SR2W';
+  cp-id     = 'class_liquid_crystal___s_r___l_c_d3';
+  cp-name   = 'LiquidCrystal_SR_LCD3';
   cp-ref     = {
     ref-type = base;
     ref-id   = 'class_l_c_d';
@@ -3723,13 +2962,13 @@ class = {
     sec-kind = 'public-func';
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1af307fdf5c8feb757e965074dcdeb1dd3';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a2cd0629853dd8a5569799fa998f3d29f';
       sec-mem-virt = normal;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_SR2W';
+      sec-mem-name = 'LiquidCrystal_SR_LCD3';
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
@@ -3744,33 +2983,30 @@ _EnD_oF_dEf_TeXt_;
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
+uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'blpol';
-        sec-mem-param-defval = <<_EnD_oF_dEf_TeXt_
-POSITIVE
-_EnD_oF_dEf_TeXt_;
+        sec-mem-param-declname = 'enable';
       }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '151';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '31';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
     @method     
-    @abstract   LCD 2 wire SHIFT REGISTER constructor.
-    @discussion Defines the pin assignments that connect to the shift register.
+    @abstract   LCD SHIFT REGISTER constructors.
+    @discussion Defines the pin assignment that the LCD will have.
     The constructor does not initialize the LCD. Assuming 1 line 8 pixel high 
     font.
 
-    @param srdata[in]   Arduino pin for shift register data line.
-    @param srclock[in]  Arduino pin for shift register clock line.
-    @param blpol[in]    optional backlight polarity (default = POSITIVE)
+    @param srdata[in]   pin for shiftregister data line.
+    @param srclock[in]  pin for shiftregister clock line.
+    @param enable[in]   enable pin for the shiftregister (also called strobe).
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a65dc6f261c319be8e56f3c1f6a5c877d';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a01e75d76d80e218a5bdc28f8ce22b0e4';
       sec-mem-virt = virtual;
       sec-mem-prot = public;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -3789,8 +3025,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'mode';
       }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '165';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '45';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3803,38 +3039,8 @@ _EnD_oF_dEf_TeXt_;
     Users should never call this method.
 
     @param      value[in] Value to send to the LCD.
-    @param      mode[in]  DATA=8bit data, COMMAND=8bit cmd, FOUR_BITS=4bit cmd
+    @result     mode LOW - write to the LCD CGRAM, HIGH - write a command to
     the LCD.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a2158db27287c1564a03e7a1472beb3b6';
-      sec-mem-virt = virtual;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'setBacklight';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'mode';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '177';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch-on/off the LCD backlight.
-    @discussion Switch-on/off the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin.
-
-    @param      mode[in] backlight mode (0 off, non-zero on)
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
@@ -3842,7 +3048,31 @@ _EnD_oF_dEf_TeXt_;
     sec-kind = 'private-func';
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a12c14153e7056cb4a98310529bace6a8';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a50783b3917193f08e6ee8106d7c1bf8a';
+      sec-mem-virt = normal;
+      sec-mem-prot = private;
+      sec-mem-type = <<_EnD_oF_dEf_TeXt_
+void
+_EnD_oF_dEf_TeXt_;
+      sec-mem-name = '_pushOut';
+      sec-mem-param = {
+        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
+uint8_t
+_EnD_oF_dEf_TeXt_;
+        sec-mem-param-defname = 'nibble';
+      }; /*        sec-mem-param--param */
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '63';
+      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+    }; /* sec-member */
+    sec-member = {
+      sec-mem-kind = 'function';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a914be00709f27f3f51e5cbc4d9599a40';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -3863,9 +3093,9 @@ _EnD_oF_dEf_TeXt_;
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
+uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'blpol';
+        sec-mem-param-declname = 'enable';
       }; /*        sec-mem-param--param */
       sec-mem-param = {
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
@@ -3879,8 +3109,8 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
         sec-mem-param-declname = 'font';
       }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '186';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '56';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -3892,703 +3122,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1ae369efcd3fca47a018a034f5f4a1679b';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'loadSR';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'val';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '192';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @method
- @abstract takes care of shifting and the enable pulse
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-  }; /* cp-section */
-  cp-section = {
-    sec-kind = 'private-attrib';
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a3b1dfb83ad02274c30fa940a10619737';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_blMask';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '200';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a906f803e1ae324b5383fa004093124f4';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_blPolarity';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '199';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a27727d63c1ce0f9aada630814b8f022b';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_srClockMask';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '197';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1aa36d38c009bf846e7726fc48c0067fc3';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-fio_register
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_srClockRegister';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '196';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1ad188042fdcc7df0178248401c678eb8e';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_srDataMask';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '195';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r2_w_1a2e43c3f1d6b0e5599a1b4d14ef428077';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-fio_register
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_srDataRegister';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      sec-mem-desc-line = '194';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-  }; /* cp-section */
-  cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-  cp-fileline  = '138';
-  cp-briefdesc = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-  cp-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-  cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_
-      node = {
-        node-id    = 23;
-        node-label = 'LCD';
-        node-link = {
-          node-link-id = 'class_l_c_d';
-        };
-      }; /* node */
-      node = {
-        node-id    = 22;
-        node-label = 'LiquidCrystal_SR2W';
-        node-link = {
-          node-link-id = 'class_liquid_crystal___s_r2_w';
-        };
-        node-child = {
-          child-id = '23';
-          relation = public-inheritance;
-        }; /* node-child */
-      }; /* node */
-
-_EnD_oF_dEf_TeXt_;
-  cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_
-      node = {
-        node-id    = 25;
-        node-label = 'LCD';
-        node-link = {
-          node-link-id = 'class_l_c_d';
-        };
-      }; /* node */
-      node = {
-        node-id    = 24;
-        node-label = 'LiquidCrystal_SR2W';
-        node-link = {
-          node-link-id = 'class_liquid_crystal___s_r2_w';
-        };
-        node-child = {
-          child-id = '25';
-          relation = public-inheritance;
-        }; /* node-child */
-      }; /* node */
-
-_EnD_oF_dEf_TeXt_;
-}; /* class */
-class = {
-  cp-id     = 'class_liquid_crystal___s_r3_w';
-  cp-name   = 'LiquidCrystal_SR3W';
-  cp-ref     = {
-    ref-type = base;
-    ref-id   = 'class_l_c_d';
-    ref-prot = public;
-    ref-virt = non-virtual;
-  };
-  cp-section = {
-    sec-kind = 'public-func';
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1ae1396bcd5e9c5b7ed13182c166de776b';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_SR3W';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'data';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'clk';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'strobe';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '90';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @method     
-    @abstract   Class constructor. 
-    @discussion Initializes class variables and defines the IO driving the 
-    shift register. The constructor does not initialize the LCD.
-    Default configuration:
-       Shift register      LCD
-       QA - 0              DB4
-       QB - 1              DB5
-       QC - 2              DB6
-       QD - 3              DB7
-       QE - 4              E
-       QF - 5              
-       QG - 6              Rs
-       GND                 Rw
-
-    @param      strobe[in] digital IO connected to shiftregister strobe pin.
-    @param      data[in] digital IO connected to the shiftregister data pin.
-    @param      clk[in] digital IO connected to the shiftregister clock pin.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a7b2f382b76bc9d88adb8d681e824b4de';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_SR3W';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'data';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'clk';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'strobe';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlighPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '93';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a24f051747dfeda48f7b207c3358c8015';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_SR3W';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'data';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'clk';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'strobe';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'backlighPin';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '119';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a4fab8ff2f21bba3efd133cd8c87fffc0';
-      sec-mem-virt = normal;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'LiquidCrystal_SR3W';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'data';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'clk';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'strobe';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '114';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @method     
-    @abstract   Class constructor. 
-    @discussion Initializes class variables and defines the control lines of
-    the LCD and the shiftregister. The constructor does not initialize the LCD.
-
-    @param      strobe[in] digital IO connected to shiftregister strobe pin.
-    @param      data[in] digital IO connected to shiftregister data pin.
-    @param      clk[in] digital IO connected to shiftregister clock pin.
-    @param      En[in] LCD En (Enable) pin connected to SR output pin.
-    @param      Rw[in] LCD Rw (Read/write) pin connected to SR output pin.
-    @param      Rs[in] LCD Rs (Reg Select) pin connected to SR output pin.
-    @param      d4[in] LCD data 4 pin map to the SR output pin.
-    @param      d5[in] LCD data 5 pin map to the SR output pin.
-    @param      d6[in] LCD data 6 pin map to the SR output pin.
-    @param      d7[in] LCD data 7 pin map to the SR output pin.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1ade34af5b7fe795482f1848c2176d6e56';
-      sec-mem-virt = virtual;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-virtual void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'send';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'mode';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '133';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Send a particular value to the LCD.
-    @discussion Sends a particular value to the LCD for writing to the LCD or
-    as an LCD command.
-
-    Users should never call this method.
-
-    @param      value[in] Value to send to the LCD.
-    @param      mode[in] DATA - write to the LCD CGRAM, COMMAND - write a 
-    command to the LCD.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a6d0fc7907ef9fd87c408a21b9bd49295';
-      sec-mem-virt = virtual;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'setBacklight';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '154';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Switch-on/off the LCD backlight.
-    @discussion Switch-on/off the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin.
-
-    @param      value: backlight mode (HIGH|LOW)
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a894d0ea8ea61c1d15acd8a26d417e477';
-      sec-mem-virt = virtual;
-      sec-mem-prot = public;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'setBacklightPin';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-t_backlighPol
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'pol';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '143';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   Sets the pin to control the backlight.
-    @discussion Sets the pin in the device to control the backlight. This device
-    doesn't support dimming backlight capability.
-
-    @param      0: backlight off, 1..255: backlight on.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-  }; /* cp-section */
-  cp-section = {
-    sec-kind = 'private-func';
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a45cde916021d9b52b0f769c17886b2ef';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-int
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'init';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'data';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'clk';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'strobe';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rs';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'Rw';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'En';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd4';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd5';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd6';
-      }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'd7';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '165';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @method     
-    @abstract   Initializes the LCD class
-    @discussion Initializes the LCD class and IO expansion module.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a80f6e4e8b10635d9daed718f2918c1bd';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-void
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = 'loadSR';
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '183';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @function
-    @abstract   load into the shift register a byte
-    @discussion loads into the shift register a byte
-    @param      value[in]: value to be loaded into the shiftregister.
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'function';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1ac0702caa5d07ffd8e832ad8a5d0afe7c';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1aa38fcf514497ca94681706dea96600cc';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -4599,26 +3133,17 @@ _EnD_oF_dEf_TeXt_;
         sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
 uint8_t
 _EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'value';
+        sec-mem-param-defname = 'nibble';
       }; /*        sec-mem-param--param */
-      sec-mem-param = {
-        sec-mem-param-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-        sec-mem-param-declname = 'mode';
-      }; /*        sec-mem-param--param */
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '175';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '62';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
     @method     
-    @abstract   Writes an 4 bit value to the LCD.
-    @discussion Writes 4 bits (the least significant) to the LCD control data lines.
-    @param      value[in] Value to write to the LCD
-    @param      more[in]  Value to distinguish between command and data.
-    COMMAND == command, DATA == data.
+    @abstract   For sending data when initializing the display to 4-bit
+    @discussion Initializes the LCD pin allocation and configuration.
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
@@ -4626,51 +3151,15 @@ _EnD_oF_dEf_TeXt_;
     sec-kind = 'private-attrib';
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a21ef2e5b78edd0d160d81b0c06d41440';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_backlightPinMask';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '196';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1adf17379bfac4def5c780fc8ad023764c';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_backlightStsMask';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '197';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a2c14746e8f626a53f777c8df68f8a92b';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a80d225164272cc1e6bb54c518b697892';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_bit
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_clk';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '190';
+      sec-mem-name = '_srclock_bit';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '70';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4680,15 +3169,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1af7d09207dffb9f2fc85fc60661ffa0d4';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1af14d1a4f5f5396bb7637c1e22612af7d';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_register
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_clk_reg';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '191';
+      sec-mem-name = '_srclock_register';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '71';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4698,15 +3187,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1ab81049d446d2e7399ee6b20c9da4cdde';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1ae498612588e160b49223ada6828a266b';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_bit
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_data';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '188';
+      sec-mem-name = '_srdata_bit';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '66';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4716,33 +3205,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a366adab314f5dc8b7e53298d6eccf85d';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_data_pins';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '195';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a301acb36345c56ae336156fdeee4a783';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a8ce97e8647eca7708f79a1f522440783';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_register
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_data_reg';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '189';
+      sec-mem-name = '_srdata_register';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '67';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4752,69 +3223,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a4306c59b6bf3870fecad23d6b0c0aa5d';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_En';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '192';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a062da9fb985a7e88128d7d95fd8239d6';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_Rs';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '194';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1aef47417b089e53af1ce032e5f1b23b43';
-      sec-mem-virt = normal;
-      sec-mem-prot = private;
-      sec-mem-type = <<_EnD_oF_dEf_TeXt_
-uint8_t
-_EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_Rw';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '193';
-      sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      sec-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* sec-member */
-    sec-member = {
-      sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a0d40b3c14c3f56fd341d41220f425925';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a29cfcdcb563e9063bacfa45dfef8903d';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_bit
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_strobe';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '186';
+      sec-mem-name = '_strobe_bit';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '74';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4824,15 +3241,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
     sec-member = {
       sec-mem-kind = 'variable';
-      sec-mem-id   = 'class_liquid_crystal___s_r3_w_1a2a7d9703b04a91658b7a590b926ff9cd';
+      sec-mem-id   = 'class_liquid_crystal___s_r___l_c_d3_1a4273ef027971dbb1bdf3ab6525883fdf';
       sec-mem-virt = normal;
       sec-mem-prot = private;
       sec-mem-type = <<_EnD_oF_dEf_TeXt_
 fio_register
 _EnD_oF_dEf_TeXt_;
-      sec-mem-name = '_strobe_reg';
-      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-      sec-mem-desc-line = '187';
+      sec-mem-name = '_strobe_register';
+      sec-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+      sec-mem-desc-line = '75';
       sec-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4841,8 +3258,8 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
     }; /* sec-member */
   }; /* cp-section */
-  cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
-  cp-fileline  = '67';
+  cp-filename  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
+  cp-fileline  = '18';
   cp-briefdesc = <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4851,20 +3268,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-inheritancegraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 27;
+        node-id    = 22;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 26;
-        node-label = 'LiquidCrystal_SR3W';
+        node-id    = 21;
+        node-label = 'LiquidCrystal_SR_LCD3';
         node-link = {
-          node-link-id = 'class_liquid_crystal___s_r3_w';
+          node-link-id = 'class_liquid_crystal___s_r___l_c_d3';
         };
         node-child = {
-          child-id = '27';
+          child-id = '22';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
@@ -4872,20 +3289,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
   cp-collaborationgraph = <<_EnD_oF_dEf_TeXt_
       node = {
-        node-id    = 29;
+        node-id    = 24;
         node-label = 'LCD';
         node-link = {
           node-link-id = 'class_l_c_d';
         };
       }; /* node */
       node = {
-        node-id    = 28;
-        node-label = 'LiquidCrystal_SR3W';
+        node-id    = 23;
+        node-label = 'LiquidCrystal_SR_LCD3';
         node-link = {
-          node-link-id = 'class_liquid_crystal___s_r3_w';
+          node-link-id = 'class_liquid_crystal___s_r___l_c_d3';
         };
         node-child = {
-          child-id = '29';
+          child-id = '24';
           relation = public-inheritance;
         }; /* node-child */
       }; /* node */
@@ -4918,7 +3335,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pinBit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '96';
+      func-mem-desc-line = '88';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4934,7 +3351,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* func-member */
     func-member = {
       func-mem-kind = 'function';
-      func-mem-id   = '_fast_i_o_8cpp_1ae91bbe682b02a5842c291055c0e998b5';
+      func-mem-id   = '_fast_i_o_8cpp_1a19962d1b3fc351693779f633a36105a8';
       func-mem-virt = normal;
       func-mem-prot = public;
       func-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -4949,7 +3366,7 @@ _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-param = {
         func-mem-param-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
+uint8_t
 _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pinBit';
       }; /*        func-mem-param--param */
@@ -4960,7 +3377,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'value';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '77';
+      func-mem-desc-line = '72';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -4976,11 +3393,11 @@ _EnD_oF_dEf_TeXt_;
     }; /* func-member */
     func-member = {
       func-mem-kind = 'function';
-      func-mem-id   = '_fast_i_o_8cpp_1a07a19dfbdca1afaca5d666bdaa3be7d5';
+      func-mem-id   = '_fast_i_o_8cpp_1abe64155b836ffa8a137eb17d17995f84';
       func-mem-virt = normal;
       func-mem-prot = public;
       func-mem-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
+uint8_t
 _EnD_oF_dEf_TeXt_;
       func-mem-name = 'fio_pinToBit';
       func-mem-param = {
@@ -4990,7 +3407,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '66';
+      func-mem-desc-line = '62';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5018,7 +3435,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '53';
+      func-mem-desc-line = '50';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5052,7 +3469,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'initial_state';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '36';
+      func-mem-desc-line = '34';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5066,7 +3483,7 @@ _EnD_oF_dEf_TeXt_;
     }; /* func-member */
     func-member = {
       func-mem-kind = 'function';
-      func-mem-id   = '_fast_i_o_8cpp_1a5d8d5977294d614d15bda19f75d6b787';
+      func-mem-id   = '_fast_i_o_8cpp_1a8869ccb957fe8d64b1dc55fdd7fe342b';
       func-mem-virt = normal;
       func-mem-prot = public;
       func-mem-type = <<_EnD_oF_dEf_TeXt_
@@ -5081,7 +3498,7 @@ _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-param = {
         func-mem-param-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
+uint8_t
 _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'dataBit';
       }; /*        func-mem-param--param */
@@ -5093,12 +3510,12 @@ _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-param = {
         func-mem-param-type = <<_EnD_oF_dEf_TeXt_
-fio_bit
+uint8_t
 _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'clockBit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '161';
+      func-mem-desc-line = '127';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5159,7 +3576,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'bitOrder';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '111';
+      func-mem-desc-line = '102';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5203,7 +3620,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'noLatch';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '265';
+      func-mem-desc-line = '215';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5249,7 +3666,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'noLatch';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '192';
+      func-mem-desc-line = '150';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5284,7 +3701,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'shift1Bit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '182';
+      func-mem-desc-line = '143';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5312,7 +3729,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.cpp';
-      func-mem-desc-line = '177';
+      func-mem-desc-line = '138';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5339,42 +3756,6 @@ file = {
     define = {
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_fast_i_o_8h_1a04971fe5fabe4129736708c494e08e6d';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'ATOMIC_BLOCK';
-      define-mem-param  = {
-        define-mem-def-name = 'dummy';
-      }; /*        define-mem-def--param */
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-if(true)
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '58';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_fast_i_o_8h_1a362c18b15a09703e42e1c246c47420ef';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'ATOMIC_RESTORESTATE';
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '59';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
       define-mem-id   = '_fast_i_o_8h_1a89e1c62276052100c62b6c82a2e95622';
       define-mem-virt = normal;
       define-mem-prot = public;
@@ -5389,7 +3770,7 @@ _EnD_oF_dEf_TeXt_;
 digitalWrite(bit,HIGH)
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '143';
+      define-mem-desc-line = '126';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5415,7 +3796,7 @@ _EnD_oF_dEf_TeXt_;
 digitalWrite(bit,LOW)
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '144';
+      define-mem-desc-line = '127';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5439,7 +3820,7 @@ _EnD_oF_dEf_TeXt_;
 digitalWrite(bit, !digitalRead(bit))
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '145';
+      define-mem-desc-line = '128';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5466,7 +3847,7 @@ _EnD_oF_dEf_TeXt_;
 digitalWrite(bit,val);
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '146';
+      define-mem-desc-line = '129';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5481,12 +3862,14 @@ _EnD_oF_dEf_TeXt_;
       define-mem-prot = public;
       define-mem-name = 'FIO_FALLBACK';
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '57';
+      define-mem-desc-line = '49';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
+ @defined 
+ @abstract   Enables IO digitalRead/digitalWrite fall back for non-AVR
+             architectures.
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
@@ -5499,12 +3882,14 @@ _EnD_oF_dEf_TeXt_;
 0x23
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      define-mem-desc-line = '42';
+      define-mem-desc-line = '59';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
+ @defined 
+ @abstract   Skip setting IO outputs during IO configuration or when getting
+             the output register associated to an IO pin.k
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     };
@@ -5519,7 +3904,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       typedef-mem-name = 'fio_bit';
       typedef-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      typedef-mem-desc-line = '60';
+      typedef-mem-desc-line = '63';
       typedef-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5537,7 +3922,7 @@ uint8_t
 _EnD_oF_dEf_TeXt_;
       typedef-mem-name = 'fio_register';
       typedef-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      typedef-mem-desc-line = '61';
+      typedef-mem-desc-line = '70';
       typedef-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5569,7 +3954,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pinBit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '158';
+      func-mem-desc-line = '141';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5611,7 +3996,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'value';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '128';
+      func-mem-desc-line = '111';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5641,7 +4026,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '115';
+      func-mem-desc-line = '98';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5669,7 +4054,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '106';
+      func-mem-desc-line = '89';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5706,7 +4091,7 @@ LOW
 _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '97';
+      func-mem-desc-line = '80';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5752,7 +4137,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'clockBit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '184';
+      func-mem-desc-line = '167';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5813,7 +4198,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'bitOrder';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '172';
+      func-mem-desc-line = '155';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5866,7 +4251,7 @@ false
 _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '194';
+      func-mem-desc-line = '177';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5910,7 +4295,7 @@ false
 _EnD_oF_dEf_TeXt_;
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '202';
+      func-mem-desc-line = '185';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5944,7 +4329,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'shift1Bit';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '210';
+      func-mem-desc-line = '193';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -5972,7 +4357,7 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'pin';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/FastIO.h';
-      func-mem-desc-line = '217';
+      func-mem-desc-line = '200';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6055,48 +4440,6 @@ file = {
     define = {
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_l_c_d_8h_1a0f50ae3b4bdb42dd5ad74b2c604a7515';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'BACKLIGHT_OFF';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '151';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-    @defined 
-    @abstract   Backlight off constant declaration
-    @discussion Used in combination with the setBacklight to swith off the
- LCD backlight. @set setBacklight
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_l_c_d_8h_1aa5bad1c51f5fac029f3deacfef48c54b';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'BACKLIGHT_ON';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-255
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '159';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Backlight on constant declaration
- @discussion Used in combination with the setBacklight to swith on the
- LCD backlight. @set setBacklight
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
       define-mem-id   = '_l_c_d_8h_1ab0d87e07831e7e4943caef187872123e';
       define-mem-virt = normal;
       define-mem-prot = public;
@@ -6105,7 +4448,7 @@ _EnD_oF_dEf_TeXt_;
 0
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '132';
+      define-mem-desc-line = '129';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6123,7 +4466,7 @@ _EnD_oF_dEf_TeXt_;
 1
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '133';
+      define-mem-desc-line = '130';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6133,20 +4476,22 @@ _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_l_c_d_8h_1aa1e30e32b6c2cf8d90a9281328472dbe';
+      define-mem-id   = '_l_c_d_8h_1ac707c9605a0b9ca67aa757ad23377feb';
       define-mem-virt = normal;
       define-mem-prot = public;
-      define-mem-name = 'FOUR_BITS';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-2
-_EnD_oF_dEf_TeXt_;
+      define-mem-name = 'FAST_MODE';
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '134';
+      define-mem-desc-line = '55';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
+ @defined 
+ @abstract   Enables disables fast waits for write operations for LCD
+ @discussion If defined, the library will avoid doing un-necessary waits.
+ this can be done, because the time taken by Arduino's slow digitalWrite
+ operations. If fast digitalIO operations, comment this line out or undefine
+ the mode.
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
@@ -6159,7 +4504,7 @@ _EnD_oF_dEf_TeXt_;
 2000
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '143';
+      define-mem-desc-line = '138';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6180,7 +4525,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '125';
+      define-mem-desc-line = '120';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6196,6 +4541,24 @@ _EnD_oF_dEf_TeXt_;
       define-mem-name = 'LCD_2LINE';
       define-mem-initializer = <<_EnD_oF_dEf_TeXt_
 0x08
+_EnD_oF_dEf_TeXt_;
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
+      define-mem-desc-line = '119';
+      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+    }; /* define-member */
+    define-member = {
+      define-mem-kind = 'define';
+      define-mem-id   = '_l_c_d_8h_1a31e1c14e8c2845dec3301f0ebd36b43c';
+      define-mem-virt = normal;
+      define-mem-prot = public;
+      define-mem-name = 'LCD_4BIT';
+      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
+1
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
       define-mem-desc-line = '124';
@@ -6216,7 +4579,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '123';
+      define-mem-desc-line = '118';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6234,7 +4597,7 @@ _EnD_oF_dEf_TeXt_;
 0x04
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '126';
+      define-mem-desc-line = '121';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6252,7 +4615,25 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '127';
+      define-mem-desc-line = '122';
+      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+    }; /* define-member */
+    define-member = {
+      define-mem-kind = 'define';
+      define-mem-id   = '_l_c_d_8h_1a57d84af8cf61ceee4eb91db77889f071';
+      define-mem-virt = normal;
+      define-mem-prot = public;
+      define-mem-name = 'LCD_8BIT';
+      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
+0
+_EnD_oF_dEf_TeXt_;
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
+      define-mem-desc-line = '125';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6270,7 +4651,7 @@ _EnD_oF_dEf_TeXt_;
 0x10
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '122';
+      define-mem-desc-line = '117';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6288,7 +4669,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '111';
+      define-mem-desc-line = '106';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6306,7 +4687,7 @@ _EnD_oF_dEf_TeXt_;
 0x01
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '110';
+      define-mem-desc-line = '105';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6324,7 +4705,7 @@ _EnD_oF_dEf_TeXt_;
 0x01
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '88';
+      define-mem-desc-line = '83';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6346,7 +4727,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '116';
+      define-mem-desc-line = '111';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6364,7 +4745,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '109';
+      define-mem-desc-line = '104';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6382,7 +4763,7 @@ _EnD_oF_dEf_TeXt_;
 0x02
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '108';
+      define-mem-desc-line = '103';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6400,7 +4781,7 @@ _EnD_oF_dEf_TeXt_;
 0x10
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '92';
+      define-mem-desc-line = '87';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6418,7 +4799,7 @@ _EnD_oF_dEf_TeXt_;
 0x08
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '91';
+      define-mem-desc-line = '86';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6436,7 +4817,7 @@ _EnD_oF_dEf_TeXt_;
 0x08
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '115';
+      define-mem-desc-line = '110';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6454,7 +4835,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '107';
+      define-mem-desc-line = '102';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6472,7 +4853,7 @@ _EnD_oF_dEf_TeXt_;
 0x04
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '106';
+      define-mem-desc-line = '101';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6490,7 +4871,7 @@ _EnD_oF_dEf_TeXt_;
 0x02
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '100';
+      define-mem-desc-line = '95';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6508,7 +4889,7 @@ _EnD_oF_dEf_TeXt_;
 0x04
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '90';
+      define-mem-desc-line = '85';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6526,7 +4907,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '99';
+      define-mem-desc-line = '94';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6544,7 +4925,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '102';
+      define-mem-desc-line = '97';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6562,7 +4943,7 @@ _EnD_oF_dEf_TeXt_;
 0x01
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '101';
+      define-mem-desc-line = '96';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6580,7 +4961,7 @@ _EnD_oF_dEf_TeXt_;
 0x20
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '93';
+      define-mem-desc-line = '88';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6598,7 +4979,7 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '118';
+      define-mem-desc-line = '113';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6616,7 +4997,7 @@ _EnD_oF_dEf_TeXt_;
 0x04
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '117';
+      define-mem-desc-line = '112';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6634,7 +5015,7 @@ _EnD_oF_dEf_TeXt_;
 0x02
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '89';
+      define-mem-desc-line = '84';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6652,7 +5033,7 @@ _EnD_oF_dEf_TeXt_;
 0x40
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '94';
+      define-mem-desc-line = '89';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6670,7 +5051,7 @@ _EnD_oF_dEf_TeXt_;
 0x80
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      define-mem-desc-line = '95';
+      define-mem-desc-line = '90';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -6678,25 +5059,6 @@ _EnD_oF_dEf_TeXt_;
 
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
-    };
-    enum = {
-    enum-member = {
-      enum-mem-kind = 'enum';
-      enum-mem-id   = '_l_c_d_8h_1aeeef728bf4726268aa5e99391a1502bc';
-      enum-mem-virt = normal;
-      enum-mem-prot = public;
-      enum-mem-name = 't_backlighPol';
-      enum-mem-enum = { enum-name = POSITIVE; };
-      enum-mem-enum = { enum-name = NEGATIVE; };
-      enum-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      enum-mem-desc-line = '167';
-      enum-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      enum-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* enum-member */
     };
     func = {
     func-member = {
@@ -6715,19 +5077,11 @@ _EnD_oF_dEf_TeXt_;
         func-mem-param-declname = 'uSec';
       }; /*        func-mem-param--param */
       func-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LCD.h';
-      func-mem-desc-line = '72';
+      func-mem-desc-line = '67';
       func-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       func-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Enables disables fast waits for write operations for LCD
- @discussion If defined, the library will avoid doing un-necessary waits.
- this can be done, because the time taken by Arduino's slow digitalWrite
- operations. If fast digitalIO operations, comment this line out or undefine
- the mode.
-
-
  @function
  @abstract   waits for a given time in microseconds (compilation dependent).
  @discussion Waits for a given time defined in microseconds depending on
@@ -6751,42 +5105,6 @@ file = {
   file-id   = '_liquid_crystal_8cpp';
   file-name = 'LiquidCrystal.cpp';
     define = {
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal_8cpp_1a31e1c14e8c2845dec3301f0ebd36b43c';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'LCD_4BIT';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-1
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.cpp';
-      define-mem-desc-line = '45';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal_8cpp_1a57d84af8cf61ceee4eb91db77889f071';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'LCD_8BIT';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.cpp';
-      define-mem-desc-line = '46';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
     define-member = {
       define-mem-kind = 'define';
       define-mem-id   = '_liquid_crystal_8cpp_1a65fa786d6e31fe8b1aa51784a9736581';
@@ -6829,15 +5147,15 @@ file = {
 37
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal.h';
-      define-mem-desc-line = '42';
+      define-mem-desc-line = '44';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Command execution time on the LCD.
- @discussion This defines how long a command takes to execute by the LCD.
- The time is expressed in micro-seconds.
+    @defined 
+    @abstract   Command execution time on the LCD.
+    @discussion This defines how long a command takes to execute by the LCD.
+      The time is expressed in micro-seconds.
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     };
@@ -6856,101 +5174,6 @@ file = {
     define = {
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1a3d9bb178282c3cb69740c94ba1e48fed';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D4';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '88';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD dataline allocation this library only supports 4 bit LCD control
- mode.
- @discussion D4, D5, D6, D7 LCD data lines pin mapping of the extender module
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1a2ddd4183d444d6d128cbdbd6269e4e0c';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D5';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-1
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '89';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1a79a18a7f5ccf7a7ca31f302bd62527a6';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D6';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-2
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '90';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1a2ba78f059a7ebebc95e7beef690e88d6';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D7';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-3
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '91';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1a22e6626f2c98ed902f8ded47f6438c05';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'EN';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-6
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '66';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Enable bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD Enable
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
       define-mem-id   = '_liquid_crystal___i2_c_8cpp_1ac059d24dfe9c1e1f7c07cb7869a1833b';
       define-mem-virt = normal;
       define-mem-prot = public;
@@ -6959,14 +5182,12 @@ _EnD_oF_dEf_TeXt_;
 0xFF
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '55';
+      define-mem-desc-line = '44';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD_BACKLIGHT
- @discussion BACKLIGHT MASK used when backlight is on
+
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
@@ -6979,54 +5200,12 @@ _EnD_oF_dEf_TeXt_;
 0x00
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '48';
+      define-mem-desc-line = '43';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
       define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD_NOBACKLIGHT
- @discussion NO BACKLIGHT MASK
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1af8903d8eea3868940c60af887473b152';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'RS';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-4
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '80';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Register bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD Register select pin
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___i2_c_8cpp_1afc4ded33ac0ca43defcce639e965748a';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'RW';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-5
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.cpp';
-      define-mem-desc-line = '73';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Read/Write bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD Rw pin
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     };
@@ -7042,6 +5221,68 @@ _EnD_oF_dEf_TeXt_;
 file = {
   file-id   = '_liquid_crystal___i2_c_8h';
   file-name = 'LiquidCrystal_I2C.h';
+    define = {
+    define-member = {
+      define-mem-kind = 'define';
+      define-mem-id   = '_liquid_crystal___i2_c_8h_1a22e6626f2c98ed902f8ded47f6438c05';
+      define-mem-virt = normal;
+      define-mem-prot = public;
+      define-mem-name = 'EN';
+      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
+B01000000
+_EnD_oF_dEf_TeXt_;
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
+      define-mem-desc-line = '45';
+      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
+ @defined 
+ @abstract   Enable bit of the LCD
+ @discussion Defines the IO of the expander connected to the LCD Enable
+_EnD_oF_dEf_TeXt_;
+    }; /* define-member */
+    define-member = {
+      define-mem-kind = 'define';
+      define-mem-id   = '_liquid_crystal___i2_c_8h_1af8903d8eea3868940c60af887473b152';
+      define-mem-virt = normal;
+      define-mem-prot = public;
+      define-mem-name = 'RS';
+      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
+B00010000
+_EnD_oF_dEf_TeXt_;
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
+      define-mem-desc-line = '59';
+      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
+ @defined 
+ @abstract   Register bit of the LCD
+ @discussion Defines the IO of the expander connected to the LCD Register select pin
+_EnD_oF_dEf_TeXt_;
+    }; /* define-member */
+    define-member = {
+      define-mem-kind = 'define';
+      define-mem-id   = '_liquid_crystal___i2_c_8h_1afc4ded33ac0ca43defcce639e965748a';
+      define-mem-virt = normal;
+      define-mem-prot = public;
+      define-mem-name = 'RW';
+      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
+B00100000
+_EnD_oF_dEf_TeXt_;
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
+      define-mem-desc-line = '52';
+      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
+
+_EnD_oF_dEf_TeXt_;
+      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
+ @defined 
+ @abstract   Read/Write bit of the LCD
+ @discussion Defines the IO of the expander connected to the LCD Rw pin
+_EnD_oF_dEf_TeXt_;
+    }; /* define-member */
+    };
   file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_I2C.h';
   file-first-line = '1';
   file-briefdesc  = <<_EnD_oF_dEf_TeXt_
@@ -7077,7 +5318,7 @@ file = {
 0x80
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      define-mem-desc-line = '92';
+      define-mem-desc-line = '87';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7095,7 +5336,7 @@ _EnD_oF_dEf_TeXt_;
 0x04
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      define-mem-desc-line = '91';
+      define-mem-desc-line = '86';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7113,7 +5354,7 @@ _EnD_oF_dEf_TeXt_;
 204
 _EnD_oF_dEf_TeXt_;
       define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR.h';
-      define-mem-desc-line = '90';
+      define-mem-desc-line = '85';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7132,32 +5373,20 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
 }; /* file */
 file = {
-  file-id   = '_liquid_crystal___s_r2_w_8cpp';
-  file-name = 'LiquidCrystal_SR2W.cpp';
-  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.cpp';
-  file-first-line = '1';
-  file-briefdesc  = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-  file-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-}; /* file */
-file = {
-  file-id   = '_liquid_crystal___s_r2_w_8h';
-  file-name = 'LiquidCrystal_SR2W.h';
+  file-id   = '_liquid_crystal___s_r___l_c_d3_8cpp';
+  file-name = 'LiquidCrystal_SR_LCD3.cpp';
     define = {
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r2_w_8h_1a53e3add69865ae57ca872cb41fcae9e3';
+      define-mem-id   = '_liquid_crystal___s_r___l_c_d3_8cpp_1a0075b041d82abb47f279dce482e7b087';
       define-mem-virt = normal;
       define-mem-prot = public;
-      define-mem-name = 'SR2W_BL_MASK';
+      define-mem-name = 'SR_EN_BIT';
       define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0x02
+B00010000
 _EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      define-mem-desc-line = '132';
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.cpp';
+      define-mem-desc-line = '166';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7167,15 +5396,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r2_w_8h_1a7cf86f2a173473d01e02b2ac786a8690';
+      define-mem-id   = '_liquid_crystal___s_r___l_c_d3_8cpp_1afdaa2bbb2cc185700864ac8d7a570ced';
       define-mem-virt = normal;
       define-mem-prot = public;
-      define-mem-name = 'SR2W_DATA_MASK';
+      define-mem-name = 'SR_RS_BIT';
       define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0x78
+B01000000
 _EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      define-mem-desc-line = '134';
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.cpp';
+      define-mem-desc-line = '168';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7185,33 +5414,15 @@ _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     define-member = {
       define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r2_w_8h_1a8d17b6abb5bcde6883dbdc86d34be9d8';
+      define-mem-id   = '_liquid_crystal___s_r___l_c_d3_8cpp_1ae0e1fe92420ef667b9830efeb059c853';
       define-mem-virt = normal;
       define-mem-prot = public;
-      define-mem-name = 'SR2W_EN_MASK';
+      define-mem-name = 'SR_RW_BIT';
       define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0x80
+B00100000
 _EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      define-mem-desc-line = '135';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r2_w_8h_1acce98b026d9fdcb2e126705c14af7500';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'SR2W_RS_MASK';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0x04
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
-      define-mem-desc-line = '133';
+      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.cpp';
+      define-mem-desc-line = '167';
       define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
 
 _EnD_oF_dEf_TeXt_;
@@ -7220,7 +5431,7 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
     }; /* define-member */
     };
-  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR2W.h';
+  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.cpp';
   file-first-line = '1';
   file-briefdesc  = <<_EnD_oF_dEf_TeXt_
 
@@ -7230,198 +5441,9 @@ _EnD_oF_dEf_TeXt_;
 _EnD_oF_dEf_TeXt_;
 }; /* file */
 file = {
-  file-id   = '_liquid_crystal___s_r3_w_8cpp';
-  file-name = 'LiquidCrystal_SR3W.cpp';
-    define = {
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a3d9bb178282c3cb69740c94ba1e48fed';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D4';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '126';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD dataline allocation this library only supports 4 bit LCD control
- mode.
- @discussion D4, D5, D6, D7 LCD data lines pin mapping of the extender module
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a2ddd4183d444d6d128cbdbd6269e4e0c';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D5';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-1
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '127';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a79a18a7f5ccf7a7ca31f302bd62527a6';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D6';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-2
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '128';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a2ba78f059a7ebebc95e7beef690e88d6';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'D7';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-3
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '129';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a22e6626f2c98ed902f8ded47f6438c05';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'EN';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-4
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '104';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Enable bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD's Enable
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1ac059d24dfe9c1e1f7c07cb7869a1833b';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'LCD_BACKLIGHT';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0xFF
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '93';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD_BACKLIGHT
- @discussion BACKLIGHT MASK used when backlight is on
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1a65fa786d6e31fe8b1aa51784a9736581';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'LCD_NOBACKLIGHT';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-0x00
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '86';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   LCD_NOBACKLIGHT
- @discussion No BACKLIGHT MASK
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1af8903d8eea3868940c60af887473b152';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'RS';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-6
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '118';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Register bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD's Register select pin
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    define-member = {
-      define-mem-kind = 'define';
-      define-mem-id   = '_liquid_crystal___s_r3_w_8cpp_1afc4ded33ac0ca43defcce639e965748a';
-      define-mem-virt = normal;
-      define-mem-prot = public;
-      define-mem-name = 'RW';
-      define-mem-initializer = <<_EnD_oF_dEf_TeXt_
-5
-_EnD_oF_dEf_TeXt_;
-      define-mem-desc-file = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-      define-mem-desc-line = '111';
-      define-mem-briefdesc =    <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-      define-mem-documentation = <<_EnD_oF_dEf_TeXt_
- @defined 
- @abstract   Read/Write bit of the LCD
- @discussion Defines the IO of the expander connected to the LCD's Rw pin
-_EnD_oF_dEf_TeXt_;
-    }; /* define-member */
-    };
-  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.cpp';
-  file-first-line = '1';
-  file-briefdesc  = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-  file-documentation = <<_EnD_oF_dEf_TeXt_
-
-_EnD_oF_dEf_TeXt_;
-}; /* file */
-file = {
-  file-id   = '_liquid_crystal___s_r3_w_8h';
-  file-name = 'LiquidCrystal_SR3W.h';
-  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR3W.h';
+  file-id   = '_liquid_crystal___s_r___l_c_d3_8h';
+  file-name = 'LiquidCrystal_SR_LCD3.h';
+  file-full-name  = '/Users/fmalpartida/development/ardWorkspace/LiquidCrystal_I2C/LiquiCrystal_I2C/LiquidCrystal_SR_LCD3.h';
   file-first-line = '1';
   file-briefdesc  = <<_EnD_oF_dEf_TeXt_
 

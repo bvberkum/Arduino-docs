@@ -20,6 +20,7 @@
 //
 // @author F. Malpartida
 // ---------------------------------------------------------------------------
+#include <Arduino.h>
 #include <Wire.h>
 #include <LCD.h>
 
@@ -45,7 +46,7 @@
     @abstract   LCD backlight pin definition.
     @discussion AVR pin used for the backlight illumintation of the LCD.
 */
-#define BACKLIGHT_PIN          7
+#define BACKLIGHT_PIN          12
 
 /*!
     @defined    TEMP_CAL_OFFSET
@@ -74,7 +75,7 @@ LiquidCrystal_I2C lcd(0x38);  // set the LCD address to 0x20 for a 16 chars and 
 #endif
 
 #ifdef _LCD_4BIT_
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2, BACKLIGHT_PIN, POSITIVE);
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 #endif
 const int    CONTRAST_PIN  = 9;
 const int    CONTRAST      = 65;
@@ -201,13 +202,10 @@ void setup ()
    
 #ifdef _LCD_4BIT_
   pinMode(CONTRAST_PIN, OUTPUT);
-  lcd.backlight();
+  pinMode(BACKLIGHT_PIN, OUTPUT);
+#endif
   digitalWrite(BACKLIGHT_PIN, HIGH);
   analogWrite (CONTRAST_PIN, CONTRAST);
-#else
-  pinMode ( BACKLIGHT_PIN, OUTPUT );
-  digitalWrite(BACKLIGHT_PIN, HIGH);
-#endif
 
    myLCD->begin ( 16, 2 );
   

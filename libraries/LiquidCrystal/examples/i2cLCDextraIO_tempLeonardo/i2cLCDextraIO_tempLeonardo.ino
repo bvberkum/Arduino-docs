@@ -24,7 +24,7 @@
 #include <Wire.h>
 #include <LCD.h>
 
-#define _LCD_SR3W_
+#define _LCD_I2C_
 
 #ifdef _LCD_I2C_
 #include <LiquidCrystal_I2C.h>
@@ -34,13 +34,8 @@
 #include <LiquidCrystal.h>
 #endif
 
-
 #ifdef _LCD_SR_
 #include <LiquidCrystal_SR.h>
-#endif
-
-#ifdef _LCD_SR3W_
-#include <LiquidCrystal_SR3W.h>
 #endif
 
 
@@ -115,7 +110,7 @@ LiquidCrystal_I2C lcd(0x38);
 #endif
 
 #ifdef _LCD_4BIT_
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2, BACKLIGHT_PIN, POSITIVE);
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 const int    CONTRAST_PIN  = 9;
 const int    CONTRAST      = 65;
 #endif
@@ -126,14 +121,6 @@ LiquidCrystal_SR lcd(3,2,TWO_WIRE);
 //                   | \-- Clock Pin
 //                   \---- Data/Enable Pin
 #endif
-
-#ifdef _LCD_SR3W_
-LiquidCrystal_SR3W lcd(3, 2, 4);
-//                     | |
-//                     | \-- Clock Pin
-//                     \---- Data/Enable Pin
-#endif
-
 
 // LCD reference variable
 LCD *myLCD = &lcd;
@@ -274,13 +261,12 @@ static void initHW ( void )
   analogWrite (CONTRAST_PIN, CONTRAST);
 #endif
 
-#ifdef _LCD_I2C_
    pinMode ( BACKLIGHT_PIN, OUTPUT );
    digitalWrite (BACKLIGHT_PIN, HIGH);
-#endif
+   
    pinMode ( STATUS_PIN, OUTPUT );
 
-   myLCD->begin ( 20, 2 );
+   myLCD->begin ( 20, 4 );
    // Load custom character set into CGRAM
    // --------------------------------------------------------------------
    for ( i = 0; i < charBitmapSize; i++ )

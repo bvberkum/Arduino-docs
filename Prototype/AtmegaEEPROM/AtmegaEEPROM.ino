@@ -1,16 +1,18 @@
 /* 
 Atmega EEPROM routines */
+
+
+/* *** Globals and sketch configuration *** */
+#define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
+							
+#define MAXLENLINE      79
+							
 #include <OneWire.h>
 #include <DotmpeLib.h>
 #include <EEPROM.h>
 
 
-/* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
-#define SERIAL          1 /* Enable serial */
-							
-#define MAXLENLINE      79
-							
 
 const String sketch = "X-AtmegaEEPROM";
 const int version = 0;
@@ -19,15 +21,33 @@ char node[] = "nx";
 // determined upon handshake 
 char node_id[7];
 
-
-static int tick = 0;
-static int pos = 0;
+/* IO pins */
+//              RXD      0
+//              TXD      1
+//              INT0     2 
+//              MOSI     11
+//              MISO     12
+//#       define _DBG_LED 13 // SCK
 
 
 MpeSerial mpeser (57600);
 
+/* *** InputParser *** {{{ */
+
 extern InputParser::Commands cmdTab[] PROGMEM;
-InputParser parser (50, cmdTab);
+byte* buffer = (byte*) malloc(50);
+InputParser parser (buffer, 50, cmdTab);
+
+
+/* *** /InputParser }}} *** */
+
+/* *** Report variables *** {{{ */
+
+/* *** /Report variables }}} *** */
+
+/* *** Scheduled tasks *** {{{ */
+
+/* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
@@ -90,16 +110,99 @@ void writeConfig(Config &c)
 	}
 }
 
-/* }}} *** */
+
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+#endif
+
+#if _DHT
+#endif // DHT
+
+#if _LCD84x48
+#endif // LCD84x48
+
+#if _DS
+#endif // DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+#endif // NRF24
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices }}} *** */
+
+/* *** UI *** {{{ */
 
 
 
 
-/* }}} *** */
+
+
+/* *** /UI }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
 
-/* }}} *** */
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif
+/* *** /PIR support *** }}} */
+
+
+#if _DHT
+/* DHT temp/rh sensor 
+ - AdafruitDHT
+*/
+
+#endif // DHT
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
+
+#if _LCD84x48
+
+
+#endif // LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+
+
+#endif // DS
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+
+#endif // NRF24 funcs
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
 
 /* *** Initialization routines *** {{{ */
 
@@ -116,10 +219,41 @@ void initLibs()
 }
 
 
-/* }}} *** */
+/* *** /Initialization routines *** }}} */
 
-/* Initialization routines *** {{{ */
+/* *** Run-time handlers *** {{{ */
 
+void doReset(void)
+{
+	doConfig();
+
+	tick = 0;
+
+}
+
+bool doAnnounce()
+{
+/* see CarrierCase */
+#if SERIAL && DEBUG
+#endif // SERIAL && DEBUG
+	return false;
+}
+
+// readout all the sensors and other values
+void doMeasure()
+{
+}
+
+void runScheduler(char task)
+{
+	switch (task) {
+	}
+}
+
+
+/* *** /Run-time handlers }}} *** */
+
+/* *** InputParser handlers *** {{{ */
 
 void helpCmd() {
 	Serial.println("Help!");
@@ -142,44 +276,7 @@ InputParser::Commands cmdTab[] = {
 };
 
 
-
-/* }}} *** */
-
-/* *** Run-time handlers *** {{{ */
-
-
-void doReset(void)
-{
-	tick = 0;
-
-	doConfig();
-
-}
-
-bool doAnnounce()
-{
-/* see CarrierCase */
-#if SERIAL && DEBUG
-#endif // SERIAL && DEBUG
-}
-
-// readout all the sensors and other values
-void doMeasure()
-{
-}
-
-void runScheduler(char task)
-{
-	switch (task) {
-	}
-}
-
-/* }}} *** */
-
-/* InputParser handlers {{{ */
-
-
-/* }}} *** */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -188,7 +285,11 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
+#if DEBUG || _MEM
+	Serial.print("Free RAM: ");
+	Serial.println(freeRam());
+#endif
 	serialFlush();
 #endif
 
@@ -203,7 +304,6 @@ void loop(void)
 	//char task = scheduler.pollWaiting();
 	//runScheduler(task);
 }
-
 
 /* }}} *** */
 

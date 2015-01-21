@@ -12,8 +12,27 @@ TODO: wire up other jacks, figure out some link/through/detect scheme (no radio
 	so needs to mate with device that does. A RelayBox probably.)
 */
 
-#define SERIAL          1 /* Enable trace statements */
+
+
+/* *** Globals and sketch configuration *** */
+#define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
+							
+#define _MEM            1   // Report free memory 
+#define PIR_PORT        4   // defined if PIR is connected to a port's DIO pin
+#define DHT_PIN         7   // defined if DHTxx data is connected to a DIO pin
+#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
+#define WIRE_PIN        9   // I2C slave I/O pin
+							
+#define REPORT_EVERY    3   // report every N measurement cycles
+#define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
+#define TASK_END_PERIOD    60
+#define AVR_CTEMP_ADJ   0
+#define PIR_HOLD_TIME   15  // hold PIR value this many seconds after change
+#define PIR_PULLUP      0   // set to one to pull-up the PIR input pin
+#define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
+							
 
 #include <util/atomic.h>
 
@@ -23,25 +42,6 @@ TODO: wire up other jacks, figure out some link/through/detect scheme (no radio
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
-
-/* *** Globals and sketch configuration *** */
-							
-#define _MEM            1   // Report free memory 
-#define PIR_PORT        4   // defined if PIR is connected to a port's DIO pin
-#define DHT_PIN         7   // defined if DHTxx data is connected to a DIO pin
-#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
-#define MEMREPORT       1
-#define WIRE_PIN        9   // I2C slave I/O pin
-							
-#define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
-#define REPORT_EVERY    3   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define STDBY_PERIOD    60
-#define AVR_CTEMP_ADJ   0
-#define PIR_HOLD_TIME   15  // hold PIR value this many seconds after change
-#define PIR_PULLUP      0   // set to one to pull-up the PIR input pin
-#define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
-							
 
 const String sketch = "Node";
 const int version = 0;
@@ -55,7 +55,21 @@ char node_id[7];
 // code, and then reset to 
 char nextEvent = 0x0;
 
+/* IO pins */
+//              MOSI     11
+//              MISO     12
+//             SCK      13    NRF24
+//#       define _DBG_LED 13 // SCK
+//#       define          A0
+//#       define          A1
+//#       define          A2
+//#       define          A3
+//#       define          A4
+//#       define          A5
+
 MpeSerial mpeser (57600);
+
+MilliTimer idle, stdby;
 
 // TODO state payload config in propery type-bytes
 //char c[];
@@ -69,19 +83,22 @@ MpeSerial mpeser (57600);
 //c += 'm'
 //#endif
 
-/* Command parser */
+/* *** InputParser {{{ */
+
 Stream& cmdIo = Serial;//virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 // See Node for serial
 
 
+/* }}} *** */
 
 /* *** Report variables *** {{{ */
 
-static byte reportCount;    // count up until next report, i.e. packet send
-// This defines the structure of the packets which get sent out by wireless:
 
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
 struct {
 #if LDR_PORT
 	byte light  :8;     // light sensor: 0..255
@@ -92,38 +109,37 @@ struct {
 	int temp    :10; // temperature: -500..+500 (tenths, .5 resolution)
 #endif
 	int ctemp  :10; // atmega temperature: -500..+500 (tenths)
-#if MEMREPORT
+#if _MEM
 	int memfree :16;
 #endif
 	byte lobat  :1;  // supply voltage dropped under 3.1V: 0..1
 } payload;
 
 
-/* }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
-enum { 
+enum {
 	HANDSHAKE,
 	MEASURE,
 	REPORT,
-	STDBY
+	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char WAITING = 0xFF; // -1: waiting to run
 static const char IDLE = 0xFE; // -2: no tasks running
 
-static word schedbuf[STDBY];
-Scheduler scheduler (schedbuf, STDBY);
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { 
-	Sleepy::watchdogEvent(); }
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-/* }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
-/* EEPROM config *** {{{ */
+/* *** EEPROM config *** {{{ */
 
 #define CONFIG_VERSION "nx1"
 #define CONFIG_START 0
@@ -144,76 +160,15 @@ bool loadConfig(Config &c)
 {
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}
-
-
 /* *** /EEPROM config *** }}} */
 
-/* *** Peripheral hardware routines *** {{{ */
+/* *** Peripheral devices *** {{{ */
 
 #if LDR_PORT
     Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support {{{ */
-
+/* *** PIR support *** {{{ */
 #if PIR_PORT
 /// Interface to a Passive Infrared motion sensor.
 class PIR : public Port {
@@ -262,59 +217,49 @@ PIR pir (PIR_PORT);
 ISR(PCINT2_vect) { 
 	pir.poll(); }
 #endif
+/* *** /PIR support *** }}} */
 
-/* *** /PIR support }}} */
 
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
 */
-#endif //_DHT
+
+#endif // DHT
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+#endif //_RFM12B
 
 #if _LCD84x48
-#endif //_LCD84x48
-
-#if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-#endif // _DS
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 
-#endif //_NRF24
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif //_HMC5883L
-
-
-/* Peripheral hardware routines *** {{{ */
+#endif // LCD84x48
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
-#endif //_DS
+
+#endif // DS
+
 #if _NRF24
-/* Nordic nRF24L01+ routines */
+/* Nordic nRF24L01+ radio routines */
 
-#endif // RF24 funcs
 
-#if _LCD
-#endif //_LCD
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
 
 #if _HMC5883L
-/* Digital magnetometer I2C module */
-#endif //_HMC5883L
+/* Digital magnetometer I2C routines */
 
 
-/* }}} *** */
+#endif // HMC5883L
 
-/* }}} */
+
+/* *** /Peripheral hardware routines }}} *** */
 
 /* UART commands {{{ */
 
@@ -349,7 +294,7 @@ static void ser_test_cmd(void) {
 }
 
 
-/* }}} */
+/* UART commands }}} */
 
 /* Wire init {{{ */
 
@@ -370,7 +315,7 @@ void wirecmd_init(int buffersize) {
 	wirecmd_reset();
 }
 
-/* }}} */
+/* Wire init }}} */
 
 /* Wire commands {{{ */
     
@@ -419,7 +364,7 @@ void process_wire_cmd(char req, int fill, char *buffer) {
 //	}
 }
 
-/* }}} */;
+/* Wire commands }}} */;
 
 /* Wire handling {{{ */
 
@@ -448,10 +393,9 @@ void receiveEvent(int count)
 	process_wire_cmd(code, count - 1, c);
 }
 
+/* Wire Handling }}} */
 
-/* }}} *** */
-
-/* Initialization routines *** {{{ */
+/* *** Initialization routines *** {{{ */
 
 
 void initConfig(void)
@@ -476,15 +420,20 @@ void initLibs()
 	//wirecmd_init(10);
 }
 
-/* }}} *** */
+
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
+
+#if _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
+	ui_irq = false;
+	tick = 0;
 
 	//wirecmd_reset();
 	
@@ -497,8 +446,7 @@ void doReset(void)
 //#endif
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(HANDSHAKE, 0);
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
 bool doAnnounce()
@@ -506,6 +454,7 @@ bool doAnnounce()
 /* see CarrierCase */
 #if SERIAL && DEBUG
 #endif // SERIAL && DEBUG
+	return false;
 }
 
 // readout all the sensors and other values
@@ -542,10 +491,11 @@ void runScheduler(char task)
 	switch (task) {
 
 		case MEASURE:
-			// reschedule these measurements periodically
 			debugline("MEASURE");
+			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
+
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
@@ -561,25 +511,25 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-		case STDBY:
-			debugline("STDBY");
+		case WAITING:
+		case IDLE:
+			Serial.print("!");
 			serialFlush();
 			break;
 
-		case WAITING:
-			//scheduler.timer(STDBY, STDBY_PERIOD);
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
 			break;
-		
-		case IDLE:
-			//scheduler.timer(STDBY, STDBY_PERIOD);
-			break;
-		
 	}
 }
 
-/* }}} *** */
 
-/* InputParser handlers {{{ */
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers *** {{{ */
 
 
 static void memStat() {
@@ -613,13 +563,14 @@ InputParser::Commands cmdTab[] = {
 
 /* *** Main *** {{{ */
 
+
 void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
+	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -632,13 +583,34 @@ void setup(void)
 
 void loop(void)
 {
+	if (ui_irq) {
+		debugline("Irq");
+		ui_irq = false;
+		uiStart();
+		analogWrite(BL, 0xAF ^ BL_INVERTED);
+	}
 	debug_ticks();
 	if (pir.triggered()) {
 		doTrigger();
 	}
-	serialFlush();
-	char task = scheduler.pollWaiting();
-	runScheduler(task);
+	char task = scheduler.poll();
+	if (-1 < task && task < IDLE) {
+		runScheduler(task);
+	}
+	if (ui) {
+		parser.poll();
+	} else {
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 15);
+#endif
+		debugline("Sleep");
+		serialFlush();
+		char task = scheduler.pollWaiting();
+		debugline("Wakeup");
+		if (-1 < task && task < IDLE) {
+			runScheduler(task);
+		}
+	}
 }
 
 /* }}} *** */

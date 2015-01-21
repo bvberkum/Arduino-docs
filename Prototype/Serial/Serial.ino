@@ -4,8 +4,8 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define MAXLENLINE      79
 							
@@ -14,11 +14,24 @@
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
+
 const String sketch = "X-Serial";
 const int version = 0;
 
 /* IO pins */
-static const byte ledPin = 13;
+//             RXD      0
+//             TXD      1
+//             INT0     2
+//              MOSI     11
+//              MISO     12
+#       define _DBG_LED 13 // SCK
+//#       define          A0
+//#       define          A1
+//#       define          A2
+//#       define          A3
+//#       define          A4
+//#       define          A5
+
 
 MpeSerial mpeser (57600);
 
@@ -30,19 +43,24 @@ MpeSerial mpeser (57600);
 
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
-/* *** /Scheduled tasks *** }}} */
-
-/* *** Peripheral devices *** {{{ */
-
-/* *** /Peripheral devices *** }}} */
+/* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
-/* *** /EEPROM config *** }}} */
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+/* *** /Peripheral devices }}} *** */
+
+/* *** UI *** {{{ */
+
+
+/* *** /UI }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -76,11 +94,14 @@ void doReset(void)
 
 bool doAnnounce()
 {
+	return false;
 }
 
-/* }}} *** */
 
-/* InputParser handlers */
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers *** {{{ */
+
 
 
 /* *** /InputParser handlers *** }}} */
@@ -94,7 +115,7 @@ void setup(void)
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, version);
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
+	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -107,7 +128,7 @@ void setup(void)
 
 void loop(void)
 {
-	//blink(ledPin, 1, 15);
+	//blink(_DBG_LED, 1, 15);
 	debug_ticks();
 	//serialFlush();
 }

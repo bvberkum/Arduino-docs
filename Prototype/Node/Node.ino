@@ -63,14 +63,19 @@ char node_id[7];
 
 
 /* IO pins */
-static const byte ledPin = 13;
+//             RXD      0
+//             TXD      1
+//             INT0     2
+//              MOSI     11
+//              MISO     12
+//#       define _DBG_LED 13 // SCK
 
 //SoftwareSerial virtSerial(11, 12); // RX, TX
 
 MpeSerial mpeser (57600);
 
 
-/* InputParser {{{ */
+/* *** InputParser *** j{{{ */
 
 Stream& cmdIo = Serial;//virtSerial;
 extern InputParser::Commands cmdTab[] PROGMEM;
@@ -108,49 +113,11 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
-/* *** /Scheduled tasks *** }}} */
-
-/* *** Peripheral devices *** {{{ */
-
-#if LDR_PORT
-Port ldr (LDR_PORT);
-#endif
-
-#if _DHT
-#endif // DHT
-
-#if _LCD84x48
-/* Nokkia 5110 display */
-#endif // LCD84x48
-
-#if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
-
-#endif // DS
-
-#if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
-
-
-#endif // NRF24
-
-#if _LCD
-#endif //_LCD
-
-#if _RTC
-#endif //_RTC
-
-#if _HMC5883L
-/* Digital magnetometer I2C module */
-
-#endif // HMC5883L
-
-
-/* *** /Peripheral devices *** }}} */
+/* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
 
@@ -213,10 +180,45 @@ void writeConfig(Config &c)
 }
 
 
-/* *** /EEPROM config *** }}} */
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+#if LDR_PORT
+Port ldr (LDR_PORT);
+#endif
+
+#if _DHT
+#endif // DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+
+#endif // DS
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
+#endif // NRF24
+
+#if _RTC
+#endif //_RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral devices }}} *** */
 
 /* *** Peripheral hardware routines *** {{{ */
-
 
 #if LDR_PORT
 #endif
@@ -225,6 +227,7 @@ void writeConfig(Config &c)
 #if PIR_PORT
 #endif
 /* *** /PIR support *** }}} */
+
 
 #if _DHT
 /* DHT temp/rh sensor 
@@ -238,21 +241,24 @@ void writeConfig(Config &c)
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
+
+
 #endif // DS
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
-#endif // RF24 funcs
 
-#if _LCD
-#endif //_LCD
+
+#endif // NRF24 funcs
 
 #if _RTC
 #endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
-#endif //_HMC5883L
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
@@ -289,9 +295,12 @@ void initLibs()
 
 void doReset(void)
 {
-	tick = 0;
-
 	doConfig();
+
+#if _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
+#endif
+	tick = 0;
 }
 
 bool doAnnounce()
@@ -427,7 +436,7 @@ InputParser::Commands cmdTab[] = {
 };
 
 
-/* *** /InputParser handlers *** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 

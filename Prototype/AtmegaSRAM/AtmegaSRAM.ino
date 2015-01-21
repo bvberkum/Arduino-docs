@@ -1,8 +1,9 @@
 /* AtmegaSRAM - measure memory usage */
 
 /** Globals and sketch configuration  */
-#define DEBUG           1 /* Enable trace statements */
+/* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define DEBUG_MEASURE   1
 

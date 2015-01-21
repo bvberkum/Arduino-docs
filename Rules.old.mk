@@ -808,6 +808,11 @@ all_i2c: P := Mpe/i2c_all/
 all_i2c: I := Mpe/i2c_all/i2c_all.hex
 all_i2c: _arduino upload
 
+I2CLCD: C := m328p
+I2CLCD: P := Prototype/I2CLCD/
+I2CLCD: I := Prototype/I2CLCD/I2CLCD.hex
+I2CLCD: jeenode upload
+
 rf12mon: C := m328p
 rf12mon: P := Misc/rf12mon/
 rf12mon: I := Misc/rf12mon/rf12mon.hex

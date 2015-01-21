@@ -26,9 +26,6 @@
 // it has been extended to drive 4 and 8 bit mode control, LCDs and I2C extension
 // backpacks such as the I2CLCDextraIO using the PCF8574* I2C IO Expander ASIC.
 //
-// The functionality provided by this class and its base class is identical
-// to the original functionality of the Arduino LiquidCrystal library.
-//
 // @version API 1.1.0
 //
 //
@@ -55,9 +52,7 @@
  operations. If fast digitalIO operations, comment this line out or undefine
  the mode.
  */
-#ifdef __AVR__
 #define FAST_MODE
-#endif
 
 /*!
  @function
@@ -126,13 +121,13 @@ inline static void waitUsec ( uint16_t uSec )
 #define LCD_5x10DOTS            0x04
 #define LCD_5x8DOTS             0x00
 
+#define LCD_4BIT                1
+#define LCD_8BIT                0
 
-// Define COMMAND and DATA LCD Rs (used by send method).
+// Define COMMAND and DATA LCD Rs
 // ---------------------------------------------------------------------------
 #define COMMAND                 0
 #define DATA                    1
-#define FOUR_BITS               2
-
 
 /*!
  @defined 
@@ -141,30 +136,6 @@ inline static void waitUsec ( uint16_t uSec )
  commands in the LCD - Time in microseconds.
  */
 #define HOME_CLEAR_EXEC      2000
-
-/*!
-    @defined 
-    @abstract   Backlight off constant declaration
-    @discussion Used in combination with the setBacklight to swith off the
- LCD backlight. @set setBacklight
-*/
-#define BACKLIGHT_OFF           0
-
-/*!
- @defined 
- @abstract   Backlight on constant declaration
- @discussion Used in combination with the setBacklight to swith on the
- LCD backlight. @set setBacklight
- */
-#define BACKLIGHT_ON          255
-
-
-/*!
- @typedef 
- @abstract   Define backlight control polarity
- @discussion Backlight control polarity. @see setBacklightPin.
- */
-typedef enum { POSITIVE, NEGATIVE } t_backlighPol;
 
 class LCD : public Print 
 {
@@ -185,13 +156,12 @@ public:
     initializes the LCD, therefore, it MUST be called prior to using any other
     method from this class.
     
-    This method is abstract, a base implementation is available common to all LCD
-    drivers. Should it not be compatible with some other LCD driver, a derived
-    implementation should be done on the driver specif class.
+    This method is pure abstract, it is dependent on each derived class from
+    this base class to implement the internals of how the LCD is initialized
+    and configured.
     
     @param      cols[in] the number of columns that the display has
     @param      rows[in] the number of rows that the display has
-    @param      charsize[in] character size, default==LCD_5x8DOTS
     */
    virtual void begin(uint8_t cols, uint8_t rows, uint8_t charsize = LCD_5x8DOTS);
    
@@ -328,7 +298,7 @@ public:
     @param      none
     */   
    void moveCursorLeft();
-   
+
    
    /*!
     @function
@@ -391,46 +361,37 @@ public:
     @param      row[in] LCD row - line.
     */
    void setCursor(uint8_t col, uint8_t row);
-   
-   /*!
-    @function
-    @abstract   Switch-on the LCD backlight.
-    @discussion Switch-on the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin. 
-    */
-   void backlight ( void );
-   
-   /*!
-    @function
-    @abstract   Switch-off the LCD backlight.
-    @discussion Switch-off the LCD backlight.
-    The setBacklightPin has to be called before setting the backlight for
-    this method to work. @see setBacklightPin. 
-    */   
-   void noBacklight ( void );
-   
-   /*!
-    @function
-    @abstract   Switch on the LCD module.
-    @discussion Switch on the LCD module, it will switch on the LCD controller
-    and the backlight. This method has the same effect of calling display and
-    backlight. @see display, @see backlight
-    */
-   void on ( void );
 
+   
    /*!
     @function
-    @abstract   Switch off the LCD module.
-    @discussion Switch off the LCD module, it will switch off the LCD controller
-    and the backlight. This method has the same effect of calling noDisplay and
-    noBacklight. @see display, @see backlight
-    */   
-   void off ( void );
+    @abstract   Send a command to the LCD.
+    @discussion This method sends a command to the LCD by setting the Register
+    select line of the LCD.
+    
+    This command shouldn't be used to drive the LCD, only to implement any other
+    feature that is not available on this library.
+    
+    @param      value[in] Command value to send to the LCD.
+    */
+   void command(uint8_t value);
    
    //
    // virtual class methods
    // --------------------------------------------------------------------------
+   /*!
+    @function
+    @abstract   Switch-on/off the LCD backlight.
+    @discussion Switch-on/off the LCD backlight.
+    The setBacklightPin has to be called before setting the backlight for
+    this method to work. @see setBacklightPin. This method is device dependent
+    and can be programmed on each subclass. An empty function call is provided
+    that does nothing.
+    
+    @param      mode: backlight mode (HIGH|LOW)
+    */
+   virtual void setBacklight ( uint8_t mode ) { };
+   
    /*!
     @function
     @abstract   Sets the pin to control the backlight.
@@ -438,29 +399,9 @@ public:
     This method is device dependent and can be programmed on each subclass. An 
     empty function call is provided that does nothing.
     
-    @param      value: pin associated to backlight control.
-    @param      pol: backlight polarity control (POSITIVE, NEGATIVE)
+    @param      mode: backlight mode (HIGH|LOW)
     */
-   virtual void setBacklightPin ( uint8_t value, t_backlighPol pol ) { };
-   
-   /*!
-    @function
-    @abstract   Sets the pin to control the backlight.
-    @discussion Sets the pin in the device to control the backlight. The behaviour
-    of this method is very dependent on the device. Some controllers support
-    dimming some don't. Please read the actual header file for each individual
-    device. The setBacklightPin method has to be called before setting the backlight
-    or the adequate backlight control constructor.
-    @see setBacklightPin.
-    
-    NOTE: The prefered methods to control the backlight are "backlight" and
-    "noBacklight".
-    
-    @param      0..255 - the value is very dependent on the LCD. However, 
-    BACKLIGHT_OFF will be interpreted as off and BACKLIGHT_ON will drive the
-    backlight on.
-    */
-   virtual void setBacklight ( uint8_t value ) { };
+   virtual void setBacklightPin ( uint8_t pin ) { };
    
    /*!
     @function
@@ -479,39 +420,7 @@ public:
    virtual size_t write(uint8_t value);
 #endif
    
-#if (ARDUINO <  100)
-   using Print::write;
-#else
-   using Print::write;
-#endif   
    
-protected:
-   // Internal LCD variables to control the LCD shared between all derived
-   // classes.
-   uint8_t _displayfunction;  // LCD_5x10DOTS or LCD_5x8DOTS, LCD_4BITMODE or 
-                              // LCD_8BITMODE, LCD_1LINE or LCD_2LINE
-   uint8_t _displaycontrol;   // LCD base control command LCD on/off, blink, cursor
-                              // all commands are "ored" to its contents.
-   uint8_t _displaymode;      // Text entry mode to the LCD
-   uint8_t _numlines;         // Number of lines of the LCD, initialized with begin()
-   uint8_t _cols;             // Number of columns in the LCD
-   t_backlighPol _polarity;   // Backlight polarity
-   
-private:
-   /*!
-    @function
-    @abstract   Send a command to the LCD.
-    @discussion This method sends a command to the LCD by setting the Register
-    select line of the LCD.
-    
-    This command shouldn't be used to drive the LCD, only to implement any other
-    feature that is not available on this library.
-    
-    @param      value[in] Command value to send to the LCD (COMMAND, DATA or
-    FOUR_BITS).
-    */
-   void command(uint8_t value);
-
    /*!
     @function
     @abstract   Send a particular value to the LCD.
@@ -530,6 +439,25 @@ private:
 #else
    virtual void send(uint8_t value, uint8_t mode) = 0;
 #endif
+   
+#if (ARDUINO <  100)
+   using Print::write;
+#else
+   using Print::write;
+#endif   
+   
+protected:
+   // Internal LCD variables to control the LCD shared between all derived
+   // classes.
+   uint8_t _displayfunction;  // LCD_5x10DOTS or LCD_5x8DOTS, LCD_4BITMODE or 
+                              // LCD_8BITMODE, LCD_1LINE or LCD_2LINE
+   uint8_t _displaycontrol;   // LCD base control command LCD on/off, blink, cursor
+                              // all commands are "ored" to its contents.
+   uint8_t _displaymode;      // Text entry mode to the LCD
+   uint8_t _numlines;         // Number of lines of the LCD, initialized with begin()
+   uint8_t _cols;             // Number of columns in the LCD
+   
+private:
    
 };
 

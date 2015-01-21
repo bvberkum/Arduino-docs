@@ -43,8 +43,8 @@ depends on the used hardware etc.
 */
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
 #define _LCD84x48       1
@@ -81,6 +81,8 @@ volatile bool ui_irq;
 static bool ui;
 
 /* IO pins */
+//             RXD      1
+//             TXD      2
 //             INT0     2     UI IRQ
 #       define SCLK     3  // LCD84x48
 #       define SDIN     4  // LCD84x48
@@ -93,7 +95,13 @@ static bool ui;
 //             MOSI     11    NRF24
 //             MISO     12    NRF24
 //             SCK      13    NRF24
-//define _DEBUG_LED 13
+//define _DBG_LED 13
+//#       define          A0
+//#       define          A1
+//#       define          A2
+//#       define          A3
+//#       define          A4
+//#       define          A5
 
 
 MpeSerial mpeser (57600);
@@ -105,6 +113,7 @@ MilliTimer idle, stdby;
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
+
 
 /* }}} *** */
 
@@ -175,6 +184,10 @@ void debug_task(char task) {
 	}
 }
 
+/* *** EEPROM config *** {{{ */
+
+/* *** /EEPROM config *** }}} */
+
 /* *** Peripheral devices *** {{{ */
 
 #if LDR_PORT
@@ -232,10 +245,7 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** EEPROM config *** {{{ */
-
-/* *** /EEPROM config *** }}} */
-
+/* *** UI *** {{{ */
 
 //ISR(INT0_vect) 
 void irq0()
@@ -244,11 +254,13 @@ void irq0()
 	//Sleepy::watchdogInterrupts(0);
 }
 
+
+/* *** /UI }}} *** */
+
 /* *** Peripheral hardware routines *** {{{ */
 
 #if LDR_PORT
 #endif
-
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
@@ -263,8 +275,12 @@ void irq0()
 
 #endif // DHT
 
-#if _LCD84x48
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
 
+#endif //_RFM12B
+
+#if _LCD84x48
 
 void lcd_start()
 {
@@ -300,10 +316,12 @@ void lcd_printTicks(void)
 	lcd84x48.print("stdby ");
 	lcd84x48.print(stdby.remaining()/100);
 }
+
+
 #endif // LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+/* Dallas DS18B20 thermometer routines */
 
 
 #endif // DS
@@ -318,7 +336,9 @@ void lcd_printTicks(void)
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
-#endif //_HMC5883L
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
@@ -343,8 +363,8 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DEBUG_LED
-	pinMode(_DEBUG_LED, OUTPUT);
+#if _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
 #endif
 	pinMode(BL, OUTPUT);
 	digitalWrite(BL, LOW ^ BL_INVERTED);
@@ -541,8 +561,8 @@ void loop(void)
 		}
 		lcd_printTicks();
 	} else {
-#ifdef _DEBUG_LED
-		blink(_DEBUG_LED, 1, 15);
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 15);
 #endif
 		debugline("Sleep");
 		serialFlush();

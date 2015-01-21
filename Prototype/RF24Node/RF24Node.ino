@@ -12,8 +12,8 @@ RF24Node
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 							
 #define _MEM            1   // Report free memory 
 #define _LCD84x48       1
@@ -43,6 +43,7 @@ RF24Node
 #include <mpelib.h>
 
 
+
 const String sketch = "X-RF24Node";
 const int version = 0;
 
@@ -58,7 +59,9 @@ byte bl_level = 0xff;
 int out = 20;
 
 /* IO pins */
-//             INT0     2     UI IRQ
+//              RXD      0
+//              TXD      1
+//              INT0     2     UI IRQ
 #       define SCLK     3  // LCD84x48
 #       define SDIN     4  // LCD84x48
 #       define DC       5  // LCD84x48
@@ -67,23 +70,30 @@ int out = 20;
 #       define CS       8  // NRF24
 #       define CE       9  // NRF24
 #       define BL       10 // PWM Backlight
-//             MOSI     11    NRF24
-//             MISO     12    NRF24
+//              MOSI     11
+//              MISO     12
 //             SCK      13    NRF24
-//#       define _DEBUG_LED 13
+//#       define _DBG_LED 13 // SCK
+//#       define          A0
+//#       define          A1
+//#       define          A2
+//#       define          A3
+//#       define          A4
+//#       define          A5
 
 
 MpeSerial mpeser (57600);
 
 MilliTimer idle, stdby;
 
-/* *** InputParser {{{ */
+/* *** InputParser *** {{{ */
 
 extern InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
-/* }}} *** */
+
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -99,7 +109,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -133,32 +143,20 @@ bool schedRunning()
 }
 
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduled tasks }}} *** */
 
-bool hex_output = true;
+/* *** EEPROM config *** {{{ */
 
-static void showNibble (byte nibble) {
-    char c = '0' + (nibble & 0x0F);
-    if (c > '9')
-        c += 7;
-    Serial.print(c);
+bool loadConfig(Config &c)
+{
 }
 
-static void showByte (byte value) {
-    if (hex_output) {
-        showNibble(value >> 4);
-        showNibble(value);
-    } else
-        Serial.print((word) value);
+void writeConfig(Config &c)
+{
 }
 
-void debug_task(char task) {
-	if (task == -2) { // nothing running
-		Serial.print('n');
-	} else if (task == -1) { // waiting
-		Serial.print('w');
-	}
-}
+
+/* *** /EEPROM config }}} *** */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -247,10 +245,7 @@ const uint16_t other_node = 0;
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** EEPROM config *** {{{ */
-
-/* *** /EEPROM config *** }}} */
-
+/* *** UI *** {{{ */
 
 //ISR(INT0_vect) 
 void irq0()
@@ -295,11 +290,12 @@ void printKeys(void) {
 	Serial.println();
 }
 
+/* *** /UI }}} *** */
+
 /* *** Peripheral hardware routines *** {{{ */
 
 #if LDR_PORT
 #endif
-
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
@@ -320,7 +316,6 @@ void printKeys(void) {
 #endif //_RFM12B
 
 #if _LCD84x48
-
 
 void lcd_start()
 {
@@ -356,10 +351,12 @@ void lcd_printTicks(void)
 	lcd84x48.print("stdby ");
 	lcd84x48.print(stdby.remaining()/100);
 }
+
+
 #endif // LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+/* Dallas DS18B20 thermometer routines */
 
 
 #endif // DS
@@ -382,10 +379,28 @@ void rf24_run()
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
-#endif //_HMC5883L
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
+
+/* UART commands {{{ */
+
+
+/* UART commands }}} */
+
+/* Wire init {{{ */
+
+/* Wire init }}} */
+
+/* Wire commands {{{ */
+
+/* Wire commands }}} */;
+
+/* Wire handling {{{ */
+/* Wire Handling }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -415,8 +430,8 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DEBUG_LED
-	pinMode(_DEBUG_LED, OUTPUT);
+#ifdef _DBG_LED
+	pinMode(_DBG_LED, OUTPUT);
 #endif
 	pinMode(BL, OUTPUT);
 	digitalWrite(BL, LOW ^ BL_INVERTED);
@@ -434,6 +449,9 @@ void doReset(void)
 
 bool doAnnounce()
 {
+/* see CarrierCase */
+#if SERIAL && DEBUG
+#endif // SERIAL && DEBUG
 	return false;
 }
 
@@ -498,6 +516,9 @@ void runScheduler(char task)
 
 		case MEASURE:
 			debugline("MEASURE");
+#ifdef _DBG_LED
+			blink(_DBG_LED, 1, 15);
+#endif
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
@@ -532,18 +553,18 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
 #if SERIAL
 
-static void helpCmd() {
+void helpCmd() {
 	Serial.println("Help!");
 	idle.set(UI_IDLE);
 }
 
-static void valueCmd () {
+void valueCmd () {
 	int v;
 	parser >> v;
 	Serial.print("value = ");
@@ -551,17 +572,17 @@ static void valueCmd () {
 	idle.set(UI_IDLE);
 }
 
-static void reportCmd () {
+void reportCmd () {
 	doReport();
 	idle.set(UI_IDLE);
 }
 
-static void measureCmd() {
+void measureCmd() {
 	doMeasure();
 	idle.set(UI_IDLE);
 }
 
-static void stdbyCmd() {
+void stdbyCmd() {
 	ui = false;
 	digitalWrite(BL, LOW ^ BL_INVERTED);
 }
@@ -577,7 +598,7 @@ InputParser::Commands cmdTab[] = {
 
 #endif // SERIAL
 
-/* *** /InputParser handlers *** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -634,8 +655,8 @@ void loop(void)
 		}
 		lcd_printTicks();
 	} else {
-#ifdef _DEBUG_LED
-		blink(_DEBUG_LED, 1, 15);
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 15);
 #endif
 		debugline("Sleep");
 		serialFlush();

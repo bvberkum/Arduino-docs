@@ -23,9 +23,9 @@ PortI2C i2cbus (1); /* Virtual I2C bus at JeeNode Port 1*/
 /** LCD 16x2 Character Display at 8bit I2C I/O expander (PCF8574 compatible) */
 #define I2C_ADDR    0x20
 #define BACKLIGHT_PIN     7
-#define En_pin  4
+#define En_pin  6
 #define Rw_pin  5
-#define Rs_pin  6
+#define Rs_pin  4
 #define D4_pin  0
 #define D5_pin  1
 #define D6_pin  2
@@ -185,7 +185,7 @@ void setup()
   Serial.begin(57600);
   Serial.println("I2C_ALL");
 
-  lux_init();
+  //lux_init();
   i2c_lcd_init();
   //exp_setup();
 }
@@ -194,7 +194,7 @@ void loop()
 {
   //cycle_dimmer();
   //cycle_expander();
-  cycle_lux();
+  //cycle_lux();
 
   //Wire.beginTransmission(address);
   //Wire.send(REGISTER_CONFIG);
@@ -222,13 +222,13 @@ void loop()
    need to a second or so wait after changing the gain
    see http://talk.jeelabs.net/topic/608 
    */
-  if (lux_value < 1000) {
-    highGain = 1;
-  } 
-  else {
-    highGain = 0;
-  }
-  lux.setGain(highGain);
+//  if (lux_value < 1000) {
+//    highGain = 1;
+//  } 
+//  else {
+//    highGain = 0;
+//  }
+//  lux.setGain(highGain);
 
   delay(1000);
 }
