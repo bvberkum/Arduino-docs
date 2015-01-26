@@ -15,6 +15,7 @@
 							
 
 
+#include <JeeLib.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
@@ -24,6 +25,8 @@
 const String sketch = "X-Serial";
 const int version = 0;
 
+char node[] = "rf24n";
+
 volatile bool ui_irq;
 bool ui;
 
@@ -32,6 +35,7 @@ bool ui;
 //              RXD      0
 //              TXD      1
 //              INT0     2
+#       define BL       10 // PWM Backlight
 //              MOSI     11
 //              MISO     12
 #       define _DBG_LED 13 // SCK
@@ -65,6 +69,19 @@ InputParser parser (50, cmdTab);
 
 /* *** Scheduled tasks *** {{{ */
 
+// XXX: no scheduled events
+enum {
+	TASK_END
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char WAITING = 0xFF; // -1: waiting to run
+static const char IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 /* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
@@ -140,7 +157,7 @@ static void ser_configVersionCmd(void) {
 void memStat() {
 	int free = freeRam();
 	int used = usedRam();
-	Stream cmdIo = Serial;
+
 	cmdIo.print("m ");
 	cmdIo.print(free);
 	cmdIo.print(' ');
@@ -161,6 +178,10 @@ void valueCmd () {
 	idle.set(UI_IDLE);
 }
 
+// forward declarations
+void doReport(void);
+void doMeasure(void);
+
 void reportCmd () {
 	doReport();
 	idle.set(UI_IDLE);
@@ -173,7 +194,6 @@ void measureCmd() {
 
 void stdbyCmd() {
 	ui = false;
-	digitalWrite(BL, LOW ^ BL_INVERTED);
 }
 
 
@@ -221,9 +241,20 @@ bool doAnnounce()
 	return false;
 }
 
+void doMeasure()
+{
+}
 
 void doReport(void)
 {
+}
+
+void uiStart()
+{
+	idle.set(UI_IDLE);
+	if (!ui) {
+		ui = true;
+	}
 }
 
 void runScheduler(char task)

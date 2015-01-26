@@ -123,7 +123,7 @@ ToDo
 #include <mpelib.h>
 //#include <EEPROM.h>
 // include EEPROMEx.h
-#include "EmBencode.h"
+#include <EmBencode.h>
 
 
 
@@ -139,9 +139,8 @@ String node_id = "cc-1";
 //              TXD      1
 //              INT0     2
 #       define _DBG_LED2 8 // B0, yellow
-#       define _DBG_LED 9  // B1, orange
+//#       define _DBG_LED 9  // B1, orange
 #       define BL       10 // PWM Backlight
-
 //              MOSI     11
 //              MISO     12
 //              SCK 13 
@@ -390,7 +389,6 @@ void serialEvent() {
 
 /* embenc for storage and xfer proto */
 
-// unused?
 uint8_t* embencBuff;
 int embencBuffLen = 0;
 
@@ -406,10 +404,10 @@ void embenc_push(char ch) {
 	}
 }
 
-//void EmBencode::PushChar(char ch) {
-//	Serial.write(ch);
-//	embenc_push(ch);
-//}
+void EmBencode::PushChar(char ch) {
+	Serial.write(ch);
+	embenc_push(ch);
+}
 
 void freeEmbencBuff() {
 	embencBuff = (uint8_t *) realloc(embencBuff, 0); // free??
@@ -759,6 +757,8 @@ void doConfig(void)
 	int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
 #endif //_RFM12B
 
+	return;
+
 	// Read embencoded from eeprom
 	int specByteCnt= eeprom_read_byte(RF12_EEPROM_ADDR + 2);
 	uint8_t specRaw [specByteCnt];
@@ -835,7 +835,7 @@ void initLibs()
 
 void doReset(void)
 {
-	doConfig();
+	//doConfig();
 
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
@@ -945,7 +945,6 @@ bool doAnnounce()
 	Serial.print(F("Sending"));
 	Serial.print((int)embencBuffLen);
 	Serial.println(F("bytes"));
-	serialFlush();
 
 	if (embencBuffLen > 66) {
 	// FIXME: need to send in chunks
@@ -971,7 +970,6 @@ bool doAnnounce()
 	}
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
-	serialFlush();
 
 	rf12_sleep(RF12_SLEEP);
 	return acked;
@@ -1081,6 +1079,7 @@ void doMeasure()
 void doReport(void)
 {
 #if _RFM12B
+	serialFlush();
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
@@ -1192,11 +1191,13 @@ void runScheduler(char task)
 	switch (task) {
 
 		case ANNOUNCE:
+			debugline("ANNOUNCE");
 			if (doAnnounce()) {
 				scheduler.timer(MEASURE, 0);
 			} else {
 				scheduler.timer(ANNOUNCE, 100);
 			}
+			serialFlush();
 			break;
 
 		case MEASURE:

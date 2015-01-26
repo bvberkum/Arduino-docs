@@ -127,8 +127,7 @@ struct {
 /* *** Scheduled tasks *** {{{ */
 
 enum {
-	MEASURE,
-	REPORT,
+	ANNOUNCE,
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
@@ -141,6 +140,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
+
 /* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
@@ -151,20 +151,20 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
 struct Config {
-	char node[4];
+	char node[3];
 	int node_id;
 	int version;
 	char config_id[4];
 } static_config = {
 	/* default values */
-	{ node[0], node[1], 0, 0 }, 0, version, CONFIG_VERSION
+	{ node[0], node[1], 0 }, 0, version, CONFIG_VERSION
 };
 
 Config config;
 
 bool loadConfig(Config &c)
 {
-	unsigned int w = sizeof(c);
+	int w = sizeof(c);
 
 	if (
 			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
@@ -253,6 +253,7 @@ Port ldr (LDR_PORT);
 #endif
 /* *** /PIR support *** }}} */
 
+
 #if _DHT
 /* DHT temp/rh sensor 
  - AdafruitDHT
@@ -289,6 +290,10 @@ Port ldr (LDR_PORT);
 
 /* *** /Peripheral hardware routines }}} *** */
 
+/* *** UI *** {{{ */
+
+/* *** /UI }}} *** */
+
 /* *** Initialization routines *** {{{ */
 
 void initConfig(void)
@@ -307,11 +312,6 @@ void doConfig(void)
 
 void initLibs()
 {
-#if _RFM12B
-#endif // RFM12B
-
-#if _DHT
-#endif // DHT
 }
 
 
@@ -328,10 +328,19 @@ void doReset(void)
 #endif
 	ui_irq = false;
 	tick = 0;
+	scheduler.timer(ANNOUNCE, 0);
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
+
+	cmdIo.print("\n[");
+	cmdIo.print(sketch);
+	cmdIo.print(".");
+	cmdIo.print(version);
+	cmdIo.println("]");
+
+	cmdIo.println(node_id);
 	return false;
 }
 
@@ -357,7 +366,39 @@ void uiStart()
 
 void runScheduler(char task)
 {
-	// no-op, see SensorNode
+	switch (task) {
+
+		case ANNOUNCE:
+			debugline("ANNOUNCE");
+			Serial.print(strlen(node_id));
+			Serial.println();
+			if (strlen(node_id) > 0) {
+				Serial.print("Node: ");
+				Serial.println(node_id);
+				//scheduler.timer(MEASURE, 0); schedule next step
+			} else {
+				doAnnounce();
+				//scheduler.timer(ANNOUNCE, 100);
+			}
+			serialFlush();
+			break;
+
+#if DEBUG && SERIAL
+		case WAITING:
+		case IDLE:
+			Serial.print("!");
+			serialFlush();
+			break;
+
+		default:
+			Serial.print("0x");
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			break;
+#endif
+
+	}
 }
 
 
@@ -492,14 +533,6 @@ void setup(void)
 	initLibs();
 
 	doReset();
-
-	cmdIo.print("\n[");
-	cmdIo.print(sketch);
-	cmdIo.print(".");
-	cmdIo.print(version);
-	cmdIo.println("]");
-
-	cmdIo.println(node_id);
 }
 
 void loop(void)

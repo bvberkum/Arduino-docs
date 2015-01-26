@@ -624,7 +624,7 @@ void runScheduler(char task)
 
 		case ANNOUNCE:
 			// TODO: see SensorNode
-			Serial.println("HANDSHAKE");
+			debugline("ANNOUNCE");
 			Serial.print(node);
 			Serial.println();
 			serialFlush();

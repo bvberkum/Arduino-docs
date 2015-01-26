@@ -43,7 +43,10 @@ METHODS = \
 #	endif
 #	endif
 define _flash
-	echo "Using port $(PORT)"
+	$(call log,header2,I,$(I));\
+	$(call log,header2,C,$(C));\
+	$(call log,header2,M,$(M));\
+	$(call log,header2,X,$(X));\
 	[ "$(M)" = "micronucleus" -o "$(M)" == "mn" ] && { \
 		micronucleus $(I); \
 	} || { \
@@ -213,21 +216,49 @@ _flash:
 
 ### Preset common flash 
 
-fusebit-doctor-m328: C := m328p
-fusebit-doctor-m328: M := usbasp
-fusebit-doctor-m328: I := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.hex)
-fusebit-doctor-m328: E := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.bin)
+# 1st version 
+# Update 3: Baud: 2400
+# Update 4: Baud: 4800
+fusebit-doctor-m328-update8: C := m328p
+fusebit-doctor-m328-update8: M := usbasp
+fusebit-doctor-m328-update8: I := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update8-05.03.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.08_m328p.hex)
+fusebit-doctor-m328-update8: E := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update8-05.03.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.08_m328p.bin)
+fusebit-doctor-m328-update8: LF := 0x62
+fusebit-doctor-m328-update8: HF := 0xD1
+fusebit-doctor-m328-update8: EF := 0x07
+fusebit-doctor-m328-update8: LB := 0x0F
+fusebit-doctor-m328-update8: UB := 0x3F
+fusebit-doctor-m328-update8: X := -B 3
+fusebit-doctor-m328-update8: _flash
+
+fusebit-doctor-m328-update10: C := m328p
+fusebit-doctor-m328-update10: M := usbasp
+fusebit-doctor-m328-update10: I := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.hex)
+fusebit-doctor-m328-update10: E := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update10-20.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.10_m328p.bin)
 #fusebit-doctor-m328: I := firmware/atmega_fusebit_doctor_2.11_m328p.hex
 #fusebit-doctor-m328: LF := 0x62
-fusebit-doctor-m328: LF := 0x62
-fusebit-doctor-m328: HF := 0xD1
-fusebit-doctor-m328: EF := 0x07
-fusebit-doctor-m328: LB := 0x0F
-fusebit-doctor-m328: UB := 0x3F
-fusebit-doctor-m328: X := -B 3
-fusebit-doctor-m328: _flash
+fusebit-doctor-m328-update10: LF := 0x62
+fusebit-doctor-m328-update10: HF := 0xD1
+fusebit-doctor-m328-update10: EF := 0x07
+fusebit-doctor-m328-update10: LB := 0x0F
+fusebit-doctor-m328-update10: UB := 0x3F
+fusebit-doctor-m328-update10: X := -B 3
+fusebit-doctor-m328-update10: _flash
 #fusebit-doctor-m328: D := 
 
+fusebit-doctor-m328-update11: C := m328p
+fusebit-doctor-m328-update11: M := usbasp
+fusebit-doctor-m328-update11: I := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update11-30.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.11_m328p.hex)
+fusebit-doctor-m328-update11: E := $(wildcard ~/Downloads/atmega-hvpp-fusebit-doctor_archive/update11-30.04.2011/firmware/Atmega328,328P/atmega_fusebit_doctor_2.11_m328p.bin)
+fusebit-doctor-m328-update11: LF := 0x62
+fusebit-doctor-m328-update11: HF := 0xD1
+fusebit-doctor-m328-update11: EF := 0x07
+fusebit-doctor-m328-update11: LB := 0x0F
+fusebit-doctor-m328-update11: UB := 0x3F
+fusebit-doctor-m328-update11: X := -B 3
+fusebit-doctor-m328-update11: _flash
+
+fusebit-doctor: fusebit-doctor-m328-update10
 
 fusebit-doctor-m8: C := m8
 fusebit-doctor-m8: M := usbasp
@@ -278,17 +309,17 @@ flash-betemcu-usbasploader-alt:
 
 # from /home/berend/Application/arduino-0021/hardware/arduino/boards.txt
 # This is working with 19200 baud
-m8-16Mhz: C := m8
-m8-16Mhz: M := usbasp
-#m8-16Mhz: I := firmware/ATmegaBOOT.hex
+m8-16MHz: C := m8
+m8-16MHz: M := usbasp
+#m8-16MHz: I := firmware/ATmegaBOOT.hex
 # from 1.0.3
-m8-16Mhz: I := firmware/ATmegaBOOT-prod-firmware-2009-11-07.hex
-m8-16Mhz: HF := 0xCA
-m8-16Mhz: LF := 0xDF
-m8-16Mhz: LB := 0x0F
-m8-16Mhz: UB := 0x3F
-m8-16Mhz: X := -B 3 
-m8-16Mhz: _flash
+m8-16MHz: I := firmware/ATmegaBOOT-prod-firmware-2009-11-07.hex
+m8-16MHz: HF := 0xCA
+m8-16MHz: LF := 0xDF
+m8-16MHz: LB := 0x0F
+m8-16MHz: UB := 0x3F
+m8-16MHz: X := -B 3 
+m8-16MHz: _flash
 
 # not sure what this is
 m8-fd: C := m8
@@ -300,7 +331,7 @@ m8-fd: UB := 0x3F
 m8-fd: X := -B 3 
 m8-fd: _flash
 
-# 8Mhz optiboot, cannot get this to work at 9600b
+# 8MHz optiboot, cannot get this to work at 9600b
 # http://www.robertoinzerillo.com/wordpress/wp-content/uploads/2012/10/optiboot_atmega8_8.zip
 # http://www.robertoinzerillo.com/wordpress/?p=45
 # Arduino BOARD: atmega8_opti_8mhz
@@ -315,7 +346,7 @@ m8-optiboot: X := -B 3
 m8-optiboot: D := 
 m8-optiboot: _flash
 
-# 8Mhz noxtal
+# 8MHz noxtal
 # http://todbot.com/blog/2009/05/26/minimal-arduino-with-atmega8/
 # http://todbot.com/blog/wp-content/uploads/2009/05/atmega8_noxtal.zip
 # Arduino BOARD: atmega8noxtal
@@ -342,9 +373,9 @@ m16:
 		-p m16 \
 		$(call key,METHODS,$(M)) 
 
-m32-DI-8Mhz-int: M := arduinoisp
-m32-DI-8Mhz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
-m32-DI-8Mhz-int:
+m32-DI-8MHz-int: M := arduinoisp
+m32-DI-8MHz-int: I := firmware/ATmegaBOOT_168_diecimila.hex
+m32-DI-8MHz-int:
 	avrdude \
 		-p m32 -e \
 		$(call key,METHODS,$(M)) \
@@ -358,7 +389,7 @@ m32-DI-8Mhz-int:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-# 16Mhz ext, 5V, delay bootloader
+# 16MHz ext, 5V, delay bootloader
 m32: M := arduinoisp
 m32: I := firmware/ATmegaBOOT_168_diecimila.hex
 m32:
@@ -387,10 +418,10 @@ m328p:
 		-p m328p \
 		$(call key,METHODS,$(M)) 
 
-# Internal 8Mhz/57600baud 328 target
-m328p-8Mhz: I := firmware/ATmegaBOOT_168_atmega328_pro_8MHz.hex
-m328p-8Mhz: M := arduinoisp
-m328p-8Mhz:
+# Internal 8MHz/57600baud 328 target
+m328p-8MHz: I := firmware/ATmegaBOOT_168_atmega328_pro_8MHz.hex
+m328p-8MHz: M := arduinoisp
+m328p-8MHz:
 	avrdude \
 		-p m328p -e \
 		$(call key,METHODS,$(M)) \
@@ -404,18 +435,18 @@ m328p-8Mhz:
 		$(call key,METHODS,$(M)) \
 		-U lock:w:0x0F:m
 
-#m328p-16Mhz: I := firmware/optiboot_atmega328.hex
+#m328p-16MHz: I := firmware/optiboot_atmega328.hex
 
-m328p-16Mhz: I := firmware/ATmegaBOOT_168_atmega328.hex
-m328p-16Mhz: M := usbasp
-m328p-16Mhz: X :=
-m328p-16Mhz: C := m328p
-m328p-16Mhz: LF := 0xFF
-m328p-16Mhz: HF := 0xDA
-m328p-16Mhz: EF := 0x07
-m328p-16Mhz: LB := 0x0F
-m328p-16Mhz: UB := 0x3F
-m328p-16Mhz: _flash
+m328p-16MHz: I := firmware/ATmegaBOOT_168_atmega328.hex
+m328p-16MHz: M := usbasp
+m328p-16MHz: X :=
+m328p-16MHz: C := m328p
+m328p-16MHz: LF := 0xFF
+m328p-16MHz: HF := 0xDA
+m328p-16MHz: EF := 0x07
+m328p-16MHz: LB := 0x0F
+m328p-16MHz: UB := 0x3F
+m328p-16MHz: _flash
 
 # Cannot re-read protected flash without -e? check fuses
 #verify-betemcu: M := usbasp
@@ -473,6 +504,7 @@ m1284p:
 #_arduino: TARGETS := clean all
 _arduino:
 	@\
+	$(call log,header2,BRD,$(BRD));\
 	p=$$(realpath .);\
 	cd $P; \
 		ARDUINODIR=$(ARDUINODIR) \
@@ -493,6 +525,7 @@ arduino-firmware: TARGETS :=
 arduino-firmware: _arduino-firmware
 
 _arduino-firmware:
+	$(call log,header2,BRD,$(BRD));\
 	p=$$(realpath .);\
 	cd $P; \
 	make -f $$p/arduino.mk \
@@ -630,10 +663,11 @@ meshping: P := libraries/RF24Network/examples/meshping/
 meshping: I := libraries/RF24Network/examples/meshping/meshping.hex
 meshping: jeenode upload
 
-carriercase: BRD := uno
+carriercase: C := m328p
+#carriercase: BRD := uno
 carriercase: P := Mpe/CarrierCase/
-carriercase: _arduino-firmware upload
-#jeenode upload
+carriercase: I := Mpe/CarrierCase/CarrierCase.hex
+carriercase: jeenode upload
 
 cassette328p: C := m328p
 cassette328p: P := Mpe/Cassette328P/
@@ -769,7 +803,7 @@ at85usb: HF:=0xDD
 #clock out PB4:
 #at85usb: LF:=0xA1
 #at85usb: HF:=0xDD
-#int 1Mhz:
+#int 1MHz:
 #at85usb: LF:=0x62
 #at85usb: HF:=0xDF
 #clock out PB4:
@@ -949,10 +983,14 @@ node: I := Prototype/Node/Node.hex
 node: jeenode upload
 
 sensornode: C := m328p
-sensornode: M := arduino
 sensornode: P := Prototype/SensorNode/
 sensornode: I := Prototype/SensorNode/SensorNode.hex
 sensornode: jeenode _upload
+
+serial: C := m328p
+serial: P := Prototype/Serial/
+serial: I := Prototype/Serial/Serial.hex
+serial: jeenode _upload
 
 relaybox: C := m328p
 relaybox: P := Prototype/RelayBox/

@@ -5,6 +5,7 @@ MK                  += $(MK_$d)
 #      ------------ --
 
 ARDUINODIR := $(shell realpath ./arduinodir/)
+$(info $(shell $(call log,header2,ARDUINODIR,$(ARDUINODIR))))
 
 arduinodir-libraries-relink::
 	for f in libraries/*; do \

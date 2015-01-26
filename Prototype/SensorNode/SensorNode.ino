@@ -45,9 +45,9 @@ char node_id[7];
 
 
 /* IO pins */
-//             RXD      0
-//             TXD      1
-//             INT0     2
+//              RXD      0
+//              TXD      1
+//              INT0     2
 #if _DHT
 static const byte DHT_PIN = 7;
 #endif
@@ -85,7 +85,7 @@ struct {
 /* *** Scheduled tasks *** {{{ */
 
 enum {
-	HANDSHAKE,
+	ANNOUNCE,
 	MEASURE,
 	REPORT,
 	TASK_END
@@ -202,6 +202,7 @@ enum { DS_OK, DS_ERR_CRC };
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
+
 
 #endif // NRF24
 
@@ -371,8 +372,8 @@ void runScheduler(char task)
 {
 	switch (task) {
 
-		case HANDSHAKE:
-			Serial.println("HANDSHAKE");
+		case ANNOUNCE:
+			debugline("ANNOUNCE");
 			Serial.print(strlen(node_id));
 			Serial.println();
 			if (strlen(node_id) > 0) {
@@ -461,7 +462,7 @@ void setup(void)
 void loop(void)
 {
 #ifdef _DBG_LED
-	blink(_DBG_LED, 1, 15);
+	blink(_DBG_LED, 3, 10);
 #endif
 	debug_ticks();
 	serialFlush();
