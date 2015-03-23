@@ -104,8 +104,8 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -464,7 +464,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-		case WAITING:
+		case SCHED_WAITING:
 			break;
 
 		default:
@@ -554,7 +554,7 @@ void loop(void)
 		serialFlush();
 		char task = scheduler.pollWaiting();
 		debugline("Wakeup");
-		if (-1 < task && task < IDLE) {
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
 }

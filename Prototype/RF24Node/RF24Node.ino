@@ -29,8 +29,9 @@ TODO: get NRF24 client stuff running
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define BL_INVERTED     0xFF
+#define NRF24_CHANNEL   90
 							
-#define MAXLENLINE      79
+#define MAXLENLINE      79   90
 							
 
 // Definition of interrupt names
@@ -524,7 +525,7 @@ void initLibs()
 #if _NRF24
 	SPI.begin();
 	radio.begin();
-	network.begin(/*channel*/ 90, /*node address*/ this_node);
+	network.begin(/*channel*/ NRF24_CHANNEL, /*node address*/ this_node);
 #endif // NRF24
 }
 

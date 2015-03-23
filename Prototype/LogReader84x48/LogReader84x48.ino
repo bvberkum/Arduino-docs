@@ -50,8 +50,7 @@ char node[] = "lr";
 
 
 volatile bool ui_irq;
-
-static bool ui;
+bool ui;
 
 byte bl_level = 0xff;
 
@@ -109,8 +108,8 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -350,12 +349,19 @@ void printKeys(void) {
 
 /* *** Initialization routines *** {{{ */
 
+void initConfig(void)
+{
+	// See Prototype/Node
+	//sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+}
+
 void doConfig(void)
 {
 	/* load valid config or reset default config */
 	//if (!loadConfig(static_config)) {
 	//	writeConfig(static_config);
 	//}
+	initConfig();
 }
 
 void initLibs()
@@ -364,7 +370,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines *** }}} */
+/* *** /Initialization routines }}} *** */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -462,8 +468,9 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-		case WAITING:
-		case IDLE:
+#if DEBUG && SERIAL
+		case SCHED_WAITING:
+		case SCHED_IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
@@ -474,6 +481,8 @@ void runScheduler(char task)
 			Serial.println(" ?");
 			serialFlush();
 			break;
+#endif
+
 	}
 }
 
@@ -532,7 +541,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
@@ -558,7 +567,7 @@ void loop(void)
 	}
 	debug_ticks();
 	char task = scheduler.poll();
-	if (-1 < task && task < IDLE) {
+	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
 	}
 	if (ui) {
@@ -583,11 +592,12 @@ void loop(void)
 		serialFlush();
 		char task = scheduler.pollWaiting();
 		debugline("Wakeup");
-		if (-1 < task && task < IDLE) {
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
 	}
 }
 
 /* }}} *** */
+
 

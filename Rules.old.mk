@@ -1094,6 +1094,15 @@ serialavail: P := Misc/Arduino/SerialAvailable/
 serialavail: I := Misc/Arduino/SerialAvailable/SerialAvailable.hex
 serialavail: jeenode _upload
 
+
+
+pad1x4: C := m428p
+pad1x4: M := arduino
+pad1x4: P := Prototype/Keypad/Pad1x4/
+pad1x4: I := Prototype/Keypad/Pad1x4/Pad1x4.hex
+pad1x4: jeenode upload
+
+
 ### XXX old library symlinks, use submodules if possible
 
 library: $(realpath $/libraries/)

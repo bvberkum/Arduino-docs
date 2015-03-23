@@ -18,7 +18,8 @@ Pinout:
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
 							
-#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
+#define _MEM            1   // Report free memory 
+#define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 							
 #define MAXLENLINE      79
@@ -167,7 +168,7 @@ void doReport(void)
 
 void uiStart()
 {
-	idle.set(UI_SCHED_IDLE);
+	idle.set(UI_IDLE);
 	if (!ui) {
 		ui = true;
 	}

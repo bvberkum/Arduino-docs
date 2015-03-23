@@ -74,14 +74,16 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+
 /* *** /Scheduled tasks }}} *** */
 
 /* *** EEPROM config *** {{{ */
@@ -236,17 +238,21 @@ void doReset(void)
 	tick = 0;
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
 	return false;
 }
 
+
 void doMeasure()
 {
+
 }
+
 
 void doReport(void)
 {
+
 }
 
 void uiStart()
@@ -264,8 +270,8 @@ void runScheduler(char task)
 		// FIXME: scheduler is not needed for SerialNode?
 
 #if DEBUG && SERIAL
-		case WAITING:
-		case IDLE:
+		case SCHED_WAITING:
+		case SCHED_IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
@@ -311,7 +317,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
@@ -338,7 +344,7 @@ void loop(void)
 	debug_ticks();
 
 	char task = scheduler.poll();
-	if (-1 < task && task < IDLE) {
+	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
 	}
 	if (ui) {
@@ -361,7 +367,7 @@ void loop(void)
 		serialFlush();
 		char task = scheduler.pollWaiting();
 		debugline("Wakeup");
-		if (-1 < task && task < IDLE) {
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
 	}

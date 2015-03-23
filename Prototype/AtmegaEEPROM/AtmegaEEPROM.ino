@@ -24,7 +24,7 @@ char node_id[7];
 /* IO pins */
 //              RXD      0
 //              TXD      1
-//              INT0     2 
+//              INT0     2
 //              MOSI     11
 //              MISO     12
 //#       define _DBG_LED 13 // SCK

@@ -10,11 +10,13 @@ $(info $(shell $(call log,header2,ARDUINODIR,$(ARDUINODIR))))
 arduinodir-libraries-relink::
 	for f in libraries/*; do \
 		F=$$(basename $$f); \
+		if [ -n "$$(echo $$F | grep '[^a-zA-Z0-9_]')" ] ; then \
+			continue; fi; \
 		T=$$(realpath arduinodir/libraries)/$$F; \
 		[ -e "$$T" ] && [ -L "$$T" ] && { \
 			rm -v $$T; \
 		} || { \
-			echo -n; \
+			echo Existing library $$F; \
 		};\
 		[ ! -e "$$T" ] && { \
 			ln -sv $$(pwd -P)/$$f $$T; \

@@ -131,8 +131,8 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -294,6 +294,12 @@ Port ldr (LDR_PORT);
 
 /* *** /UI }}} *** */
 
+/* UART commands {{{ */
+
+// See Serial
+
+/* UART commands }}} */
+
 /* *** Initialization routines *** {{{ */
 
 void initConfig(void)
@@ -384,8 +390,8 @@ void runScheduler(char task)
 			break;
 
 #if DEBUG && SERIAL
-		case WAITING:
-		case IDLE:
+		case SCHED_WAITING:
+		case SCHED_IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
@@ -406,6 +412,7 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
+#if SERIAL
 static void helpCmd() {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
@@ -510,6 +517,7 @@ InputParser::Commands cmdTab[] = {
 	{ 'E', 0, eraseEEPROM },
 	{ 0 }
 };
+#endif // SERIAL
 
 
 /* *** /InputParser handlers }}} *** */
@@ -521,7 +529,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 	//virtSerial.begin(4800);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
@@ -551,7 +559,9 @@ void loop(void)
 	debug_ticks();
 
 	char task = scheduler.poll();
-	runScheduler(task);
+	if (-1 < task && task < SCHED_IDLE) {
+		runScheduler(task);
+	}
 	if (ui) {
 		parser.poll();
 		if (idle.poll()) {
@@ -572,7 +582,7 @@ void loop(void)
 		serialFlush();
 		char task = scheduler.pollWaiting();
 		debugline("Wakeup");
-		if (-1 < task && task < IDLE) {
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
 	}
