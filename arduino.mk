@@ -143,6 +143,7 @@ ifndef ARDUINODIR
 ARDUINODIR := $(firstword $(wildcard ~/opt/arduino /usr/share/arduino))
 endif
 ifeq "$(wildcard $(ARDUINODIR)/hardware/arduino/boards.txt)" ""
+# XXX 1.6.4 ifeq "$(wildcard $(ARDUINODIR)/hardware/arduino/avr/boards.txt)" ""
 $(error ARDUINODIR is not set correctly; arduino software not found)
 endif
 
@@ -225,6 +226,7 @@ endif
 endif
 
 # obtain board parameters from the arduino boards.txt file
+# 1.6.4 BOARDS_FILE := $(ARDUINODIR)/hardware/arduino/avr/boards.txt
 BOARDS_FILE := $(ARDUINODIR)/hardware/arduino/boards.txt
 BOARD_BUILD_MCU := \
 	$(shell sed -ne "s/$(BOARD).build.mcu=\(.*\)/\1/p" $(BOARDS_FILE))

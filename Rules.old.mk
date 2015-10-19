@@ -70,12 +70,7 @@ upload: M := arduino
 upload: X := -D
 upload: _upload
 
-ifeq ($(shell uname -s),Darwin)
-avrdude=$(ARDUINODIR)/hardware/tools/avr/bin/avrdude \
-		-C/Users/berend/Downloads/DigisparkArduino-MacOSX-1.0.4-May19/DigisparkArduino-MacOSX-1.0.4-May19/DigisparkArduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf 
-else
-avrdude=avrdude
-endif
+avrdude=$(ARDUINODIR)/hardware/tools/avr/bin/avrdude -C$(ARDUINODIR)/hardware/tools/avr/etc/avrdude.conf
 
 _upload:
 	@\
@@ -867,12 +862,14 @@ mbug1: P := Mpe/
 mbug1: I := Mpe/MoistureBug/MoistureNode/MoistureNode.hex
 mbug1: jeenode upload
 
-soarer: I := Misc/Soarer_Convertor/tmp/Soarer_at2usb_v1.12_atmega32u4.hex
+soarer: I := Misc/Soarer_Converter//Soarer_Converter_v1.0/firmware/Soarer_at2usb_v1.0_atmega32u4.hex
 soarer: M := leonardo
-soarer: C := atmega32u4 
-soarer: PORT := /dev/ttyACM0
+soarer: C := atmega32u4
+#soarer: PORT := /dev/ttyACM0
+soarer: PORT := /dev/tty.usbmodem1a12111
 soarer: X := -D -v
 soarer: _upload
+	./Misc/Soarer_Converter/tools/scwr ./Misc/Soarer_Converter/legacy.bin
 
 jeedht: C := m328p
 jeedht: P := Prototype/DHTTest/JeeLibDHT/
