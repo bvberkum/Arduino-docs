@@ -15,27 +15,27 @@ Current pin assignments:
 
 Ard Atm Jee  Sign Mapping
 === === ==== ==== ===========
-D0  PD0      TXD  SER/DEBUG  
-D1  PD1      RXD  SER/DEBUG  
+D0  PD0      TXD  SER/DEBUG
+D1  PD1      RXD  SER/DEBUG
 D2  PD2      INT0 JeePort IRQ
-D3  PD3      INT1 RFM12B IRQ 
-D4  PD4 DIO1      PIR        
-D5  PD5 DIO2                 
-D6  PD6 DIO3                 
-D7  PD7 DIO4      DHT11      
-D8  PB0           LED yellow 
-D9  PB1           LED orange 
-D10 PB2      SS   RFM12B SEL 
-D11 PB3      MOSI RFM12B SDI 
-D12 PB4      MISO RFM12B DSO 
-D13 PB5      SCK  RFM12B SCK 
-A0  PC1 AIO1                 
-A1  PC1 AIO2                 
-A2  PC2 AIO3                 
-A1  PC3 AIO4      LDR        
-A4  PC4      SDA             
-A5  PC5      SCL             
-    PC6      RST  Reset      
+D3  PD3      INT1 RFM12B IRQ
+D4  PD4 DIO1      PIR
+D5  PD5 DIO2
+D6  PD6 DIO3
+D7  PD7 DIO4      DHT11
+D8  PB0           LED yellow
+D9  PB1           LED orange
+D10 PB2      SS   RFM12B SEL
+D11 PB3      MOSI RFM12B SDI
+D12 PB4      MISO RFM12B DSO
+D13 PB5      SCK  RFM12B SCK
+A0  PC1 AIO1
+A1  PC1 AIO2
+A2  PC2 AIO3
+A1  PC3 AIO4      LDR
+A4  PC4      SDA
+A5  PC5      SCL
+    PC6      RST  Reset
 === === ==== ==== ===========
 
 
@@ -43,18 +43,18 @@ Todo:
 
 Ard Atm Jee  Sign Mapping
 === === ==== ==== ===========
-D4  PD4 DIO1      MP-1 RIGHT 
-D5  PD5 DIO2      MP-1 LEFT  
-D6  PD6 DIO3      MP-2 RIGHT 
-D7  PD7 DIO4      MP-2 LEFT  
-D8  PB0           MP-1 LED   
-D9  PB1           MP-2 LED   
+D4  PD4 DIO1      MP-1 RIGHT
+D5  PD5 DIO2      MP-1 LEFT
+D6  PD6 DIO3      MP-2 RIGHT
+D7  PD7 DIO4      MP-2 LEFT
+D8  PB0           MP-1 LED
+D9  PB1           MP-2 LED
 A0  PC1 AIO1      MP1 measure
 A1  PC1 AIO2      MP2 measure
-A2  PC2 AIO3                 
-A1  PC3 AIO4      LDR        
-A4  PC4      SDA  Dallas bus 
-A5  PC5      SCL  DHT out    
+A2  PC2 AIO3
+A1  PC3 AIO4      LDR
+A4  PC4      SDA  Dallas bus
+A5  PC5      SCL  DHT out
 === === ==== ==== ===========
 
 ToDo
@@ -65,8 +65,8 @@ ToDo
 			PIR
 				motion
 			LDR
-				
-  - 
+
+  -
 */
 
 //#ifdef MYCMDLINE
@@ -77,8 +77,8 @@ ToDo
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
-							
-#define _MEM            1   // Report free memory 
+
+#define _MEM            1   // Report free memory
 #define _RFM12B         1
 #define _RFM12BLOBAT    1   // Use JeeNode lowbat measurement
 #define _NRF24          0
@@ -91,7 +91,7 @@ ToDo
 #define PIR_PORT        0
 #define DHT_PIN         0   // DIO for DHTxx
 #define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
-							
+
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
@@ -100,13 +100,13 @@ ToDo
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
-							
+
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
 // set the sync mode to 2 if the fuses are still the Arduino default
 // mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
-							
+
 
 #include <stdlib.h>
 #include <avr/eeprom.h>
@@ -139,11 +139,11 @@ String node_id = "cc-1";
 //              TXD      1
 //              INT0     2
 #       define _DBG_LED2 8 // B0, yellow
-//#       define _DBG_LED 9  // B1, orange
+#       define _DBG_LED 9  // B1, orange
 #       define BL       10 // PWM Backlight
 //              MOSI     11
 //              MISO     12
-//              SCK 13 
+//              SCK 13
 
 
 MpeSerial mpeser (57600);
@@ -213,7 +213,7 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 /* *** EEPROM config *** {{{ */
 
 /* Atmega EEPROM stuff */
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
+const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
@@ -301,12 +301,12 @@ ISR(PCINT2_vect) { pir.poll(); }
 /* *** /PIR support }}} *** */
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
-#define DHTTYPE DHT11   // DHT 11 
+#define DHTTYPE DHT11   // DHT 11
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
 
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
@@ -372,14 +372,14 @@ String serialBuffer = "";         // a string to hold incoming data
 void serialEvent() {
 	while (Serial.available()) {
 		// get the new byte:
-		char inchar = (char)Serial.read(); 
+		char inchar = (char)Serial.read();
 		// add it to the serialBuffer:
 		if (inchar == '\n') {
 			serialBuffer = "";
-		} 
+		}
 		else if (serialBuffer == "new ") {
 			node_id += inchar;
-		} 
+		}
 		else {
 			serialBuffer += inchar;
 		}
@@ -396,8 +396,8 @@ int embencBuffLen = 0;
 void embenc_push(char ch) {
 	embencBuffLen += 1;
 	uint8_t* np = (uint8_t *) realloc( embencBuff, sizeof(uint8_t) * embencBuffLen);
-	if( np != NULL ) { 
-		embencBuff = np; 
+	if( np != NULL ) {
+		embencBuff = np;
 		embencBuff[embencBuffLen] = ch;
 	} else {
 		Serial.println(F("Out of Memory"));
@@ -426,7 +426,7 @@ void freeEmbencBuff() {
 /* *** /PIR support *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 
@@ -469,7 +469,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
-	Sleepy::loseSomeTime(800); 
+	Sleepy::loseSomeTime(800);
 	//delay(1000);     // maybe 750ms is enough, maybe not
 	// we might do a ds.depower() here, but the reset will take care of it.
 
@@ -502,9 +502,9 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 #endif
 
 	if (crc8 != data[8]) {
-		return DS_ERR_CRC; 
-	} else { 
-		return DS_OK; 
+		return DS_ERR_CRC;
+	} else {
+		return DS_OK;
 	}
 }
 
@@ -527,8 +527,8 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-	int result = ds_readdata(addr, data);	
-	
+	int result = ds_readdata(addr, data);
+
 	if (result != DS_OK) {
 #if SERIAL
 		Serial.println(F("CRC error in ds_readdata"));
@@ -649,7 +649,7 @@ void rf24_run()
 {
 }
 
-// XXX: just an example, not actually used 
+// XXX: just an example, not actually used
 static void sendSomeData () {
   EmBencode encoder;
   // send a simple string
@@ -720,7 +720,7 @@ int HMC5803L_Read(byte Axis)
 	Wire.write(Axis);
 	Wire.endTransmission();
 
-	/* Read the data from registers (there are two 8 bit registers for each axis) */  
+	/* Read the data from registers (there are two 8 bit registers for each axis) */
 	Wire.requestFrom(HMC5803L_Address, 2);
 	Result = Wire.read() << 8;
 	Result |= Wire.read();
@@ -762,10 +762,10 @@ void doConfig(void)
 	// Read embencoded from eeprom
 	int specByteCnt= eeprom_read_byte(RF12_EEPROM_ADDR + 2);
 	uint8_t specRaw [specByteCnt];
-	eeprom_read_block( 
-			(void*)specRaw, 
+	eeprom_read_block(
+			(void*)specRaw,
 			RF12_EEPROM_ADDR + 3,
-			specByteCnt 
+			specByteCnt
 		);
 
 	char embuf [200];
@@ -819,7 +819,7 @@ void initLibs()
 	/* Initialise the Wire library */
 	Wire.begin();
 
-	/* Initialise the module */ 
+	/* Initialise the module */
 	Init_HMC5803L();
 #endif //_HMC5883L
 
@@ -837,9 +837,15 @@ void doReset(void)
 {
 	//doConfig();
 
+#ifdef _DBG_LED2
+	pinMode(_DBG_LED2, OUTPUT);
+	blink(_DBG_LED2, 3, 100);
+#endif
+
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
+
 	tick = 0;
 
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
@@ -864,7 +870,7 @@ bool doAnnounce()
 #endif
 	Serial.print(" attemp");
 
-#if _DS 
+#if _DS
 	ds_count = readDSCount();
 	for ( int i = 0; i < ds_count; i++) {
 		Serial.print(" ds-");
@@ -883,7 +889,7 @@ bool doAnnounce()
 #if LDR_PORT
 	payload_spec.startList();
 	// name, may be unique but can be part number and as specific or generic as possible
-	payload_spec.push("ldr2250"); 
+	payload_spec.push("ldr2250");
 	// bits in payload
 	payload_spec.push(8);
 	// XXX decoder params, optional?
@@ -954,11 +960,11 @@ bool doAnnounce()
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(
 		(rf12_id & RF12_HDR_MASK) | RF12_HDR_ACK,
-		&embencBuff, 
+		&embencBuff,
 		sizeof embencBuff);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	bool acked = waitForAck();
-	
+
 	acked = 1;
 
 	freeEmbencBuff();
@@ -1215,7 +1221,7 @@ void runScheduler(char task)
 			serialFlush();
 #endif
 #ifdef _DBG_LED
-			blink(_DBG_LED, 2, 25);
+			blink(_DBG_LED, 2, 100);
 #endif
 			break;
 
@@ -1278,11 +1284,11 @@ void setup(void)
 	rf12_id = 23;
 	rf12_initialize(rf12_id, RF12_868MHZ, 5);
 	//rf12_config(rf12_show);
-    
+
 	rf12_sleep(RF12_SLEEP); // power down
 
 #if PIR_PORT
-	// PIR pull down and interrupt 
+	// PIR pull down and interrupt
 	pir.digiWrite(0);
 	// PCMSK2 = PCIE2 = PCINT16-23 = D0-D7
 	bitSet(PCMSK2,  3 + PIR_PORT); // DIO1
@@ -1314,7 +1320,7 @@ void setup(void)
 void loop(void)
 {
 #ifdef _DBG_LED
-	blink(_DBG_LED, 3, 10);
+	blink(_DBG_LED, 3, 50);
 #endif
 	//doMeasure();
 	//doReport();

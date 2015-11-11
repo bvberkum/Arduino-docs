@@ -79,6 +79,11 @@ endif
 
 include Rules.simple-m8.mk
 
+
+./Misc/Soarer_Converter/docs:
+	unzip ./Misc/Soarer_Converter/Soarer_Converter_v1.12_docs.zip -c Misc/Soarer_Converter
+
+
 #      ------------ -- 
 #
 include                $(MK_SHARE)Core/Main.dirstack-pop.mk

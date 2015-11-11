@@ -862,14 +862,20 @@ mbug1: P := Mpe/
 mbug1: I := Mpe/MoistureBug/MoistureNode/MoistureNode.hex
 mbug1: jeenode upload
 
-soarer: I := Misc/Soarer_Converter//Soarer_Converter_v1.0/firmware/Soarer_at2usb_v1.0_atmega32u4.hex
+soarer: I := Misc/Soarer_Converter/firmware/Soarer_at2usb_v1.12_atmega32u4.hex
 soarer: M := leonardo
 soarer: C := atmega32u4
 #soarer: PORT := /dev/ttyACM0
-soarer: PORT := /dev/tty.usbmodem1a12111
+soarer: PORT := $(wildcard /dev/tty.usbmodem*)
 soarer: X := -D -v
-soarer: _upload
-	./Misc/Soarer_Converter/tools/scwr ./Misc/Soarer_Converter/legacy.bin
+soarer: SC := samsung
+soarer: _upload sc-$(SC)
+
+sc-samsung::
+	./Misc/Soarer_Converter/tools/scas \
+			./Misc/Soarer_Converter/samsung-SEM-M2A.sc \
+			./Misc/Soarer_Converter/samsung.bin
+	./Misc/Soarer_Converter/tools/scwr ./Misc/Soarer_Converter/samsung.bin
 
 jeedht: C := m328p
 jeedht: P := Prototype/DHTTest/JeeLibDHT/
