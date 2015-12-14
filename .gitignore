@@ -24,3 +24,4 @@ arduino-*
 
 # Unpacked content from Annex 
 Misc/usbasp
+.htdignore
