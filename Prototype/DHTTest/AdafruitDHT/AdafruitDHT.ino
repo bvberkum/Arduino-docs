@@ -1,45 +1,53 @@
-/*
 
-	AdafruitDHT 
-	based on 
+	AdafruitDHT
+	based on
 		- ThermoLog84x48 but doesnt use Lcd84x48
 		- AtmegaEEPROM
-*/
+		- SensorNode
+ */
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
 #define DEBUG_MEASURE   0
-							
-#define UART_BAUD_RATE  57600
-#define _RFM12B         1
-#define _MEM            1   // Report free memory 
-#define _DHT            1
+
+#define _MEM            1   // Report free memory
+//#define _DHT            0
+#define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DHT2           0   // 1:DHT11, 2:DHT22
+#define _RFM12B         1
 #define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
-							
-#define MEASURE_PERIOD  300  // how often to measure, in tenths of seconds
+
 #define REPORT_EVERY    1   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
+#define MEASURE_PERIOD  300  // how often to measure, in tenths of seconds
 #define STDBY_PERIOD    60
-							
+
 #define RADIO_SYNC_MODE 2
 
+
+//#include <SoftwareSerial.h>
+//#include <EEPROM.h>
 #include <JeeLib.h>
+//#include <SPI.h>
+//#include <RF24.h>
 // Adafruit DHT
 #include <DHT.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
 
+
+
 const String sketch = "AdafruitDHT";
 const int version = 0;
 
 char node[] = "adadht";
-// determined upon handshake 
+// determined upon handshake
 char node_id[7];
+
 
 /* IO pins */
 #if _DHT
@@ -53,13 +61,14 @@ static const byte DHT2_PIN = 6;
 
 MpeSerial mpeser (57600);
 
-/* *** InputParser {{{ */
+
+/* *** InputParser *** {{{ */
 
 extern InputParser::Commands cmdTab[] PROGMEM;
 InputParser parser (50, cmdTab);
 
 
-/* }}} *** */
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -94,7 +103,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables *** }}} */
+/* *** /Report variables }}} *** */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -116,6 +125,12 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* *** /Scheduled tasks *** }}} */
 
+/* *** EEPROM config *** {{{ */
+
+
+
+/* *** /EEPROM config }}} *** */
+
 /* *** Peripheral devices *** {{{ */
 
 #if LDR_PORT
@@ -123,16 +138,16 @@ Port ldr (LDR_PORT);
 #endif
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 //DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
-//#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT11   // DHT 11
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
-#if DHT_HIGH 
-DHT dht (DHT_PIN, DHT21); 
-//DHT dht (DHT_PIN, DHT22); 
+#if DHT_HIGH
+DHT dht (DHT_PIN, DHT21);
+//DHT dht (DHT_PIN, DHT22);
 // AM2301
 // DHT21, AM2302?
 #else
@@ -155,8 +170,15 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 #endif // DS
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif //_RFM12B
+
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
+
 
 #endif // NRF24
 
@@ -171,52 +193,56 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 /* *** /Peripheral devices }}} *** */
 
-/* *** EEPROM config *** {{{ */
-
-/* *** /EEPROM config *** }}} */
-
 /* *** Peripheral hardware routines *** {{{ */
+
 
 #if LDR_PORT
 #endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif
+#endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
+
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 
 #endif // DHT
 
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
-
-#endif //_RFM12B
-
 #if _LCD84x48
+
+
 #endif // LCD84x48
 
 #if _DS
-/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+/* Dallas DS18B20 thermometer routines */
 
 
 #endif // DS
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif // RFM12B
+
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
+
 
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
-#endif //_HMC5883L
+
+
+#endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines }}} *** */
@@ -258,7 +284,7 @@ void doReset(void)
 {
 	doConfig();
 
-#if _DBG_LED
+#ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
 	tick = 0;
@@ -292,7 +318,7 @@ bool doAnnounce()
 #endif
 #if _RFM12LOBAT
 #endif
-	
+
 	serialFlush();
 
 	delay(100);
@@ -396,7 +422,7 @@ void doMeasure()
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
-#endif
+#endif //_MEM
 
 #if SERIAL
 	serialFlush();
@@ -422,9 +448,10 @@ void doReport(void)
 #endif
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
-#if _MEM
 	Serial.print(' ');
+#if _MEM
 	Serial.print((int) payload.memfree);
+	Serial.print(' ');
 #endif
 #if _RFM12LOBAT
 	Serial.print(' ');
@@ -474,7 +501,7 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers *** }}} */
+/* *** /Run-time handlers }}} *** */
 
 /* *** InputParser handlers *** {{{ */
 
@@ -509,7 +536,7 @@ InputParser::Commands cmdTab[] = {
 };
 
 
-/* *** /InputParser handlers *** }}} */
+/* *** /InputParser handlers }}} *** */
 
 /* *** Main *** {{{ */
 
@@ -518,7 +545,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -538,7 +565,7 @@ void setup(void)
 void loop(void)
 {
 #ifdef _DBG_LED
-	blink(_DBG_LED, 1, 15);
+	blink(_DBG_LED, 3, 10);
 #endif
 	debug_ticks();
 /*
@@ -548,7 +575,7 @@ void loop(void)
 	}
 	delay(50);
 	return;
-*/	
+*/
 		parser.poll();
 		debugline("Sleep");
 		serialFlush();

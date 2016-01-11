@@ -1,10 +1,8 @@
 /*
 
-Serial extends AtmegaEEPROM, AtmegaTemp
-
-  - boilerplate for ATmega node with Serial interface
-  - uses Node event loop which is based on JeeLib scheduler.
-
+AtmegaTemp extends Node
+  - Dumps internal-temperature values to serial,
+    to ferify it reads correctly,
 
  */
 
@@ -13,14 +11,21 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           0 /* Enable trace statements */
+#define DEBUG_MEASURE   0
 
-#define _MEM            1
+#define _MEM            1   // Report free memory
 
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
-#define MAXLENLINE      79
+
+// SensorNode: -57
+// -68
+//#define TEMP_OFFSET     -57
+//#define TEMP_K          1.0
+#define ANNOUNCE_START  0
+#define REPORT_START    25
+#define REPORT_PERIOD   20
 #define CONFIG_VERSION "nx1"
-#define CONFIG_START 0
+#define CONFIG_EEPROM_START 0
+
 
 
 
@@ -31,43 +36,41 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 //#include <avr/interrupt.h>
 
 //#include <SoftwareSerial.h>
-//#include <EEPROM.h>
+#include <EEPROM.h>
 //#include <util/crc16.h>
 #include <JeeLib.h>
+//#include <SPI.h>
+//#include <RF24.h>
+//#include <RF24Network.h>
+// Adafruit DHT
+//#include <DHT.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
 
 
 
-const String sketch = "X-Serial";
+const String sketch = "AtmegaTemp";
 const int version = 0;
 
-char node[] = "rf24n";
-
-volatile bool ui_irq;
-bool ui;
+char node[] = "attemp";
+// determined upon handshake
+char node_id[7];
 
 
 /* IO pins */
 //              RXD      0
 //              TXD      1
-//              INT0     2     UI IRQ
-#       define BL       10 // PWM Backlight
+//              INT0     2
 //              MOSI     11
 //              MISO     12
-#       define _DBG_LED 13 // SCK
-//#       define          A0
-//#       define          A1
-//#       define          A2
-//#       define          A3
-//#       define          A4
-//#       define          A5
+//#       define _DBG_LED 13 // SCK
+
 
 
 MpeSerial mpeser (57600);
 
-MilliTimer idle, stdby;
+
 
 /* *** InputParser *** {{{ */
 
@@ -81,6 +84,15 @@ InputParser parser (50, cmdTab);
 /* *** Report variables *** {{{ */
 
 
+static byte reportCount;    // count up until next report, i.e. packet send
+
+// This defines the structure of the packets which get sent out by wireless:
+struct {
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+} payload;
 
 
 /* *** /Report variables }}} *** */
@@ -89,6 +101,7 @@ InputParser parser (50, cmdTab);
 
 enum {
 	ANNOUNCE,
+	REPORT,
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
@@ -113,22 +126,56 @@ struct Config {
 	int node_id;
 	int version;
 	char config_id[4];
-	int temp_offset;
+	signed int temp_offset;
+	float temp_k;
 } static_config = {
 	/* default values */
-	{ node[0], node[1], 0, 0 }, 0, version,
-	CONFIG_VERSION, TEMP_OFFSET
+	{ node[0], node[1], }, 0, version,
+	CONFIG_VERSION, TEMP_OFFSET, TEMP_K
 };
 
 Config config;
 
 bool loadConfig(Config &c)
 {
-  return false;
+	unsigned int w = sizeof(c);
+
+	if (
+			EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
+#endif
+		return false;
+	}
 }
 
 void writeConfig(Config &c)
 {
+	for (unsigned int t=0; t<sizeof(c); t++) {
+
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
 }
 
 
@@ -144,7 +191,10 @@ void writeConfig(Config &c)
 
 
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
 
+#endif //_RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -168,92 +218,58 @@ void writeConfig(Config &c)
 /* *** UI *** {{{ */
 
 
-//ISR(INT0_vect)
-void irq0()
-{
-	ui_irq = true;
-	//Sleepy::watchdogInterrupts(0);
-}
+
+
+
 
 /* *** /UI *** }}} */
 
 /* UART commands {{{ */
 
-static void ser_helpCmd(void) {
-	cmdIo.println("n: print Node ID");
-//	Serial.println("c: print config");
-//	Serial.println("v: print version");
-	Serial.println("m: print free and used memory");
-//	Serial.println("N: set Node (3 byte char)");
-//	Serial.println("C: set Node ID (1 byte int)");
-//	Serial.println("W: load/save EEPROM");
-//	Serial.println("E: erase EEPROM!");
-//	Serial.println("?/h: this help");
-	idle.set(UI_IDLE);
+#if SERIAL
+static void helpCmd(void) {
+	cmdIo.println("t: internal temperatuer");
+	cmdIo.println("T: set offset");
+	cmdIo.println("?/h: this help");
 }
 
-static void ser_configNodeCmd(void) {
-	//Serial.println("n " + node_id);
-	//Serial.print('n');
-	//Serial.print(' ');
-	//Serial.print(node_id);
-	//Serial.print('\n');
-}
-
-static void ser_configVersionCmd(void) {
-	//Serial.print("v ");
-	//showNibble(static_config.version);
-	//Serial.println("");
-}
-
-void memStat() {
-	int free = freeRam();
-	int used = usedRam();
-
-	cmdIo.print("m ");
-	cmdIo.print(free);
-	cmdIo.print(' ');
-	cmdIo.print(used);
-	cmdIo.print(' ');
-	cmdIo.println();
+void ser_neg(void) {
+	char v;
+  parser >> v;
+  // correct sign, not sure but casting doesn't work
+  int i = v;
+  if( i > 127 ) {
+  	  i -= 256;
+	}
+  Serial.println( i );
 }
 
 void ser_tempOffset(void) {
+	char c;
+  parser >> c;
+  int v = c;
+  if( v > 127 ) {
+  	  v -= 256;
+	}
+  config.temp_offset = v;
+	Serial.print("New offset: ");
+	Serial.println(config.temp_offset);
+}
+
+void ser_tempConfig(void) {
+	Serial.print("Offset: ");
+	Serial.println(config.temp_offset);
+	Serial.print("K: ");
+	Serial.println(config.temp_k);
+	Serial.print("Raw: ");
+  Serial.println(internalTemp());
 }
 
 void ser_temp(void) {
-  Serial.println(internalTemp() + config.temp_offset);
+  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+  Serial.println( t );
 }
 
-static void ser_test_cmd(void) {
-	Serial.println("Foo");
-}
-
-void valueCmd () {
-	int v;
-	parser >> v;
-	Serial.print("value = ");
-	Serial.println(v);
-	idle.set(UI_IDLE);
-}
-
-// forward declarations
-void doReport(void);
-void doMeasure(void);
-
-void reportCmd () {
-	doReport();
-	idle.set(UI_IDLE);
-}
-
-void measureCmd() {
-	doMeasure();
-	idle.set(UI_IDLE);
-}
-
-void stdbyCmd() {
-	ui = false;
-}
 #endif
 
 
@@ -263,8 +279,10 @@ void stdbyCmd() {
 
 void initConfig(void)
 {
-	// See Prototype/Node
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	if (config.temp_k == 0) {
+		config.temp_k = 1.0;
+	}
 }
 
 void doConfig(void)
@@ -294,16 +312,15 @@ void doReset(void)
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
-	attachInterrupt(INT0, irq0, RISING);
-	ui_irq = true;
 	tick = 0;
 
-	scheduler.timer(ANNOUNCE, 0);
+	scheduler.timer(ANNOUNCE, ANNOUNCE_START);
 }
 
 bool doAnnounce(void)
 {
-
+/* see CarrierCase */
+#if SERIAL && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
@@ -311,28 +328,8 @@ bool doAnnounce(void)
 	cmdIo.println("]");
 
 	cmdIo.println(node_id);
+#endif // SERIAL && DEBUG
 	return false;
-}
-
-
-// readout all the sensors and other values
-void doMeasure()
-{
-	// none, see  SensorNode
-}
-
-// periodic report, i.e. send out a packet and optionally report on serial port
-void doReport(void)
-{
-	// none, see RadioNode
-}
-
-void uiStart()
-{
-	idle.set(UI_IDLE);
-	if (!ui) {
-		ui = true;
-	}
 }
 
 void runScheduler(char task)
@@ -341,10 +338,15 @@ void runScheduler(char task)
 
 		case ANNOUNCE:
 				doAnnounce();
-				//scheduler.timer(ANNOUNCE, 100);
+				scheduler.timer(REPORT, REPORT_START); //schedule next step
 			serialFlush();
 			break;
 
+		case REPORT:
+			Serial.println( ( internalTemp() + config.temp_offset ) * config.temp_k);
+			serialFlush();
+			scheduler.timer(REPORT, REPORT_PERIOD);
+			break;
 
 #if DEBUG && SERIAL
 		case SCHED_WAITING:
@@ -369,19 +371,16 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
-// See Node for proper cmds, basic examples here
 #if SERIAL
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'v', 2, valueCmd },
-	{ 'm', 0, memStat},
-	{ 'M', 0, measureCmd },
-	{ 'r', 0, reportCmd },
-	{ 's', 0, stdbyCmd },
+	{ '?', 0, helpCmd },
+	{ 'h', 0, helpCmd },
+	{ 'o', 0, ser_tempConfig },
+	{ 'X', 1, ser_neg },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
 	{ 'x', 0, doReset },
-	{ 't', 0, ser_test_cmd },
 	{ 0 }
 };
 
@@ -398,6 +397,7 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
+	//virtSerial.begin(4800);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -413,19 +413,11 @@ void setup(void)
 void loop(void)
 {
 #ifdef _DBG_LED
-	blink(_DBG_LED, 3, 10);
+	blink(_DBG_LED, 1, 25);
 #endif
-	if (ui_irq) {
-		debugline("Irq");
-		ui_irq = false;
-		uiStart();
-		//analogWrite(BL, 0xAF ^ BL_INVERTED);
-	}
-	debug_ticks();
 
 	if (cmdIo.available()) {
 		parser.poll();
-		return;
 	}
 
 	char task = scheduler.poll();
@@ -433,25 +425,12 @@ void loop(void)
 		runScheduler(task);
 	}
 
-	if (ui) {
-		if (idle.poll()) {
-			stdby.set(UI_STDBY);
-		} else if (stdby.poll()) {
-			ui = false;
-		} else if (!stdby.idle()) {
-			// XXX toggle UI stdby Power, got to some lower power mode..
-			delay(30);
-		}
-	} else {
-#ifdef _DBG_LED
-		blink(_DBG_LED, 1, 25);
-#endif
+	return; // no sleep
 		serialFlush();
-		char task = scheduler.pollWaiting();
+		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
-	}
 }
 
 /* *** }}} */

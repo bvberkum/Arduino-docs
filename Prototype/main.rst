@@ -1,28 +1,35 @@
-Want to derive files.
-Keep multiple templates called prototypes that somehow easily merge with
-upstream changes.
+Derived Sketches
+  Want to derive files, make `ino` scan for sentinels and diffs.
 
-Primary challenge (using GIT) should be to observe the proper protocols for
-identifying where is upstream?
+  LinkNode wants to derive from RF12demo, and follow changes to JeeLib.
+  But also wants to grow to an Mpe style loop, serial command, eeprom etc.
+  Also, want to try to write nRF24 alternative versions to RFM12.
 
-LinkNode wants to derive from RF12demo, and follow changes to JeeLib.
-But also wants to grow to an Mpe style loop, serial command, eeprom etc.
-Also, want to try to write nRF24 alternative versions to RFM12.
+  see also git prototype
 
-So right now this is the basis:
+Prototype
+  Node
+    - AtmegaTemp
+    - AtmegaSRAM
+    - AtmegaEEPROM
 
-Node
   Serial
-    ..
+    - Node
+    - TODO: get the inputparser working again.
+
   I2C
     Not realized. Perhaps an I2C replace for UART?
+
   SensorNode
-    ..
-  DallasTempBus
-    ..
+    - Node
+    - Serial
+    - DallasTempBus
+    - AdaDHT
+    - Magnetometer
 
 Others are coming along, should document how they fit in here,
 ie. catagorize their functions in node.rst
+
 
 GIT Prototype code merges?
 --------------------------

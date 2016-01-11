@@ -12,6 +12,6 @@ modes
   reporter
     rf12, serial
   repeater
-    rf12, 
-    
+    rf12,
+
 

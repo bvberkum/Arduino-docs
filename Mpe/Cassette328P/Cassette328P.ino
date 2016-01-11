@@ -12,8 +12,8 @@ An atmega328p TQFP chip with various peripherals:
 * Voltage is 3.3v and speed 16Mhz, external ceramic resonator.
   Hope this will keep working as such.
 * Arduino library is used while I'm learning from chip datasheets,
-	perhaps where needed there is time for more efficient and low-power
-	implementation.
+  perhaps where needed there is time for more efficient and low-power
+  implementation.
 
 Plans
   - Hookup a low-pass filter and play with PWM, sine generation at D10 (m328p: PB2).
@@ -29,7 +29,8 @@ Free pins
   - D4  PD4
   - D10 PB2 PWM
   - D20 A6 ADC6
-*/
+
+ */
 
 #include <avr/io.h>
 #include <avr/sleep.h>
@@ -40,7 +41,7 @@ Free pins
 #include <Wire.h>
 #include <SPI.h>
 #include <EEPROM.h>
-//include <RF24.h>
+#include <RF24.h>
 //include <LiquidCrystalTmp_I2C.h>
 #include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
 
@@ -50,8 +51,8 @@ Free pins
 /* *** Globals and sketch configuration *** */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
-							
-#define _MEM            1   // Report free memory 
+
+#define _MEM            1   // Report free memory
 //#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
 #define _DHT            1
 #define DHT_PIN         14
@@ -60,19 +61,19 @@ Free pins
 #define _LCD84x48       0
 #define _RTC            0
 #define _RFM12          0
-#define _NRF24          0
-							
+#define _NRF24          1
+
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define DEBUG_MEASURE   1
-							
+
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-							
+
 #define RADIO_SYNC_MODE 2
-							
+
 #if defined(__AVR_ATtiny84__)
 #define SRAM_SIZE       512
 #elif defined(__AVR_ATmega168__)
@@ -80,7 +81,7 @@ Free pins
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
 #define SRAM_SIZE       2048
 #endif
-							
+
 
 const String sketch = "Cassette328P";
 const int version = 0;
@@ -115,7 +116,7 @@ struct Config {
 
 Config config;
 
-bool loadConfig(Config &c) 
+bool loadConfig(Config &c)
 {
 	int w = sizeof(c);
 
@@ -143,7 +144,7 @@ bool loadConfig(Config &c)
 void writeConfig(Config &c)
 {
 	for (unsigned int t=0; t<sizeof(c); t++) {
-		
+
 		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
 
 		// verify
@@ -168,8 +169,8 @@ static byte reportCount;    // count up until next report, i.e. packet send
 /* Allow invokation of commands with up to 7 args */
 SimpleFIFO<uint8_t,8> cmdseq; //store 10 ints
 
-typedef enum { 
-	cmd_wait_for_command = 0x01,  
+typedef enum {
+	cmd_wait_for_command = 0x01,
 	cmd_stand_by = 0x20,
 	cmd_report_all = 0x10,
 	cmd_read_time = 0x11,
@@ -195,14 +196,14 @@ int service_mode = 0;
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* Roles supported by this sketch */
-typedef enum { 
+typedef enum {
   role_reporter = 1,  /* start enum at 1, 0 is reserved for invalid */
   role_logger
 } Role;
 
-const char* role_friendly_name[] = { 
-  "invalid", 
-  "Reporter", 
+const char* role_friendly_name[] = {
+  "invalid",
+  "Reporter",
   "Logger"
 };
 
@@ -252,9 +253,9 @@ DHT dht(DHT_PIN, DHTTYPE);
 /* *** AVR routines *** {{{ */
 
 int freeRam () {
-	extern int __heap_start, *__brkval; 
+	extern int __heap_start, *__brkval;
 	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 int usedRam () {
@@ -510,7 +511,7 @@ void i2c_lcd_init()
 	//lcd.noBacklight();
 	lcd.off();
 	//lcd.setBacklight(LED_ON);
-	lcd.leftToRight();	
+	lcd.leftToRight();
 	lcd.noBlink();
 	lcd.noCursor();
 //lcd.createChar(0, bell);
@@ -672,7 +673,7 @@ void initLibs()
 #endif
 #if _DHT
 	dht.begin();
-#if DEBUG 
+#if DEBUG
 	Serial.println("Initialized DHT");
 	float t = dht.readTemperature();
 	Serial.println(t);
@@ -721,7 +722,7 @@ void serialEvent()
  * Using this to wake up chip by hardware jumper.
  * Need to look for an interrupt.
  */
-int serviceMode(void) 
+int serviceMode(void)
 {
 	pinMode(LED_RED, INPUT);
 	digitalWrite( LED_RED, LOW);
@@ -980,7 +981,7 @@ void setup(void)
 	rf12_sleep(RF12_SLEEP); // power down
 
 	/* Read config from memory, or initialize with defaults */
-//	if (!loadConfig(config)) 
+//	if (!loadConfig(config))
 //	{
 //		saveRF24Config(static_config);
 //		config = static_config;

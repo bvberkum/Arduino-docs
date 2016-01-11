@@ -5,80 +5,144 @@
 
  If it is hooked up correctly, it'll show actual values--no zero's.
 
-*/
-#include <DotmpeLib.h>
+ Compiled with Arduino 1.0.[4-6]
+
+ */
+
+
+/* *** Globals and sketch configuration *** */
+#define SERIAL          1 /* Enable serial */
+#define DEBUG           1 /* Enable trace statements */
+
+#define _MEM            1   // Report free memory
+#define _NRF24          1
+
+
+#define MAXLENLINE      79
+
+
+//#include <EEPROM.h>
+//#include <JeeLib.h>
+//#include <OneWire.h>
+//#include <PCD8544.h>
 #include <SPI.h>
 //#include "nRF24L01.h"
 #include <RF24.h>
+//#include <RF24Network.h>
+#include <DotmpeLib.h>
+#include <mpelib.h>
 
 #include "printf.h"
 
 
-/** Globals and sketch configuration  */
-#define DEBUG           1 /* Enable trace statements */
-#define SERIAL          1 /* Enable serial */
-							
-#define _NRF24          1
-							
-#define MAXLENLINE      79
-#define SRAM_SIZE       0x800
 
+const String sketch = "RF24Test";
+const int version = 0;
 
-static String sketch = "RF24Test";
-static String version = "0";
 static String node = "rf24test";
 
-static int tick = 0;
-static int pos = 0;
+
 
 /* IO pins */
-static const byte ledPin = 13;
-static const byte rf24_ce = 9;
-static const byte rf24_csn = 8;
+#       define CSN      10  // NRF24
+#       define CE       9  // NRF24
+
 
 MpeSerial mpeser (57600);
+
+
+/* *** Scheduled tasks *** {{{ */
+
+
+/* *** /Scheduled tasks }}} *** */
+
+/* *** EEPROM config *** {{{ */
+
+
+
+/* *** /EEPROM config }}} *** */
+
+/* *** Peripheral devices *** {{{ */
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
 // Set up nRF24L01 radio on SPI bus plus two extra pins
-RF24 radio(rf24_ce, rf24_csn); /* CE, CSN */
+RF24 radio(CE, CSN);
 
 // nRF24L01 addresses: one for broadcast, one for listening
-const uint64_t pipes[2] = { 
+const uint64_t pipes[2] = {
 	0xF0F0F0F0E1LL, /* dest id: central link node */
 	0xF0F0F0F0D2LL /* src id: local node */
 };
-#endif //_NRF24
+
+#endif // NRF24
 
 
-/** AVR routines */
+/* *** /Peripheral devices }}} *** */
 
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
+/* *** Peripheral hardware routines *** {{{ */
 
 
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
+#if LDR_PORT
 #endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif // PIR_PORT
+/* *** /PIR support *** }}} */
 
 
+#if _DHT
+/* DHT temp/rh sensor
+ - AdafruitDHT
+*/
 
-/* Initialization routines */
+#endif // DHT
+
+#if _LCD84x48
+
+
+#endif // LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
+
+
+#endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif // RFM12B
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+
+#endif // NRF24 funcs
+
+#if _RTC
+#endif // RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C routines */
+
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral hardware routines }}} *** */
+
+
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
@@ -88,7 +152,7 @@ void initLibs()
 {
 #if _NRF24
 	radio.begin();
-#endif //_NRF24
+#endif // NRF24
 
 #if SERIAL && DEBUG
 	printf_begin();
@@ -96,7 +160,9 @@ void initLibs()
 }
 
 
-/* Run-time handlers */
+/* *** /Initialization routines }}} *** */
+
+/* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
@@ -109,16 +175,23 @@ void doReset(void)
 }
 
 
-/* Main */
+
+/* *** /InputParser handlers }}} *** */
+
+/* *** Main *** {{{ */
+
 
 void setup(void)
 {
+#if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
+#if DEBUG || _MEM
+	Serial.print(F("Free RAM: "));
+	Serial.println(freeRam());
+#endif
 	serialFlush();
-
-	Serial.print("SRAM used: ");
-	Serial.println(usedRam());
+#endif
 
 	initLibs();
 
@@ -133,12 +206,11 @@ void setup(void)
 	radio.printDetails();
 	Serial.println();
 #endif
-
-	Serial.print("SRAM used: ");
-	Serial.println(usedRam());
 }
 
 void loop(void)
 {
-	
 }
+
+/* }}} *** */
+

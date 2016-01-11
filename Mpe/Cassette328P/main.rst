@@ -1,22 +1,21 @@
 Issues
 
-- RF24 can sent 32 bytes at most, only haf of JeeNode/RF12
-- 
+- RF24 can sent 32 bytes at most, only half of JeeNode/RF12
 
 Roles
   reporter
     - nodes reports changes for attached sensors, or last value upon report.
     - normally report over radio.
- 
+
   logger
-    - node reads radio packets, writes to serial. 
+    - node reads radio packets, writes to serial.
       Keep some log stats?
 
 Ideas:
   repeater
     - node repeats what it heard, either serial or radio
 
-  	
+
 
 Modules
   nRF24L01+
@@ -27,4 +26,5 @@ Modules
 
 
 Commands
-  - byte: 255 commands 
+  - byte: 255 commands
+

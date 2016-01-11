@@ -66,8 +66,7 @@ ToDo
 				motion
 			LDR
 
-  -
-*/
+ */
 
 //#ifdef MYCMDLINE
 
@@ -79,18 +78,20 @@ ToDo
 #define DEBUG           1 /* Enable trace statements */
 
 #define _MEM            1   // Report free memory
-#define _RFM12B         1
-#define _RFM12BLOBAT    1   // Use JeeNode lowbat measurement
-#define _NRF24          0
-#define _HMC5883L       1
 #define _DHT            0
+#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
 #define _DS             0
 #define DS_PIN          A5
 #define DEBUG_DS        1
 //#define FIND_DS    1
-#define PIR_PORT        0
 #define DHT_PIN         0   // DIO for DHTxx
-#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
+#define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
+#define PIR_PORT        0
+#define _HMC5883L       1
+#define _LCD84x48       0
+#define _RFM12B         1
+#define _RFM12LOBAT    1   // Use JeeNode lowbat measurement
+#define _NRF24          0
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
@@ -98,7 +99,7 @@ ToDo
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 
 #define MAXLENLINE      79
@@ -114,15 +115,17 @@ ToDo
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
+//#include <EEPROM.h>
+// include EEPROMEx.h
 // Adafruit DHT
 #include <DHT.h>
 #include <Wire.h>
-#include <JeeLib.h>
 #include <OneWire.h>
+#include <JeeLib.h>
+//#include <SPI.h>
+//#include <RF24.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
-//#include <EEPROM.h>
-// include EEPROMEx.h
 #include <EmBencode.h>
 
 
@@ -178,10 +181,10 @@ struct {
 	int magny;
 	int magnz;
 #endif //_HMC5883L
-#ifdef _MEM
+#if _MEM
 	int memfree     :16;
 #endif
-#ifdef _RFM12BLOBAT
+#if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
@@ -198,8 +201,8 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -208,7 +211,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
@@ -237,9 +240,13 @@ void writeConfig()
 }
 
 
-/* *** /EEPROM config }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
+
+#if SHT11_PORT
+SHT11 sht11 (SHT11_PORT);
+#endif
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
@@ -417,12 +424,13 @@ void freeEmbencBuff() {
 
 /* *** Peripheral hardware routines *** {{{ */
 
+
 #if LDR_PORT
 #endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif
+#endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
 #if _DHT
@@ -443,7 +451,7 @@ static bool waitForAck() {
                 // see http://talk.jeelabs.net/topic/811#post-4712
                 rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
             return 1;
-        set_sleep_mode(SLEEP_MODE_IDLE);
+        set_sleep_mode(SLEEP_MODE_SCHED_IDLE);
         sleep_mode();
     }
     return 0;
@@ -453,7 +461,6 @@ static bool waitForAck() {
 #endif // RFM12B
 
 #if _LCD84x48
-
 
 #endif // LCD84x48
 
@@ -1071,14 +1078,14 @@ void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif //_MEM
-#if _RFM12BLOBAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #if SERIAL && DEBUG_MEASURE
 	if (payload.lobat) {
 		Serial.println("Low battery");
 	}
 #endif
-#endif //_RFM12BLOBAT
+#endif //_RFM12LOBAT
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -1130,10 +1137,10 @@ void doReport(void)
 	Serial.print(' ');
 	Serial.print((int) payload.memfree);
 #endif //_MEM
-#if _RFM12BLOBAT
+#if _RFM12LOBAT
 	Serial.print(' ');
 	Serial.print((int) payload.lobat);
-#endif //_RFM12BLOBAT
+#endif //_RFM12LOBAT
 
 	Serial.println();
 #endif //SERIAL
@@ -1186,7 +1193,7 @@ void doTrigger(void)
 // Add UI or not..
 //void uiStart()
 //{
-//	idle.set(UI_IDLE);
+//	idle.set(UI_SCHED_IDLE);
 //	if (!ui) {
 //		ui = true;
 //	}
@@ -1233,8 +1240,8 @@ void runScheduler(char task)
 			break;
 
 #if DEBUG && SERIAL
-		case WAITING:
-		case IDLE:
+		case SCHED_WAITING:
+		case SCHED_IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
@@ -1347,7 +1354,7 @@ void loop(void)
 #endif
 
 	char task = scheduler.poll();
-	if (-1 < task && task < IDLE) {
+	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
 	}
 

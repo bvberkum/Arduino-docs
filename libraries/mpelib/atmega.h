@@ -1,9 +1,18 @@
 #ifndef mpelib_atmega_h
 #define mpelib_atmega_h
 
-#ifndef ATMEGA_CTEMP_ADJ
-#define ATMEGA_CTEMP_ADJ 324.31
+// Internal temperature for Atmel mega/tiny
+
+// Calibration: http://www.atmel.com/images/doc8108.pdf
+
+#ifndef TEMP_OFFSET
+#define TEMP_OFFSET 0
 #endif
+
+#ifndef TEMP_K
+#define TEMP_K 1.0
+#endif
+
 
 static double internalTemp(void)
 {
@@ -19,7 +28,7 @@ static double internalTemp(void)
 	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
 	ADCSRA |= _BV(ADEN);  // enable the ADC
 
-	//delay(20);            // wait for voltages to become stable.
+	delay(10);            // wait for voltages to become stable.
 
 	ADCSRA |= _BV(ADSC);  // Start the ADC
 
@@ -29,8 +38,9 @@ static double internalTemp(void)
 	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
 	wADC = ADCW;
 
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - ATMEGA_CTEMP_ADJ)  / 1.22;
+	// One or two point calibration should be used to correct the output, see AVR122.
+	// With my current setup and atmega328P chips, offsets of -50 or -60 are usual.
+	t = ( wADC - 273 + TEMP_OFFSET ) * TEMP_K;
 
 	// The returned temperature is in degrees Celcius.
 	return (t);

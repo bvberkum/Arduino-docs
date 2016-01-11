@@ -1,4 +1,4 @@
-/* 
+/*
 
 RF24Node
 
@@ -9,36 +9,39 @@ TODO: get NRF24 client stuff running
 
 2015-01-15 - Started based on LogReader84x48,
 		integrating RF24Network helloworld_tx example.
-2015-01-17 - Simple RF24Network send working together 
+2015-01-17 - Simple RF24Network send working together
 		with Lcd84x48 sketch.
 
  */
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1   // set to 1 to enable serial interface
+#define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
-							
-#define _MEM            1   // Report free memory 
+
+#define _MEM            1   // Report free memory
 #define _LCD84x48       1
 #define _NRF24          1
-							
+
 #define REPORT_EVERY    2   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define BL_INVERTED     0xFF
 #define NRF24_CHANNEL   90
-							
-#define MAXLENLINE      79   90
-							
+
+#define MAXLENLINE      79
+
+
 
 // Definition of interrupt names
 #include <avr/io.h>
 // ISR interrupt service routine
 #include <avr/interrupt.h>
 
+//#include <SoftwareSerial.h>
+//#include <EEPROM.h>
 #include <JeeLib.h>
 #include <OneWire.h>
 #include <PCD8544.h>
@@ -63,6 +66,8 @@ byte bl_level = 0xff;
 
 int out = 20;
 
+
+
 /* IO pins */
 //              RXD      0
 //              TXD      1
@@ -72,7 +77,7 @@ int out = 20;
 #       define DC       5  // LCD84x48
 #       define RESET    6  // LCD84x48
 #       define SCE      7  // LCD84x48
-#       define CS       8  // NRF24
+#       define CSN      8  // NRF24
 #       define CE       9  // NRF24
 #       define BL       10 // PWM Backlight
 //              MOSI     11
@@ -125,8 +130,8 @@ enum {
 	TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
-static const char WAITING = 0xFF; // -1: waiting to run
-static const char IDLE = 0xFE; // -2: no tasks running
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
@@ -191,16 +196,16 @@ Port ldr (LDR_PORT);
 /* *** /PIR support }}} *** */
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 //DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
-//#define DHTTYPE DHT11   // DHT 11 
+//#define DHTTYPE DHT11   // DHT 11
 //#define DHTTYPE DHT22   // DHT 22  (AM2302)
-#if DHT_HIGH 
-DHT dht (DHT_PIN, DHT21); 
-//DHT dht (DHT_PIN, DHT22); 
+#if DHT_HIGH
+DHT dht (DHT_PIN, DHT21);
+//DHT dht (DHT_PIN, DHT22);
 // AM2301
 // DHT21, AM2302?
 #else
@@ -211,11 +216,6 @@ DHT dht (DHT_PIN, DHT11);
 #if _DHT2
 DHT dht2 (DHT2_PIN, DHT11);
 #endif
-
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
-
-#endif //_RFM12B
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -248,10 +248,17 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 
 #endif // DS
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
+
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
-RF24 radio(CE, CS);
+// Set up nRF24L01 radio on SPI bus plus two extra pins
+RF24 radio(CE, CSN);
 
 // Network uses that radio
 RF24Network/*Debug*/ network(radio);
@@ -277,26 +284,22 @@ const uint16_t other_node = 0;
 
 /* *** Peripheral hardware routines *** {{{ */
 
+
 #if LDR_PORT
 #endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif
+#endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
+
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 
 #endif // DHT
-
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio routines */
-
-
-#endif // RFM12B
 
 #if _LCD84x48
 
@@ -372,6 +375,12 @@ static void findDS18B20s(void) {
 
 #endif // DS
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif // RFM12B
+
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
@@ -409,7 +418,7 @@ int HMC5803L_Read(byte Axis)
 
 /* *** UI *** {{{ */
 
-//ISR(INT0_vect) 
+//ISR(INT0_vect)
 void irq0()
 {
 	ui_irq = true;
@@ -461,7 +470,7 @@ void printKeys(void) {
 
 void helpCmd() {
 	Serial.println("Help!");
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
 void valueCmd () {
@@ -469,17 +478,21 @@ void valueCmd () {
 	parser >> v;
 	Serial.print("value = ");
 	Serial.println(v);
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
+
+// forward declarations
+void doReport(void);
+void doMeasure(void);
 
 void reportCmd () {
 	doReport();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
 void measureCmd() {
 	doMeasure();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
 void stdbyCmd() {
@@ -611,7 +624,7 @@ void doReport(void)
 
 void uiStart()
 {
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 	if (!ui) {
 		ui = true;
 		lcd_start();
@@ -657,8 +670,8 @@ void runScheduler(char task)
 			break;
 
 #if DEBUG && SERIAL
-		case WAITING:
-		case IDLE:
+		case SCHED_WAITING:
+		case SCHED_IDLE:
 			Serial.print("!");
 			serialFlush();
 			break;
@@ -701,9 +714,9 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-	Serial.print("Free RAM: ");
+	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
 #endif
 	serialFlush();
@@ -732,7 +745,7 @@ void loop(void)
 	debug_ticks();
 
 	char task = scheduler.poll();
-	if (-1 < task && task < IDLE) {
+	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
 	}
 	if (ui) {
@@ -760,7 +773,7 @@ void loop(void)
 		serialFlush();
 		char task = scheduler.pollWaiting();
 		debugline("Wakeup");
-		if (-1 < task && task < IDLE) {
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
 	}

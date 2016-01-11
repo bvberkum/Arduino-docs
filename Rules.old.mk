@@ -3,6 +3,8 @@ $(module-header,old,$/Rules.old.mk)
 #
 #      ------------ -- 
 
+# XXX: makefile broke with Arduino 1.6.*
+#
 #
 #DIR                 := $/mydir
 #include                $(call rules,$(DIR)/)
@@ -617,6 +619,7 @@ radiolink: P := Prototype/RadioLink/
 radiolink: I := Prototype/RadioLink/RadioLink.hex
 radiolink: jeenode upload
 
+# RF24 Compiles with 1.0.1,4,5 on darwin. Latest libs.
 rf24helper: C := m328p
 rf24helper: P := Mpe/RF24Helper
 rf24helper: I := Mpe/RF24Helper/RF24Helper.hex
@@ -637,6 +640,7 @@ rf24ping: P := libraries/RF24/examples/pingpair/
 rf24ping: I := libraries/RF24/examples/pingpair/pingpair.hex
 rf24ping: jeenode upload
 
+# RF24Network Compiles with 1.0.4 or 1.0.5 on Darwin
 rf24hwtx: C := m328p
 #rf24hwtx: BRD := atmega8
 rf24hwtx: P := libraries/RF24Network/examples/helloworld_tx/
@@ -941,6 +945,11 @@ eeprom: P := Prototype/AtmegaEEPROM/
 eeprom: I := Prototype/AtmegaEEPROM/AtmegaEEPROM.hex
 eeprom: jeenode upload
 
+attemp: C := m328p
+attemp: P := Prototype/AtmegaTemp
+attemp: I := Prototype/AtmegaTemp/AtmegaTemp.hex
+attemp: jeenode upload
+
 mmcinfo: C := m328p
 mmcinfo: P := Misc/MMC/CardInfo/
 mmcinfo: I := Misc/MMC/CardInfo/CardInfo.hex
@@ -988,12 +997,12 @@ node: jeenode upload
 sensornode: C := m328p
 sensornode: P := Prototype/SensorNode/
 sensornode: I := Prototype/SensorNode/SensorNode.hex
-sensornode: jeenode _upload
+sensornode: jeenode upload
 
 serial: C := m328p
 serial: P := Prototype/Serial/
 serial: I := Prototype/Serial/Serial.hex
-serial: jeenode _upload
+serial: jeenode upload
 
 relaybox: C := m328p
 relaybox: P := Prototype/RelayBox/

@@ -2,9 +2,9 @@
 * I2C PIR
 * can I2C do the announce (PIR trigger)?
 
-- Includes UI loop, not for PIR but for 
-  wire protocols. 
-  
+- Includes UI loop, not for PIR but for
+  wire protocols.
+
 See Kicad i2cpir schema/brd
 
 TODO: See how wire protos can generate irq.
@@ -19,13 +19,13 @@ TODO: wire up other jacks, figure out some link/through/detect scheme (no radio
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
-							
-#define _MEM            1   // Report free memory 
+
+#define _MEM            1   // Report free memory
 #define PIR_PORT        4   // defined if PIR is connected to a port's DIO pin
 #define DHT_PIN         7   // defined if DHTxx data is connected to a DIO pin
 #define LDR_PORT        4   // defined if LDR is connected to a port's AIO pin
 #define WIRE_PIN        9   // I2C slave I/O pin
-							
+
 #define REPORT_EVERY    3   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  100  // how often to measure, in tenths of seconds
@@ -34,7 +34,7 @@ TODO: wire up other jacks, figure out some link/through/detect scheme (no radio
 #define PIR_HOLD_TIME   15  // hold PIR value this many seconds after change
 #define PIR_PULLUP      0   // set to one to pull-up the PIR input pin
 #define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
-							
+
 
 #include <util/atomic.h>
 
@@ -51,12 +51,12 @@ const String sketch = "Node";
 const int version = 0;
 
 char node[] = "wpr";
-// determined upon handshake 
+// determined upon handshake
 char node_id[7];
 
 // this operates in I2C, meaning it waits for either data or request events from
 // the master. upon determining the event requested this is primed to a command
-// code, and then reset to 
+// code, and then reset to
 char nextEvent = 0x0;
 
 volatile bool ui_irq;
@@ -97,7 +97,7 @@ MilliTimer idle, stdby;
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;//virtSerial;
-extern InputParser::Commands cmdTab[] PROGMEM;
+extern InputParser::Commands cmdTab[] ;
 InputParser parser (50, cmdTab);
 // See Prototype/Serial sketch for serial UI
 
@@ -239,7 +239,7 @@ ISR(PCINT2_vect) { pir.poll(); }
 /* *** /PIR support }}} *** */
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 
@@ -307,7 +307,7 @@ const uint16_t other_node = 0;
 /* *** /PIR support *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor 
+/* DHT temp/rh sensor
  - AdafruitDHT
 */
 
@@ -336,7 +336,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
-	Sleepy::loseSomeTime(800); 
+	Sleepy::loseSomeTime(800);
 	//delay(1000);     // maybe 750ms is enough, maybe not
 	// we might do a ds.depower() here, but the reset will take care of it.
 
@@ -369,9 +369,9 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 #endif
 
 	if (crc8 != data[8]) {
-		return DS_ERR_CRC; 
-	} else { 
-		return DS_OK; 
+		return DS_ERR_CRC;
+	} else {
+		return DS_OK;
 	}
 }
 
@@ -394,8 +394,8 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-	int result = ds_readdata(addr, data);	
-	
+	int result = ds_readdata(addr, data);
+
 	if (result != DS_OK) {
 #if SERIAL
 		Serial.println(F("CRC error in ds_readdata"));
@@ -717,7 +717,7 @@ void doReset(void)
 	tick = 0;
 
 	//wirecmd_reset();
-	
+
 	//pir_init
 	//pinMode(PIR_PORT + 3, INPUT);
 	pir.digiWrite(PIR_PULLUP);
@@ -860,7 +860,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print("Free RAM: ");
 	Serial.println(freeRam());
