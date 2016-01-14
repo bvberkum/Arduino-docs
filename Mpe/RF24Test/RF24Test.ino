@@ -44,8 +44,8 @@ static String node = "rf24test";
 
 
 /* IO pins */
-#       define CSN      10  // NRF24
-#       define CE       9  // NRF24
+#       define CSN       8  // NRF24
+#       define CE        9  // NRF24
 
 
 MpeSerial mpeser (57600);

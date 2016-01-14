@@ -32,55 +32,61 @@ Free pins
 
  */
 
-#include <avr/io.h>
-#include <avr/sleep.h>
-#include <util/atomic.h>
-
-#include <DHT.h> // Adafruit DHT
-#include <JeeLib.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <EEPROM.h>
-#include <RF24.h>
-//include <LiquidCrystalTmp_I2C.h>
-#include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
-
-#include <printf.h>
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
+#define DEBUG           0 /* Enable trace statements */
+#define DEBUG_MEASURE   0
 
-#define _MEM            1   // Report free memory
+#define _MEM            0   // Report free memory
 //#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
 #define _DHT            1
-#define DHT_PIN         14
-#define _BAT            1
-#define _LCD            1
+#define DHT_PIN        15
+#define DHT_HIGH        0
+#define _RFM12LOBAT     0
+#define _LCD            0
 #define _LCD84x48       0
 #define _RTC            0
-#define _RFM12          0
+#define _RFM12B         0
 #define _NRF24          1
+#define _DBG_LED        0
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
-#define DEBUG_MEASURE   1
-
+#define MEASURE_PERIOD  600  // how often to measure, in tenths of seconds
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
-
 #define RADIO_SYNC_MODE 2
 
-#if defined(__AVR_ATtiny84__)
-#define SRAM_SIZE       512
-#elif defined(__AVR_ATmega168__)
-#define SRAM_SIZE       1024
-#elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
-#define SRAM_SIZE       2048
-#endif
+//#define TEMP_OFFSET     -57
+//#define TEMP_K          1.0
+#define ANNOUNCE_START  0
+#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_STDBY        8000  // ms
+#define CONFIG_VERSION "cs1"
+#define CONFIG_EEPROM_START 0
+#define NRF24_CHANNEL   90
+
+
+
+
+
+
+#include <EEPROM.h>
+#include <JeeLib.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <RF24Network.h>
+//include <LiquidCrystalTmp_I2C.h>
+//#include <SimpleFIFO.h> //code.google.com/p/alexanderbrevig/downloads/list
+#include <DHT.h> // Adafruit DHT
+#include <DotmpeLib.h>
+#include <mpelib.h>
+
+
 
 
 const String sketch = "Cassette328P";
@@ -89,111 +95,73 @@ const int version = 0;
 char node[] = "cs";
 char node_id[7];
 
+volatile bool ui_irq;
+bool ui;
+
 
 /* IO pins */
+//              RXD      0
+//              TXD      1
+//              INT0     2
 static const int LED_RED       =  5;
 static const int LED_YELLOW    =  6;
 static const int LED_GREEN     =  7;
+#       define CSN       8  // NRF24
+#       define CE        9  // NRF24
+//                       15 // A1 DHT_PIN
 
 
-/* *** EEPROM config *** {{{ */
 
-#define CONFIG_VERSION "cs1"
-#define CONFIG_START 0
+MpeSerial mpeser (57600);
 
-struct Config {
-	bool saved;
-	bool radio; bool display; bool dht; bool rtc;
-	uint64_t rf24id;
-	uint64_t rf24routes[1];
-	char config_id[4];
-} static_config = {
-	/* default values */
-	false, false, true, true, true,
-	0xF0F0F0F0D2LL, { 0xF0F0F0F0E1LL },
-	CONFIG_VERSION
-};
+MilliTimer idle, stdby;
 
-Config config;
+/* *** InputParser *** {{{ */
 
-bool loadConfig(Config &c)
-{
-	int w = sizeof(c);
+Stream& cmdIo = Serial;
+extern InputParser::Commands cmdTab[];
+InputParser parser (50, cmdTab);
 
-	if (
-			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
-			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
-	) {
 
-		for (unsigned int t=0; t<w; t++)
-		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
-		}
-		return true;
+/* *** /InputParser }}} *** */
 
-	} else {
-#if SERIAL && DEBUG
-		Serial.println("No valid data in eeprom");
-#endif
-		return false;
-	}
-}
+/* *** Report variables *** {{{ */
 
-void writeConfig(Config &c)
-{
-	for (unsigned int t=0; t<sizeof(c); t++) {
 
-		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
-
-		// verify
-		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
-		{
-			// error writing to EEPROM
-#if SERIAL && DEBUG
-			Serial.println("Error writing "+ String(t)+" to EEPROM");
-#endif
-		}
-	}
-}
-
-/* }}} *** */
-
-/* Scheduled tasks */
-enum { ANNOUNCE, DISCOVERY, MEASURE, REPORT, TASK_END };
-static word schedbuf[TASK_END];
-Scheduler scheduler (schedbuf, TASK_END);
 static byte reportCount;    // count up until next report, i.e. packet send
 
-/* Allow invokation of commands with up to 7 args */
-SimpleFIFO<uint8_t,8> cmdseq; //store 10 ints
+/* Data reported by this sketch */
+struct {
+#if LDR_PORT
+	byte light      :8;     // light sensor: 0..255
+#endif
+#if PIR_PORT
+	byte moved      :1;  // motion detector: 0..1
+#endif
 
-typedef enum {
-	cmd_wait_for_command = 0x01,
-	cmd_stand_by = 0x20,
-	cmd_report_all = 0x10,
-	cmd_read_time = 0x11,
-	cmd_service_mode = 0x21, // '!' in minicom
-	cmd_print_rf12info = 0x72, // 'r'
-	cmd_print_settings  = 0x40, // '@'
-	cmd_reset_settings = 0x23, // '#'
-	cmd_help = 0x3F, // '?'
-	cmd_report= 0x24, // '$'
-	cmd_4 = 0x25, // '%'
-	cmd_5 = 0x26, // '&'
-	cmd_6 = 0x28, // '('
-	cmd_7 = 0x29, // ')'
-} Command;
+#if _DHT
+	int rhum    :7;  // 0..100 (avg'd)
+// XXX : dht temp
+#if DHT_HIGH
+/* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
+	int temp    :10; // -500..+500 (int value of tenths avg)
+#else
+/* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
+	int temp    :10; // -500..+500 (tenths, .5 resolution)
+#endif // DHT_HIGH
+#endif //_DHT
 
-// milis in serviceMode
-int service_mode = 0;
-
-/* Support for Sleepy::loseSomeTime() */
-//EMPTY_INTERRUPT(WDT_vect);
-
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
+#if _RFM12LOBAT
+	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+#endif
+//#if _RTC
+// XXX: datetime?
+//#endif
+} payload;
 
 /* Roles supported by this sketch */
 typedef enum {
@@ -209,29 +177,109 @@ const char* role_friendly_name[] = {
 
 Role role;// = role_logger;
 
-/* Data reported by this sketch */
-struct {
-#if LDR_PORT
-	byte light      :8;     // light sensor: 0..255
+
+
+/* *** /Report variables }}} *** */
+
+/* *** Scheduled tasks *** {{{ */
+
+enum {
+	ANNOUNCE,
+	DISCOVERY,
+	MEASURE,
+	REPORT,
+	TASK_END
+};
+// Scheduler.pollWaiting returns -1 or -2
+static const char SCHED_WAITING = 0xFF; // -1: waiting to run
+static const char SCHED_IDLE = 0xFE; // -2: no tasks running
+
+static word schedbuf[TASK_END];
+Scheduler scheduler (schedbuf, TASK_END);
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+
+/* *** /Scheduled tasks *** }}} */
+
+/* *** EEPROM config *** {{{ */
+
+
+
+struct Config {
+	char node[4];
+	int node_id;
+	int version;
+	char config_id[4];
+	signed int temp_offset;
+	float temp_k;
+	bool display;
+	bool dht;
+	bool rtc;
+	int rf24id;
+	uint64_t rf24addr;
+	uint64_t rf24routes[1];
+} static_config = {
+	/* default values */
+	{ node[0], node[1], }, 0, version,
+	CONFIG_VERSION, TEMP_OFFSET, TEMP_K,
+	false, true, true,
+	1, 0xF0F0F0F0D2LL, { 0xF0F0F0F0E1LL }
+};
+
+Config config;
+
+bool loadConfig(Config &c)
+{
+	unsigned int w = sizeof(c);
+
+	if (
+			//EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+			//EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
 #endif
-#if PIR_PORT
-	byte moved      :1;  // motion detector: 0..1
+		return false;
+	}
+}
+
+void writeConfig(Config &c)
+{
+	for (unsigned int t=0; t<sizeof(c); t++) {
+
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
 #endif
-#if _DHT
-	int rhum        :7;  // rhumdity: 0..100 (4 or 5% resolution?)
-	int temp        :10; // temperature: -500..+500 (tenths, .5 resolution)
+		}
+	}
+}
+
+
+
+/* *** /EEPROM config *** }}} */
+
+/* *** Peripheral devices *** {{{ */
+
+#if SHT11_PORT
 #endif
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#if _MEM
-	int memfree     :16;
-#endif
-#if _BAT
-	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
-#endif
-//#if _RTC
-// XXX: datetime?
-//#endif
-} payload;
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
@@ -243,103 +291,65 @@ Port ldr (LDR_PORT);
 DHT dht(DHT_PIN, DHTTYPE);
 /* DHTxx (jeelib) */
 //DHTxx dht (A1); // connected to ADC1
-#endif
+#endif // DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+OneWire ds(DS_PIN);
+
+uint8_t ds_count = 0;
+uint8_t ds_search = 0;
+
+//uint8_t ds_addr[ds_count][8] = {
+//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
+//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
+//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
+//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
+//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
+//};
+enum { DS_OK, DS_ERR_CRC };
+
+#endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+// Set up nRF24L01 radio on SPI bus plus two extra pins
+RF24 radio(CE, CSN);
+
+// Network uses that radio
+RF24Network/*Debug*/ network(radio);
+
+// Address of the other node
+const uint16_t rf24_link_node = 0;
+
+#endif // NRF24
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
 #define DS1307_I2C_ADDRESS 0x68
-#endif
+#endif // RTC
 
-/* *** AVR routines *** {{{ */
+#if _HMC5883L
+/* Digital magnetometer I2C module */
 
-int freeRam () {
-	extern int __heap_start, *__brkval;
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-}
+#endif // HMC5883L
 
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
 
-/* }}} *** */
-
-/* *** ATmega routines *** {{{ */
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-/* }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Generic routines *** {{{ */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length, int length_off=-1) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		(length_off > -1) ? delay(length_off) : delay(length);
-	}
-}
-
-#if defined(ARDUINO) && ARDUINO >= 100
-#define printByte(args)  write(args);
-#else
-#define printByte(args)  print(args,BYTE);
-#endif
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
 
 // Convert normal decimal numbers to binary coded decimal
 byte decToBcd(byte val)
@@ -354,47 +364,107 @@ byte bcdToDec(byte val)
 }
 
 
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
 
-void debugline(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
 
-/* }}} *** */
+/* *** /Generic routines *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
+
+
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif // PIR_PORT
+/* *** /PIR support *** }}} */
+
+
+#if _DHT
+/* DHT temp/rh sensor routines (AdafruitDHT) */
+
+#endif // DHT
+
+#if _LCD
+//uint8_t bell[8]  = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
+
+/* I2C LCD 1602 parameters */
+#define I2C_ADDR    0x20  // Define I2C Address where the PCF8574A is
+
+#define BACKLIGHT_PIN     7
+#define En_pin  4
+#define Rw_pin  5
+#define Rs_pin  6
+#define D4_pin  0
+#define D5_pin  1
+#define D6_pin  2
+#define D7_pin  3
+
+#define  LED_OFF  0
+#define  LED_ON  1
+
+
+LiquidCrystalTmp_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
+
+void i2c_lcd_init()
+{
+	lcd.begin(16,2);
+	lcd.setBacklightPin(BACKLIGHT_PIN, NEGATIVE);
+	//lcd.noDisplay();
+	//lcd.noBacklight();
+	lcd.off();
+	//lcd.setBacklight(LED_ON);
+	lcd.leftToRight();
+	lcd.noBlink();
+	lcd.noCursor();
+//lcd.createChar(0, bell);
+}
+
+void i2c_lcd_start()
+{
+	lcd.on();
+	lcd.home();
+}
+#endif //_LCD
+
+#if _LCD84x48
+
+#endif // LCD84x48
 
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
-#endif //_DS
-#if _NRF24
-/* Nordic nRF24L01+ routines */
-RF24 radio(12,13); /* CE, CS */
 
-void radio_init()
+#endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif // RFM12B
+
+#if _NRF24
+/* Nordic nRF24L01+ radio routines */
+
+void rf24_init()
 {
+	SPI.begin();
 	radio.begin();
-	radio.setRetries(15, 15); /* delay, number */
+	//radio.setRetries(15, 15); /* delay, number */
 	//radio.setPayloadSize(8);
-	radio.powerDown();
+	//radio.powerDown();
+	network.begin(/*channel*/ NRF24_CHANNEL, /*node address*/ config.rf24id);
 }
 
-void radio_start()
+// XXX: old RF24 code
+void rf24_start()
 {
 #if DEBUG
 	radio.printDetails();
 #endif
 	/* Start radio */
   radio.openWritingPipe(config.rf24routes[0]);
-  radio.openReadingPipe(1, config.rf24id);
+  radio.openReadingPipe(1, config.rf24addr);
   radio.startListening();
 }
 
@@ -477,52 +547,11 @@ void radio_run()
 void saveRF24Config(Config &c) {
 	for (unsigned int t=0; t<sizeof(c); t++)
 	{
-		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
 	}
 }
-#endif // RF24 funcs
 
-#if _LCD
-//uint8_t bell[8]  = {0x4,0xe,0xe,0xe,0x1f,0x0,0x4};
-
-/* I2C LCD 1602 parameters */
-#define I2C_ADDR    0x20  // Define I2C Address where the PCF8574A is
-
-#define BACKLIGHT_PIN     7
-#define En_pin  4
-#define Rw_pin  5
-#define Rs_pin  6
-#define D4_pin  0
-#define D5_pin  1
-#define D6_pin  2
-#define D7_pin  3
-
-#define  LED_OFF  0
-#define  LED_ON  1
-
-
-LiquidCrystalTmp_I2C  lcd(I2C_ADDR,En_pin,Rw_pin,Rs_pin,D4_pin,D5_pin,D6_pin,D7_pin);
-
-void i2c_lcd_init()
-{
-	lcd.begin(16,2);
-	lcd.setBacklightPin(BACKLIGHT_PIN, NEGATIVE);
-	//lcd.noDisplay();
-	//lcd.noBacklight();
-	lcd.off();
-	//lcd.setBacklight(LED_ON);
-	lcd.leftToRight();
-	lcd.noBlink();
-	lcd.noCursor();
-//lcd.createChar(0, bell);
-}
-
-void i2c_lcd_start()
-{
-	lcd.on();
-	lcd.home();
-}
-#endif //_LCD
+#endif // NRF24 funcs
 
 #if _RTC
 // Stops the DS1307, but it has the side effect of setting seconds to 0
@@ -635,24 +664,146 @@ void rtc_run(void)
 	}
 #endif //_LCD
 }
-#endif //_RTC
+#endif // RTC
+
 #if _HMC5883L
-/* Digital magnetometer I2C module */
+/* Digital magnetometer I2C routines */
 
+
+#endif // HMC5883L
+
+
+/* *** /Peripheral hardware routines *** }}} */
+
+/* *** UI *** {{{ */
+
+
+
+
+
+/* *** /UI *** }}} */
+
+/* UART commands {{{ */
+
+#if SERIAL
+static void ser_helpCmd(void) {
+	cmdIo.println("n: print Node ID");
+	cmdIo.println("c: print config");
+	cmdIo.println("m: print free and used memory");
+	cmdIo.println("t: internal temperature");
+	cmdIo.println("T: set offset");
+	cmdIo.println("r: report");
+	cmdIo.println("M: measure");
+	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("?/h: this help");
+	idle.set(UI_IDLE);
 }
-#endif //_HMC5883L
+
+void memStat() {
+	int free = freeRam();
+	int used = usedRam();
+
+	cmdIo.print("m ");
+	cmdIo.print(free);
+	cmdIo.print(' ');
+	cmdIo.print(used);
+	cmdIo.print(' ');
+	cmdIo.println();
+}
+
+// forward declarations
+void doReport(void);
+void doMeasure(void);
+
+void reportCmd () {
+	doReport();
+	idle.set(UI_IDLE);
+}
+
+void measureCmd() {
+	doMeasure();
+	idle.set(UI_IDLE);
+}
+
+void stdbyCmd() {
+	ui = false;
+}
+
+static void configCmd() {
+	cmdIo.print("c ");
+	cmdIo.print(config.node);
+	cmdIo.print(" ");
+	cmdIo.print(config.node_id);
+	cmdIo.print(" ");
+	cmdIo.print(config.version);
+	cmdIo.print(" ");
+	cmdIo.print(config.config_id);
+	cmdIo.println();
+}
+
+void ser_tempConfig(void) {
+	Serial.print("Offset: ");
+	Serial.println(config.temp_offset);
+	Serial.print("K: ");
+	Serial.println(config.temp_k);
+	Serial.print("Raw: ");
+	Serial.println(internalTemp());
+}
+
+void ser_tempOffset(void) {
+	char c;
+	parser >> c;
+	int v = c;
+	if( v > 127 ) {
+		v -= 256;
+	}
+	config.temp_offset = v;
+	Serial.print("New offset: ");
+	Serial.println(config.temp_offset);
+	writeConfig(config);
+}
+
+void ser_temp(void) {
+  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+  Serial.println( t );
+}
+
+static void eraseEEPROM() {
+	cmdIo.print("! Erasing EEPROM..");
+	for (int i = 0; i<EEPROM_SIZE; i++) {
+		char b = EEPROM.read(i);
+		if (b != 0x00) {
+			EEPROM.write(i, 0);
+			cmdIo.print('.');
+		}
+	}
+	cmdIo.println(' ');
+	cmdIo.print("E ");
+	cmdIo.println(EEPROM_SIZE);
+}
+
+#endif
 
 
-/* }}} *** */
+/* UART commands }}} */
 
 /* *** Initialization routines *** {{{ */
+
+void initConfig(void)
+{
+	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	if (config.temp_k == 0) {
+		config.temp_k = 1.0;
+	}
+}
 
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig(static_config)) {
+	if (!loadConfig(config)) {
 		writeConfig(static_config);
 	}
+	initConfig();
 }
 
 void initLibs()
@@ -661,10 +812,10 @@ void initLibs()
 	rtc_init();
 #endif
 #if _NRF24
-	radio_init();
-#endif
+	rf24_init();
+#endif // NRF24
 #if _RF12
-	//radio_init();
+	radio_init();
 #endif
 #if _LCD
 	i2c_lcd_init();
@@ -674,76 +825,68 @@ void initLibs()
 #if _DHT
 	dht.begin();
 #if DEBUG
-	Serial.println("Initialized DHT");
-	float t = dht.readTemperature();
-	Serial.println(t);
+	//float t = dht.readTemperature();
+	//Serial.println("Initialized DHT");
+	//Serial.println(t);
 #endif
 #endif
+
+#if _HMC5883L
+#endif //_HMC5883L
+
 	blink(LED_GREEN, 4, 100);
 }
 
-/* }}} *** */
+
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
 	doConfig();
+
 	pinMode( LED_GREEN, OUTPUT );
 	pinMode( LED_YELLOW, OUTPUT );
 	pinMode( LED_RED, OUTPUT );
 	digitalWrite( LED_GREEN, LOW );
 	digitalWrite( LED_YELLOW, LOW );
 	digitalWrite( LED_RED, LOW );
-	ui_irq = false;
 	tick = 0;
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	scheduler.timer(MEASURE, 0);    // start the measurement loop going
+	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 }
 
-
-uint8_t cmd;
-
-bool rx_overflow = false;
-
-/* I guess this hooks into the RX ISR's. The serial buffer is 1 byte, which can
- * stay in the FIFO as long as the second byte is being received. */
-void serialEvent()
+bool doAnnounce(void)
 {
-	while (Serial.available()) {
-		uint8_t b = Serial.read();
-		if (!cmdseq.enqueue(b)) {
-			rx_overflow = true;
-		}
-	}
-}
-
-/**
- * Using this to wake up chip by hardware jumper.
- * Need to look for an interrupt.
- */
-int serviceMode(void)
-{
-	pinMode(LED_RED, INPUT);
-	digitalWrite( LED_RED, LOW);
-	int d = digitalRead( LED_RED ) ;
-	bool active = d == HIGH;
-	if (!active) {
-		pinMode( LED_RED, OUTPUT );
-	}
-	return active;
+#if LDR_PORT
+	Serial.print("light:8 ");
+#endif
+#if PIR
+	Serial.print("moved:1 ");
+#endif
+#if _DHT
+	Serial.print(F("rhum:7 "));
+	Serial.print(F("temp:10 "));
+#endif
+	Serial.print(F("ctemp:10 "));
+#if _MEM
+	Serial.print(F("memfree:16 "));
+#endif
+#if _RFM12LOBAT
+	Serial.print(F("lobat:1 "));
+#endif //_RFM12LOBAT
+	Serial.println("");
+	return false;
 }
 
 
-bool doAnnounce()
-{
-}
-
-void doMeasure()
+// readout all the sensors and other values
+void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	int ctemp = internalTemp();
+	int ctemp = ( internalTemp() + config.temp_offset ) * config.temp_k ;
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL && DEBUG_MEASURE
 	Serial.print("AVR T new/avg ");
@@ -752,14 +895,14 @@ void doMeasure()
 	Serial.println(payload.ctemp);
 #endif
 
-#if _BAT
+#if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
-#endif
 #if SERIAL && DEBUG_MEASURE
 	if (payload.lobat) {
 		Serial.println("Low battery");
 	}
 #endif
+#endif //_RFM12LOBAT
 
 #if _DHT
 	float h = dht.readHumidity();
@@ -769,11 +912,10 @@ void doMeasure()
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		int rh = h * 10;
-		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+		payload.rhum = smoothedAverage(payload.rhum, h, firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
-		Serial.print(rh);
+		Serial.print((int)h);
 		Serial.print(' ');
 		Serial.println(payload.rhum);
 #endif
@@ -804,81 +946,117 @@ void doMeasure()
 	Serial.print(' ');
 	Serial.println(payload.light);
 #endif
-#endif
+#endif // LDR_PORT
 
+#if SHT11_PORT
+#endif //SHT11_PORT
+#if PIR_PORT
+#endif
+#if _DS
+#endif //_DS
+#if _HMC5883L
+#endif //_HMC5883L
 #if _MEM
 	payload.memfree = freeRam();
 #if SERIAL && DEBUG_MEASURE
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
-#endif
+#endif //_MEM
 }
+
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+#if _RFM12B
+	serialFlush();
 	rf12_sleep(RF12_WAKEUP);
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	rf12_sleep(RF12_SLEEP);
+#endif // RFM12B
+#if _NRF24
+	//blink(LED_YELLOW, 2, 25);
+	//rf24_run();
+	RF24NetworkHeader header(/*to node*/ rf24_link_node);
+	bool ok = network.write(header, &payload, sizeof(payload));
+	if (ok)
+		debugline("ACK");
+	else
+		debugline("NACK");
+#endif // NRF24
 #if RTC
 	blink(LED_YELLOW, 2, 25);
 	rtc_run();
-#endif
-#if _NRF24
-	blink(LED_YELLOW, 2, 25);
-	radio_run();
-#endif
+#endif // RTC
 #if SERIAL
+	/* Report over serial, same fields and order as announced */
 	Serial.print(node);
-	Serial.print(" ");
 #if LDR_PORT
-	Serial.print((int) payload.light);
 	Serial.print(' ');
+	Serial.print((int) payload.light);
 #endif
-//  Serial.print((int) payload.moved);
-//  Serial.print(' ');
+#if PIR
+  Serial.print(' ');
+  Serial.print((int) payload.moved);
+#endif
 #if _DHT
+	Serial.print(' ');
 	Serial.print((int) payload.rhum);
 	Serial.print(' ');
 	Serial.print((int) payload.temp);
-	Serial.print(' ');
 #endif
+	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
-	Serial.print(' ');
-#if _MEM
-	Serial.print((int) payload.memfree);
-	Serial.print(' ');
+#if _DS
 #endif
+#if _HMC5883L
+#endif //_HMC5883L
+#if _MEM
+	Serial.print(' ');
+	Serial.print((int) payload.memfree);
+#endif //_MEM
+#if _RFM12LOBAT
+	Serial.print(' ');
 	Serial.print((int) payload.lobat);
+#endif //_RFM12LOBAT
+
 	Serial.println();
-#endif//SERIAL
+#endif //SERIAL
 }
 
-#if _LCD84x48
-#endif //_LCD84x48
 
 void runScheduler(char task)
 {
 	switch (task) {
 
 		case DISCOVERY:
+			// XXX
 			break;
 
 		case ANNOUNCE:
+				doAnnounce();
+				scheduler.timer(MEASURE, 0); //schedule next step
+			serialFlush();
 			break;
 
 		case MEASURE:
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
+
 			// every so often, a report needs to be sent out
 			if (++reportCount >= REPORT_EVERY) {
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
+#if SERIAL
 			serialFlush();
+#endif
+#ifdef _DBG_LED
+			blink(_DBG_LED, 2, 25, -1, true);
+#endif
 			break;
 
 		case REPORT:
@@ -888,76 +1066,53 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-	}
-}
-
-static void runCommand()
-{
-/*
-	blink(LED_YELLOW, 20, 1 );
-	uint8_t cmd = cmdseq.dequeue();
-	switch (cmd) {
-
-		case cmd_reset_settings:
-			saveRF24Config(static_config);
-			config = static_config;
-			initLibs();
-			break;
-
-		case cmd_print_settings:
-//					Serial.print("rf24id=");
-//					Serial.println(config.rf24id, HEX);
-//					Serial.print("rf24routes[0]=");
-//					Serial.println(config.rf24routes[0], HEX);
-			Serial.print("display=");
-			Serial.println(config.display, BIN);
-			Serial.print("radio=");
-			Serial.println(config.radio, BIN);
-			Serial.print("dht=");
-			Serial.println(config.dht, BIN);
-			Serial.print("rtc=");
-			Serial.println(config.rtc, BIN);
-			break;
-
-		case cmd_help:
-			Serial.println("Commands:");
-			Serial.println(" 0x21 '!'  Enter service mode");
-			Serial.println(" 0x23 '#'  Reset config");
-			Serial.println(" 0x24 '$'  Do report");
-			Serial.println(" 0x40 '@'  Print config");
-			Serial.println(" 0x72 'r'  Radio info");
-			break;
-
-		case cmd_report:
-			doReport();
-			break;
-
-		case cmd_print_rf12info:
-			if (config.radio) {
-				radio.printDetails();
-			}
-			Serial.println("r ACK");
-			break;
-
-		case cmd_service_mode:
-			//service_mode = millis();
+#if DEBUG && SERIAL
+		case SCHED_WAITING:
+		case SCHED_IDLE:
+			Serial.print("!");
+			serialFlush();
 			break;
 
 		default:
 			Serial.print("0x");
-			Serial.print(cmd, HEX);
-			Serial.println("?");
-			blink(LED_YELLOW, 5, 25 );
+			Serial.print(task, HEX);
+			Serial.println(" ?");
+			serialFlush();
+			break;
+#endif
+
 	}
-	cmdseq.flush();
-	Serial.println(".");
-	blink(LED_GREEN, 2, 75 );
-*/
 }
 
-/* }}} *** */
+
+/* *** /Run-time handlers *** }}} */
+
+/* *** InputParser handlers *** {{{ */
+
+#if SERIAL
+
+InputParser::Commands cmdTab[] = {
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
+	{ 'm', 0, memStat},
+	{ 'o', 0, ser_tempConfig },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
+	{ 'M', 0, measureCmd },
+	{ 'r', 0, reportCmd },
+	{ 's', 0, stdbyCmd },
+	{ 'E', 0, eraseEEPROM },
+	{ 'x', 0, doReset },
+	{ 0 }
+};
+
+#endif // SERIAL
+
+
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
+
 
 void setup(void)
 {
@@ -968,6 +1123,8 @@ void setup(void)
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
 #endif
+
+#if _RFM12B
 #if DEBUG
 	byte rf12_show = 1;
 #else
@@ -979,6 +1136,7 @@ void setup(void)
 	rf12_control(0x9850); // Transmission Control: Pos, 90kHz
 	rf12_control(0xC606); // Data Rate 6
 	rf12_sleep(RF12_SLEEP); // power down
+#endif
 
 	/* Read config from memory, or initialize with defaults */
 //	if (!loadConfig(config))
@@ -996,45 +1154,30 @@ void setup(void)
 
 void loop(void)
 {
-	if (ui_irq) {
-		start_ui();
-	}
+#ifdef _DBG_LED
+	blink(_DBG_LED, 3, 10, -1, true);
+#endif
 	debug_ticks();
-	if (rx_overflow) {
-		blink(LED_RED, 1, 75 );
-		rx_overflow = false;
+
+	if (cmdIo.available()) {
+		parser.poll();
 	}
-	//if (cmdseq.count() > 0) {
-	//	runCommand();
-	//}
-	/* Do nothing but count uptime while LED_RED is bypassed to HIGH */
-	//if (serviceMode()) {
-	//	if (service_mode == NULL) {
-	//		Serial.println("servicemode");
-	//	}
-	//	service_mode = millis();
-	//	if (service_mode % 100) {
-	//		blink(LED_YELLOW, 1, 150);
-	//	}
-	//	delay(20);
-	//	return;
-	//} else {
-	//	service_mode = NULL;
-	//}
+
 	char task = scheduler.poll();
-	if (0 < task && task < 0xFF) {
+	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
-	} else if (ui) {
-	} else {
-		debugline("Sleep");
+	}
+
+	return; // no sleep
+#ifdef _DBG_LED
+		blink(_DBG_LED, 1, 25, -1, true);
+#endif
 		serialFlush();
-		char task = scheduler.pollWaiting();
-		debugline("WakeUp");
-		if (0 < task && task < 0xFF) {
+		task = scheduler.pollWaiting();
+		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}
-	}
 }
 
-/* }}} *** */
+/* *** }}} */
 

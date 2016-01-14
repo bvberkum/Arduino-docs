@@ -101,12 +101,14 @@ ToDo
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
-
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
 // set the sync mode to 2 if the fuses are still the Arduino default
 // mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
+
+
+
 
 
 #include <stdlib.h>
@@ -115,15 +117,16 @@ ToDo
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
-//#include <EEPROM.h>
+#include <EEPROM.h>
 // include EEPROMEx.h
 // Adafruit DHT
+#include <JeeLib.h>
+//#include <SPI.h>
+#include <RF24.h>
+#include <RF24Network.h>
 #include <DHT.h>
 #include <Wire.h>
 #include <OneWire.h>
-#include <JeeLib.h>
-//#include <SPI.h>
-//#include <RF24.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include <EmBencode.h>
@@ -240,6 +243,7 @@ void writeConfig()
 }
 
 
+
 /* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
@@ -346,6 +350,8 @@ enum { DS_OK, DS_ERR_CRC };
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
 #endif // NRF24
 
 #if _RTC
@@ -366,7 +372,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // HMC5883L
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 // spend a little time in power down mode while the SHT11 does a measurement
 static void lpDelay () {
@@ -737,11 +743,15 @@ int HMC5803L_Read(byte Axis)
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
 
-/* *** /UI }}} *** */
+
+
+
+
+/* *** /UI *** }}} */
 
 /* UART commands {{{ */
 
@@ -1088,6 +1098,7 @@ void doMeasure()
 #endif //_RFM12LOBAT
 }
 
+
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
@@ -1258,7 +1269,7 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers }}} *** */
+/* *** /Run-time handlers *** }}} */
 
 
 /* *** Main *** {{{ */
@@ -1268,7 +1279,7 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -1360,5 +1371,5 @@ void loop(void)
 
 }
 
-/* }}} *** */
+/* *** }}} */
 

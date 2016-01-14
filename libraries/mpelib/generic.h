@@ -27,12 +27,12 @@ void serialFlush () {
 #endif
 }
 
-void blink(int led, int count, int length, int length_off=-1) {
+void blink(int led, int count, int length, int length_off=-1, bool reverse=false) {
 	int i;
 	for (i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
+		digitalWrite (led, reverse and LOW or HIGH);
 		delay(length);
-		digitalWrite (led, LOW);
+		digitalWrite (led, reverse and HIGH or LOW);
 		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }

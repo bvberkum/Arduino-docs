@@ -16,11 +16,12 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 
 #define _MEM            1
 
+#define ANNOUNCE_START  0
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
 #define CONFIG_VERSION "nx1"
-#define CONFIG_START 0
+#define CONFIG_EEPROM_START 0
 
 
 
@@ -31,9 +32,14 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 //#include <avr/interrupt.h>
 
 //#include <SoftwareSerial.h>
-//#include <EEPROM.h>
+#include <EEPROM.h>
 //#include <util/crc16.h>
 #include <JeeLib.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <RF24Network.h>
+#include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
@@ -44,6 +50,7 @@ const String sketch = "X-Serial";
 const int version = 0;
 
 char node[] = "rf24n";
+char node_id[7];
 
 volatile bool ui_irq;
 bool ui;
@@ -113,22 +120,56 @@ struct Config {
 	int node_id;
 	int version;
 	char config_id[4];
-	int temp_offset;
+	signed int temp_offset;
+	float temp_k;
 } static_config = {
 	/* default values */
 	{ node[0], node[1], 0, 0 }, 0, version,
-	CONFIG_VERSION, TEMP_OFFSET
+	CONFIG_VERSION, TEMP_OFFSET, TEMP_K,
 };
 
 Config config;
 
 bool loadConfig(Config &c)
 {
-  return false;
+	unsigned int w = sizeof(c);
+
+	if (
+			EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		cmdIo.println("No valid data in eeprom");
+#endif
+		return false;
+	}
 }
 
 void writeConfig(Config &c)
 {
+	for (unsigned int t=0; t<sizeof(c); t++) {
+
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			cmdIo.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
 }
 
 
@@ -137,14 +178,89 @@ void writeConfig(Config &c)
 
 /* *** Peripheral devices *** {{{ */
 
+#if SHT11_PORT
+#endif
+
+#if LDR_PORT
+#endif
+
+#if _DHT
+/* DHTxx: Digital temperature/humidity (Adafruit) */
+#endif // DHT
+
+#if _LCD84x48
+/* Nokkia 5110 display */
+#endif // LCD84x48
+
+#if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
+#endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
+
+#if _NRF24
+/* nRF24L01+: nordic 2.4Ghz digital radio  */
+
+
+#endif // NRF24
+
+#if _RTC
+/* DS1307: Real Time Clock over I2C */
+#endif // RTC
+
+#if _HMC5883L
+/* Digital magnetometer I2C module */
+
+
+#endif // HMC5883L
+
 
 /* *** /Peripheral devices *** }}} */
+
+/* *** Generic routines *** {{{ */
+
+
+/* *** /Generic routines *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
 
+#if LDR_PORT
+#endif
+
+/* *** PIR support *** {{{ */
+#if PIR_PORT
+#endif // PIR_PORT
+/* *** /PIR support *** }}} */
+
+#if _DHT
+/* DHT temp/rh sensor routines (AdafruitDHT) */
+
+#endif // DHT
+
+#if _LCD
+#endif //_LCD
+
+#if _LCD84x48
+
+#endif // LCD84x48
+
+#if _DS
+/* Dallas DS18B20 thermometer routines */
 
 
+#endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -153,7 +269,7 @@ void writeConfig(Config &c)
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -179,31 +295,19 @@ void irq0()
 
 /* UART commands {{{ */
 
+#if SERIAL
+
 static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
-//	Serial.println("c: print config");
+	cmdIo.println("c: print config");
 //	Serial.println("v: print version");
 	Serial.println("m: print free and used memory");
 //	Serial.println("N: set Node (3 byte char)");
 //	Serial.println("C: set Node ID (1 byte int)");
 //	Serial.println("W: load/save EEPROM");
-//	Serial.println("E: erase EEPROM!");
-//	Serial.println("?/h: this help");
+	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("?/h: this help");
 	idle.set(UI_IDLE);
-}
-
-static void ser_configNodeCmd(void) {
-	//Serial.println("n " + node_id);
-	//Serial.print('n');
-	//Serial.print(' ');
-	//Serial.print(node_id);
-	//Serial.print('\n');
-}
-
-static void ser_configVersionCmd(void) {
-	//Serial.print("v ");
-	//showNibble(static_config.version);
-	//Serial.println("");
 }
 
 void memStat() {
@@ -216,25 +320,6 @@ void memStat() {
 	cmdIo.print(used);
 	cmdIo.print(' ');
 	cmdIo.println();
-}
-
-void ser_tempOffset(void) {
-}
-
-void ser_temp(void) {
-  Serial.println(internalTemp() + config.temp_offset);
-}
-
-static void ser_test_cmd(void) {
-	Serial.println("Foo");
-}
-
-void valueCmd () {
-	int v;
-	parser >> v;
-	Serial.print("value = ");
-	Serial.println(v);
-	idle.set(UI_IDLE);
 }
 
 // forward declarations
@@ -254,6 +339,60 @@ void measureCmd() {
 void stdbyCmd() {
 	ui = false;
 }
+
+static void configCmd() {
+	cmdIo.print("c ");
+	cmdIo.print(static_config.node);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.node_id);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.version);
+	cmdIo.print(" ");
+	cmdIo.print(static_config.config_id);
+	cmdIo.println();
+}
+
+void ser_tempConfig(void) {
+	Serial.print("Offset: ");
+	Serial.println(config.temp_offset);
+	Serial.print("K: ");
+	Serial.println(config.temp_k);
+	Serial.print("Raw: ");
+	Serial.println(internalTemp());
+}
+
+void ser_tempOffset(void) {
+	char c;
+	parser >> c;
+	int v = c;
+	if( v > 127 ) {
+		v -= 256;
+	}
+	config.temp_offset = v;
+	Serial.print("New offset: ");
+	Serial.println(config.temp_offset);
+	writeConfig(config);
+}
+
+void ser_temp(void) {
+  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+  Serial.println( t );
+}
+
+static void eraseEEPROM() {
+	cmdIo.print("! Erasing EEPROM..");
+	for (int i = 0; i<EEPROM_SIZE; i++) {
+		char b = EEPROM.read(i);
+		if (b != 0x00) {
+			EEPROM.write(i, 0);
+			cmdIo.print('.');
+		}
+	}
+	cmdIo.println(' ');
+	cmdIo.print("E ");
+	cmdIo.println(EEPROM_SIZE);
+}
+
 #endif
 
 
@@ -265,12 +404,15 @@ void initConfig(void)
 {
 	// See Prototype/Node
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	if (config.temp_k == 0) {
+		config.temp_k = 1.0;
+	}
 }
 
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig(static_config)) {
+	if (!loadConfig(config)) {
 		writeConfig(static_config);
 	}
 	initConfig();
@@ -287,9 +429,7 @@ void initLibs()
 
 void doReset(void)
 {
-	//doConfig();
-	loadConfig(static_config);
-	initConfig();
+	doConfig();
 
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
@@ -298,7 +438,7 @@ void doReset(void)
 	ui_irq = true;
 	tick = 0;
 
-	scheduler.timer(ANNOUNCE, 0);
+	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 }
 
 bool doAnnounce(void)
@@ -310,16 +450,17 @@ bool doAnnounce(void)
 	cmdIo.print(version);
 	cmdIo.println("]");
 
-	cmdIo.println(node_id);
+	cmdIo.println(config.node_id);
 	return false;
 }
 
 
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
 	// none, see  SensorNode
 }
+
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
@@ -344,7 +485,6 @@ void runScheduler(char task)
 				//scheduler.timer(ANNOUNCE, 100);
 			serialFlush();
 			break;
-
 
 #if DEBUG && SERIAL
 		case SCHED_WAITING:
@@ -375,13 +515,16 @@ void runScheduler(char task)
 InputParser::Commands cmdTab[] = {
 	{ '?', 0, ser_helpCmd },
 	{ 'h', 0, ser_helpCmd },
-	{ 'v', 2, valueCmd },
-	{ 'm', 0, memStat},
+	{ 'm', 0, memStat },
+	{ 'c', 0, configCmd },
+	{ 'o', 0, ser_tempConfig },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
 	{ 'M', 0, measureCmd },
 	{ 'r', 0, reportCmd },
 	{ 's', 0, stdbyCmd },
 	{ 'x', 0, doReset },
-	{ 't', 0, ser_test_cmd },
+	{ 'E', 0, eraseEEPROM },
 	{ 0 }
 };
 
@@ -447,7 +590,7 @@ void loop(void)
 		blink(_DBG_LED, 1, 25);
 #endif
 		serialFlush();
-		char task = scheduler.pollWaiting();
+		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}

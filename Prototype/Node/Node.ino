@@ -40,16 +40,20 @@ Serial config
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
+#define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
 
 #define _MEM            1   // Report free memory
 #define _RFM12B         0
 #define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
 
+#define ANNOUNCE_START  0
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
+#define CONFIG_VERSION "nx1"
+#define CONFIG_EEPROM_START 0
+
 
 
 
@@ -65,8 +69,6 @@ Serial config
 //#include <SPI.h>
 //#include <RF24.h>
 //#include <RF24Network.h>
-// Adafruit DHT
-//#include <DHT.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
@@ -161,36 +163,34 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 /* *** EEPROM config *** {{{ */
 
 // See Prototype Node or SensorNode
-#define CONFIG_VERSION "nx1"
-#define CONFIG_START 0
-
 
 struct Config {
-	char node[3];
+	char node[4];
 	int node_id;
 	int version;
 	char config_id[4];
 } static_config = {
 	/* default values */
-	{ node[0], node[1], 0 }, 0, version, CONFIG_VERSION
+	{ node[0], node[1], 0, 0 }, 0, version,
+	CONFIG_VERSION
 };
 
 Config config;
 
 bool loadConfig(Config &c)
 {
-	int w = sizeof(c);
+	unsigned int w = sizeof(c);
 
 	if (
-			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
-			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
+			EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
 	) {
 
 		for (unsigned int t=0; t<w; t++)
 		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
 		}
 		return true;
 
@@ -206,10 +206,10 @@ void writeConfig(Config &c)
 {
 	for (unsigned int t=0; t<sizeof(c); t++) {
 
-		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
 
 		// verify
-		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
 #if SERIAL && DEBUG
@@ -229,15 +229,16 @@ void writeConfig(Config &c)
 SHT11 sht11 (SHT11_PORT);
 #endif
 
-
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
 
+/* *** PIR support *** {{{ */
+
+/* *** /PIR support }}} *** */
+
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHTxx: Digital temperature/humidity (Adafruit) */
 #endif // DHT
 
 #if _LCD84x48
@@ -247,9 +248,13 @@ Port ldr (LDR_PORT);
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-
-
 #endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -258,10 +263,12 @@ Port ldr (LDR_PORT);
 #endif // NRF24
 
 #if _RTC
-#endif //_RTC
+/* DS1307: Real Time Clock over I2C */
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
+
 
 #endif // HMC5883L
 
@@ -280,14 +287,14 @@ Port ldr (LDR_PORT);
 /* *** /PIR support *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
 
-#if _LCD84x48
+#if _LCD
+#endif //_LCD
 
+#if _LCD84x48
 
 #endif // LCD84x48
 
@@ -332,12 +339,13 @@ void irq0()
 	//Sleepy::watchdogInterrupts(0);
 }
 
-/* *** /UI }}} *** */
+/* *** /UI *** }}} */
 
 /* UART commands {{{ */
 
 #if SERIAL
-static void helpCmd(void) {
+
+static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 	cmdIo.println("v: print version");
@@ -359,6 +367,10 @@ void memStat() {
 	cmdIo.print(used);
 	cmdIo.print(' ');
 	cmdIo.println();
+}
+
+void stdbyCmd() {
+	ui = false;
 }
 
 static void configCmd() {
@@ -428,6 +440,7 @@ static void eraseEEPROM() {
 	cmdIo.println(EEPROM_SIZE);
 }
 
+#endif
 
 
 /* UART commands }}} */
@@ -442,7 +455,7 @@ void initConfig(void)
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig(static_config)) {
+	if (!loadConfig(config)) {
 		writeConfig(static_config);
 	}
 	initConfig();
@@ -468,7 +481,7 @@ void doReset(void)
 	ui_irq = false;
 	tick = 0;
 
-	scheduler.timer(ANNOUNCE, 0);
+	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 }
 
 bool doAnnounce(void)
@@ -547,16 +560,20 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
+#if SERIAL
+
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, helpCmd },
-	{ 'h', 0, helpCmd },
-	{ 'c', 0, configCmd },
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
 	{ 'm', 0, memStat },
+	{ 'c', 0, configCmd },
 	{ 'n', 0, configNodeCmd },
 	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },
 	{ 'W', 1, configEEPROM },
+	{ 's', 0, stdbyCmd },
+	{ 'x', 0, doReset },
 	{ 'E', 0, eraseEEPROM },
 	{ 0 }
 };
@@ -626,7 +643,7 @@ void loop(void)
 		blink(_DBG_LED, 1, 25);
 #endif
 		serialFlush();
-		char task = scheduler.pollWaiting();
+		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);
 		}

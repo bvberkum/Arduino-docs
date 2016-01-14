@@ -30,8 +30,9 @@ TODO: get NRF24 client stuff running
 #define UI_STDBY        8000  // ms
 #define BL_INVERTED     0xFF
 #define NRF24_CHANNEL   90
-
 #define MAXLENLINE      79
+
+
 
 
 
@@ -98,7 +99,7 @@ MilliTimer idle, stdby;
 
 /* *** InputParser *** {{{ */
 
-extern InputParser::Commands cmdTab[] PROGMEM;
+extern InputParser::Commands cmdTab[];
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);
 
@@ -113,7 +114,7 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 struct {
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
-#ifdef _MEM
+#if _MEM
 	int memfree     :16;
 #endif
 } payload;
@@ -154,14 +155,11 @@ bool schedRunning()
 }
 
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 // See Prototype Node or SensorNode
-//#define CONFIG_VERSION "nx1"
-//#define CONFIG_START 0
-
 
 struct Config {
 	char node[4];
@@ -182,9 +180,13 @@ void writeConfig(Config &c)
 }
 
 
-/* *** /EEPROM config }}} *** */
+
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
+
+#if SHT11_PORT
+#endif
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
@@ -246,6 +248,7 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 
+
 #endif // DS
 
 #if _RFM12B
@@ -277,10 +280,11 @@ const uint16_t other_node = 0;
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
+
 #endif // HMC5883L
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -414,7 +418,7 @@ int HMC5803L_Read(byte Axis)
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
 
@@ -464,7 +468,7 @@ void printKeys(void) {
 }
 
 
-/* *** /UI }}} *** */
+/* *** /UI *** }}} */
 
 /* UART commands {{{ */
 
@@ -543,7 +547,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -568,7 +572,7 @@ void doReset(void)
 	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
 /* see CarrierCase */
 #if SERIAL && DEBUG
@@ -583,6 +587,13 @@ void doMeasure()
 
 	int ctemp = internalTemp();
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.println();
+	Serial.print("AVR T new/avg ");
+	Serial.print(ctemp);
+	Serial.print(' ');
+	Serial.println(payload.ctemp);
+#endif
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -593,9 +604,22 @@ void doMeasure()
 #endif //_MEM
 }
 
+
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+#if _RFM12B
+#endif
+
+#if _NRF24
+	RF24NetworkHeader header(/*to node*/ other_node);
+	bool ok = network.write(header, &payload, sizeof(payload));
+	if (ok)
+		debugline("ACK");
+	else
+		debugline("NACK");
+#endif // NRF24
+
 #if SERIAL
 	Serial.print(node);
 	Serial.print(' ');
@@ -608,18 +632,6 @@ void doReport(void)
 	Serial.println();
 	serialFlush();
 #endif// SERIAL
-
-#ifdef _RFM12B
-#endif
-
-#ifdef _NRF24
-	RF24NetworkHeader header(/*to node*/ other_node);
-	bool ok = network.write(header, &payload, sizeof(payload));
-	if (ok)
-		debugline("ACK");
-	else
-		debugline("NACK");
-#endif // NRF24
 }
 
 void uiStart()
@@ -688,24 +700,27 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers }}} *** */
+/* *** /Run-time handlers *** }}} */
 
 /* *** InputParser handlers *** {{{ */
 
 #if SERIAL
 
 InputParser::Commands cmdTab[] = {
+	{ '?', 0, helpCmd },
 	{ 'h', 0, helpCmd },
 	{ 'v', 2, valueCmd },
 	{ 'm', 0, measureCmd },
 	{ 'r', 0, reportCmd },
 	{ 's', 0, stdbyCmd },
 	{ 'x', 0, doReset },
+	{ 0 }
 };
+
 #endif // SERIAL
 
 
-/* *** /InputParser handlers }}} *** */
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
 

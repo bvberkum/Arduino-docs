@@ -12,6 +12,9 @@ AtmegaEEPROM extends Node
 
 #define MAXLENLINE      79
 
+#define CONFIG_VERSION "at1"
+#define CONFIG_EEPROM_START 0
+
 
 
 #include <JeeLib.h>
@@ -27,7 +30,6 @@ const String sketch = "X-AtmegaEEPROM";
 const int version = 0;
 
 char node[] = "nx";
-// determined upon handshake
 char node_id[7];
 
 
@@ -72,19 +74,18 @@ InputParser parser (buffer, 50, cmdTab);
 /* *** EEPROM config *** {{{ */
 
 
-#define CONFIG_VERSION "at1"
-#define CONFIG_START 0
-
 
 struct Config {
 	char node[4];
 	int node_id;
 	int version;
 	char config_id[4];
+	signed int temp_offset;
+	float temp_k;
 } static_config = {
 	/* default values */
 	{ node[0], node[1], }, 0, version,
-	CONFIG_VERSION
+	CONFIG_VERSION, TEMP_OFFSET, TEMP_K
 };
 
 Config config;
@@ -94,15 +95,15 @@ bool loadConfig(Config &c)
 	unsigned int w = sizeof(c);
 
 	if (
-			EEPROM.read(CONFIG_START + w - 1) == c.config_id[3] &&
-			EEPROM.read(CONFIG_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_START + w - 4) == c.config_id[0]
+			//EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+			//EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
 	) {
 
 		for (unsigned int t=0; t<w; t++)
 		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_START + t);
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
 		}
 		return true;
 
@@ -118,10 +119,10 @@ void writeConfig(Config &c)
 {
 	for (unsigned int t=0; t<sizeof(c); t++) {
 
-		EEPROM.write(CONFIG_START + t, *((char*)&c + t));
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
 
 		// verify
-		if (EEPROM.read(CONFIG_START + t) != *((char*)&c + t))
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
 #if SERIAL && DEBUG
@@ -144,10 +145,18 @@ void writeConfig(Config &c)
 #endif // DHT
 
 #if _LCD84x48
+/* Nokkia 5110 display */
 #endif // LCD84x48
 
 #if _DS
+/* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 #endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif // RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -155,6 +164,7 @@ void writeConfig(Config &c)
 #endif // NRF24
 
 #if _RTC
+/* DS1307: Real Time Clock over I2C */
 #endif //_RTC
 
 #if _HMC5883L
@@ -215,11 +225,9 @@ void writeConfig(Config &c)
 #endif // HMC5883L
 
 
-
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
-
 
 
 
@@ -230,7 +238,7 @@ void writeConfig(Config &c)
 /* UART commands {{{ */
 
 #if SERIAL
-static void helpCmd(void) {
+static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 	cmdIo.println("v: print version");
@@ -243,13 +251,13 @@ static void helpCmd(void) {
 
 static void configCmd() {
 	cmdIo.print("c ");
-	cmdIo.print(static_config.node);
+	cmdIo.print(config.node);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.node_id);
+	cmdIo.print(config.node_id);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.version);
+	cmdIo.print(config.version);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.config_id);
+	cmdIo.print(config.config_id);
 	cmdIo.println();
 }
 
@@ -304,6 +312,33 @@ static void configEEPROM() {
 	cmdIo.println(write);
 }
 
+void ser_tempOffset(void) {
+	char c;
+	parser >> c;
+	int v = c;
+	if( v > 127 ) {
+		v -= 256;
+	}
+	config.temp_offset = v;
+	Serial.print("New offset: ");
+	Serial.println(config.temp_offset);
+	writeConfig(config);
+}
+
+void ser_tempConfig(void) {
+	Serial.print("Offset: ");
+	Serial.println(config.temp_offset);
+	Serial.print("K: ");
+	Serial.println(config.temp_k);
+	Serial.print("Raw: ");
+	Serial.println(internalTemp());
+}
+
+void ser_temp(void) {
+  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+  Serial.println( t );
+}
+
 static void eraseEEPROM() {
 	cmdIo.print("! Erasing EEPROM..");
 	for (int i = 0; i<EEPROM_SIZE; i++) {
@@ -317,6 +352,7 @@ static void eraseEEPROM() {
 	cmdIo.print("E ");
 	cmdIo.println(EEPROM_SIZE);
 }
+
 #endif
 
 
@@ -327,12 +363,15 @@ static void eraseEEPROM() {
 void initConfig(void)
 {
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	if (config.temp_k == 0) {
+		config.temp_k = 1.0;
+	}
 }
 
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig(static_config)) {
+	if (!loadConfig(config)) {
 		writeConfig(static_config);
 	}
 	initConfig();
@@ -349,8 +388,7 @@ void initLibs()
 
 void doReset(void)
 {
-	//doConfig();
-	loadConfig(static_config);
+	doConfig();
 
 	tick = 0;
 }
@@ -372,8 +410,9 @@ bool doAnnounce(void)
 
 
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
+	int ctemp = ( internalTemp() + config.temp_offset ) * config.temp_k ;
 }
 
 void runScheduler(char task)
@@ -401,9 +440,12 @@ void handshakeCmd() {
 }
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, helpCmd },
-	{ 'h', 0, helpCmd },
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
 	{ 'A', 0, handshakeCmd },
+	{ 'o', 0, ser_tempConfig },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
 	{ 'c', 0, configCmd },
 	{ 'n', 0, configNodeCmd },
 	{ 'v', 0, configVersionCmd },

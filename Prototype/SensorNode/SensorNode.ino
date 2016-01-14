@@ -81,7 +81,7 @@ MpeSerial mpeser (57600);
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
-// This defines the structure of the packets which get sent out by wireless:
+/* Data reported by this sketch */
 struct {
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
@@ -114,7 +114,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
@@ -225,7 +225,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // NRF24
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
@@ -259,6 +259,9 @@ enum { DS_OK, DS_ERR_CRC };
 
 #endif // LCD84x48
 
+#if _LCD
+#endif //_LCD
+
 #if _DS
 /* Dallas DS18B20 thermometer routines */
 
@@ -287,7 +290,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
 
@@ -312,6 +315,12 @@ void doConfig(void)
 
 void initLibs()
 {
+#if _RTC
+	rtc_init();
+#endif
+#if _NRF24
+	radio_init();
+#endif
 #if _DHT
 	dht.begin();
 #if DEBUG
@@ -338,7 +347,6 @@ void doReset(void)
 	pinMode(_DBG_LED, OUTPUT);
 #endif
 	tick = 0;
-
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
 	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
@@ -358,8 +366,66 @@ void doMeasure()
 
 	int ctemp = internalTemp();
 	payload.ctemp = ctemp;//smoothedAverage(payload.ctemp, ctemp, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.print("AVR T new/avg ");
+	Serial.print(ctemp);
+	Serial.print(' ');
+	Serial.println(payload.ctemp);
 #endif
 
+#if _RFM12LOBAT
+	payload.lobat = rf12_lowbat();
+#endif
+#if SERIAL && DEBUG_MEASURE
+	if (payload.lobat) {
+		Serial.println("Low battery");
+	}
+#endif
+
+#if _DHT
+	float h = dht.readHumidity();
+	float t = dht.readTemperature();
+	if (isnan(h)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 humidity"));
+#endif
+	} else {
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT RH new/avg "));
+		Serial.print(rh);
+		Serial.print(' ');
+		Serial.println(payload.rhum);
+#endif
+	}
+	if (isnan(t)) {
+#if SERIAL | DEBUG
+		Serial.println(F("Failed to read DHT11 temperature"));
+#endif
+	} else {
+		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
+#if SERIAL && DEBUG_MEASURE
+		Serial.print(F("DHT T new/avg "));
+		Serial.print(t);
+		Serial.print(' ');
+		Serial.println(payload.temp);
+#endif
+	}
+#endif // _DHT
+
+#if LDR_PORT
+	ldr.digiWrite2(1);  // enable AIO pull-up
+	byte light = ~ ldr.anaRead() >> 2;
+	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	payload.light = smoothedAverage(payload.light, light, firstTime);
+#if SERIAL && DEBUG_MEASURE
+	Serial.print(F("LDR new/avg "));
+	Serial.print(light);
+	Serial.print(' ');
+	Serial.println(payload.light);
+#endif
+#endif // LDR_PORT
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -373,6 +439,12 @@ void doMeasure()
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
+#if _RFM12B
+#endif //_RFM12B
+
+#if _NRF24
+#endif // NRF24
+
 #if SERIAL
 	Serial.print(node);
 	Serial.print(' ');
@@ -389,12 +461,6 @@ void doReport(void)
 	Serial.println();
 	serialFlush();
 #endif// SERIAL
-
-#if _RFM12B
-#endif
-
-#ifdef _NRF24
-#endif // NRF24
 }
 
 void runScheduler(char task)
