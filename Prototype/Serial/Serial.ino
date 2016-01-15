@@ -238,6 +238,7 @@ void writeConfig(Config &c)
 #endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
+
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
 
@@ -301,9 +302,13 @@ static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 //	Serial.println("v: print version");
-	Serial.println("m: print free and used memory");
 //	Serial.println("N: set Node (3 byte char)");
 //	Serial.println("C: set Node ID (1 byte int)");
+	cmdIo.println("m: print free and used memory");
+	cmdIo.println("t: internal temperature");
+	cmdIo.println("T: set offset");
+	cmdIo.println("r: report");
+	cmdIo.println("M: measure");
 //	Serial.println("W: load/save EEPROM");
 	cmdIo.println("E: erase EEPROM!");
 	cmdIo.println("?/h: this help");
@@ -342,13 +347,13 @@ void stdbyCmd() {
 
 static void configCmd() {
 	cmdIo.print("c ");
-	cmdIo.print(static_config.node);
+	cmdIo.print(config.node);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.node_id);
+	cmdIo.print(config.node_id);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.version);
+	cmdIo.print(config.version);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.config_id);
+	cmdIo.print(config.config_id);
 	cmdIo.println();
 }
 

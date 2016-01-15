@@ -54,7 +54,7 @@ Free pins
 
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  600  // how often to measure, in tenths of seconds
+#define MEASURE_PERIOD  10  // how often to measure, in tenths of seconds
 #define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
 #define RETRY_LIMIT     5   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
@@ -85,6 +85,7 @@ Free pins
 #include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
+#include "printf.h"
 
 
 
@@ -329,7 +330,7 @@ enum { DS_OK, DS_ERR_CRC };
 RF24 radio(CE, CSN);
 
 // Network uses that radio
-RF24Network/*Debug*/ network(radio);
+RF24NetworkDebug network(radio);
 
 // Address of the other node
 const uint16_t rf24_link_node = 0;
@@ -343,6 +344,7 @@ const uint16_t rf24_link_node = 0;
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
+
 
 #endif // HMC5883L
 
@@ -453,7 +455,8 @@ void rf24_init()
 	//radio.setRetries(15, 15); /* delay, number */
 	//radio.setPayloadSize(8);
 	//radio.powerDown();
-	network.begin(/*channel*/ NRF24_CHANNEL, /*node address*/ config.rf24id);
+	config.rf24id = 1;
+	network.begin( NRF24_CHANNEL, config.rf24id );
 }
 
 // XXX: old RF24 code
@@ -673,6 +676,7 @@ void rtc_run(void)
 #endif // HMC5883L
 
 
+
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
@@ -686,14 +690,17 @@ void rtc_run(void)
 /* UART commands {{{ */
 
 #if SERIAL
+
 static void ser_helpCmd(void) {
-	cmdIo.println("n: print Node ID");
+	//cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 	cmdIo.println("m: print free and used memory");
 	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
 	cmdIo.println("r: report");
 	cmdIo.println("M: measure");
+	cmdIo.println("S: stand-by");
+	cmdIo.println("x: reset");
 	cmdIo.println("E: erase EEPROM!");
 	cmdIo.println("?/h: this help");
 	idle.set(UI_IDLE);
@@ -842,9 +849,31 @@ void initLibs()
 
 /* *** Run-time handlers *** {{{ */
 
+void resetPayload(void)
+{
+#if LDR_PORT
+	payload.light = 0;
+#endif
+#if PIR_PORT
+	payload.moved = 0;
+#endif
+#if _DHT
+	payload.rhum = 0;
+	payload.temp = 0;
+#endif //_DHT
+	payload.ctemp = 0;
+#if _MEM
+	payload.memfree = 0;
+#endif
+#if _RFM12LOBAT
+	payload.lobat = 0;
+#endif
+}
+
 void doReset(void)
 {
 	doConfig();
+	resetPayload();
 
 	pinMode( LED_GREEN, OUTPUT );
 	pinMode( LED_YELLOW, OUTPUT );
@@ -977,14 +1006,16 @@ void doReport(void)
 	rf12_sleep(RF12_SLEEP);
 #endif // RFM12B
 #if _NRF24
-	//blink(LED_YELLOW, 2, 25);
 	//rf24_run();
 	RF24NetworkHeader header(/*to node*/ rf24_link_node);
 	bool ok = network.write(header, &payload, sizeof(payload));
-	if (ok)
+	if (ok) {
 		debugline("ACK");
-	else
+		blink(LED_GREEN, 2, 100);
+	} else {
 		debugline("NACK");
+		blink(LED_RED, 2, 200);
+	}
 #endif // NRF24
 #if RTC
 	blink(LED_YELLOW, 2, 25);
@@ -1042,6 +1073,7 @@ void runScheduler(char task)
 			break;
 
 		case MEASURE:
+			blink(LED_YELLOW, 1, 200);
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
@@ -1062,6 +1094,7 @@ void runScheduler(char task)
 		case REPORT:
 			debugline("REPORT");
 //			payload.msgtype = REPORT_MSG;
+			blink(LED_YELLOW, 4, 50);
 			doReport();
 			serialFlush();
 			break;
@@ -1098,9 +1131,10 @@ InputParser::Commands cmdTab[] = {
 	{ 'o', 0, ser_tempConfig },
 	{ 'T', 1, ser_tempOffset },
 	{ 't', 0, ser_temp },
-	{ 'M', 0, measureCmd },
 	{ 'r', 0, reportCmd },
+	{ 'M', 0, measureCmd },
 	{ 's', 0, stdbyCmd },
+	{ 'c', 0, configCmd },
 	{ 'E', 0, eraseEEPROM },
 	{ 'x', 0, doReset },
 	{ 0 }
