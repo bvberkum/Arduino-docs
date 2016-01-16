@@ -1,4 +1,29 @@
+/**
 
+TODO: central node, with USB-UART bridge to processing host
+(Relay role can be in leaf sketches.)
+
+- Quickest start is probably hardcoding the structs per sketch type.
+  And challenging node for config (announce) but using only sketch Id.
+  Ie. keeping run-time map of node address to sketch id.
+
+  That or don't bother at all, and parse at host. Matador has some Python code.
+  But if it can be parsed here why not.
+  Python could exclude embedded devices, ie. an OpenWRT router.
+
+- More elaborated is to a). find a way to write the configs (EEPROM, or SD)
+  and b). write routines to parse acc. to c struct. (or can dynamically define
+  struct type?)
+
+  And maybe add SD logging, for Relay Nodes (with no or minimal on-board
+  sensors).
+
+TODO: on announce store node_id, reserve 5 bytes per node.
+That should allow almost 200 nodes. Load ids into array on start-up.
+
+TODO: map alphachar node_id prefix to sketch payload struct.
+
+*/
 
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
@@ -6,7 +31,6 @@
 
 #define _NRF24          1
 
-#define CONFIG_VERSION "ln2"
 #define CONFIG_EEPROM_START 0
 #define NRF24_CHANNEL   90
 
@@ -23,13 +47,20 @@
 
 
 
+// Name Id for this sketch
 const String sketch = "RadioLink24";
+
+// Integer version for this sketch
 const int version = 0;
 
-char node[] = "rl24";
+// Alpha Id for this sketch
+char node[] = "rln";
 
-// Address of our node
-const uint16_t this_node = 0;
+// Alphanumeric Id suffixed with integer
+char node_id[4];
+
+// Network address of current node
+const uint16_t link_node = 0;
 
 
 
@@ -73,6 +104,74 @@ struct {
 
 /* *** /Report variables }}} *** */
 
+/* *** EEPROM config *** {{{ */
+
+
+
+struct Config {
+	char node[4]; // Alphanumeric Id (for sketch)
+	int node_id; // Id suffix integer (for unique run-time Id)
+	int version; // Sketch version
+	signed int temp_offset;
+	float temp_k;
+	uint16_t address; // RF24Network address
+	uint16_t nodes; // Node count
+} static_config = {
+	/* default values */
+	{ node[0], node[1], node[2], 0 }, 0, version,
+	TEMP_OFFSET, TEMP_K,
+	00, 00
+};
+
+Config config;
+
+bool loadConfig(Config &c)
+{
+	unsigned int w = sizeof(c);
+
+	if (
+			EEPROM.read(CONFIG_EEPROM_START + w - 1) == node_id[4] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 2) == node_id[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 3) == node_id[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 4) == node_id[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + w - 5) == node_id[0]
+	) {
+
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+		}
+		return true;
+
+	} else {
+#if SERIAL && DEBUG
+		Serial.println("No valid data in eeprom");
+#endif
+		return false;
+	}
+}
+
+void writeConfig(Config &c)
+{
+	for (unsigned int t=0; t<sizeof(c); t++) {
+
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+
+		// verify
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+		{
+			// error writing to EEPROM
+#if SERIAL && DEBUG
+			Serial.println("Error writing "+ String(t)+" to EEPROM");
+#endif
+		}
+	}
+}
+
+
+
+/* *** /EEPROM config *** }}} */
+
 /* *** Peripheral devices *** {{{ */
 
 #if _NRF24
@@ -80,8 +179,11 @@ struct {
 
 RF24 radio(CE, CS);
 
-// Network uses that radio
+#if DEBUG
 RF24NetworkDebug network(radio);
+#else
+RF24Network network(radio);
+#endif
 
 
 #endif // NRF24
@@ -101,12 +203,6 @@ RF24NetworkDebug network(radio);
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-void rf24_init()
-{
-	SPI.begin();
-	radio.begin();
-	network.begin( NRF24_CHANNEL, 0 );
-}
 
 
 
@@ -122,8 +218,18 @@ void rf24_init()
 
 /* *** Initialization routines *** {{{ */
 
+void initConfig(void)
+{
+	sprintf(node_id, "%s%i", config.node, config.node_id);
+}
+
 void doConfig(void)
 {
+	/* load valid config or reset default config */
+	if (!loadConfig(config)) {
+		writeConfig(static_config);
+	}
+	initConfig();
 }
 
 void initLibs()
@@ -131,7 +237,7 @@ void initLibs()
 #if _NRF24
 	SPI.begin();
 	radio.begin();
-	network.begin( NRF24_CHANNEL, 0 );
+	network.begin( NRF24_CHANNEL, config.address );
 #endif // NRF24
 }
 
@@ -149,13 +255,22 @@ void doReset(void)
 #endif
 	tick = 0;
 
-#if _NRF24
-	//rf24_init();
-#endif //_NRF24
-
 	//scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
+bool nodeConfigured(uint16_t id)
+{
+}
+
+void nodeReportRead(RF24NetworkHeader header)
+{
+//	header.type;
+	network.read(header, &payload, sizeof(payload));
+}
+
+void registerNode(RF24NetworkHeader header)
+{
+}
 
 /* *** /Run-time handlers }}} *** */
 
@@ -203,26 +318,40 @@ void loop(void)
 #endif
 	//debug_ticks();
 
-	// Is there anything ready for us?
 	while ( network.available() )
 	{
-    RF24NetworkHeader header;
-    //network.peek(header);
-    //printf_P(PSTR("%lu: APP Received #%u type %c from 0%o\n\r"),millis(),header.id,header.type,header.from_node);
-    //Serial.println();
+		RF24NetworkHeader header;
 
-		// If so, grab it and print it out
-		network.read(header, &payload, sizeof(payload));
-		Serial.print("Received ");
-		Serial.print(header.id);
-		Serial.print(" ");
-		Serial.print(header.from_node);
-		Serial.print(" atmega temp: ");
-		Serial.print(payload.ctemp);
-		Serial.print(" rhum: ");
-		Serial.println(payload.rhum);
+		network.peek(header);
+
+#if DEBUG
+		printf_P(PSTR("%lu: APP Received #%u type %c from 0%o\n\r"),
+				millis(),
+				header.id,
+				header.type,
+				header.from_node);
+		//Serial.println();
+#endif
+
+		if (nodeConfigured(header.from_node)) {
+
+			nodeReportRead(header);
+
+		} else {
+
+			if (header.id == 0) {
+
+				registerNode(header);
+
+			} else {
+				Serial.println("Discarded messsage, no node config");
+				// TODO request node config
+			}
+		}
 
 	}
+
+	serialFlush();
 }
 
 /* *** }}} */

@@ -271,7 +271,7 @@ static void configNodeCmd(void) {
 
 static void configVersionCmd(void) {
 	cmdIo.print("v ");
-	cmdIo.println(static_config.version);
+	cmdIo.println(config.version);
 	//Serial.print("v ");
 	//showNibble(static_config.version);
 	//Serial.println("");
@@ -283,16 +283,16 @@ void initConfig(void);
 static void configSetNodeCmd() {
 	const char *node;
 	parser >> node;
-	static_config.node[0] = node[0];
-	static_config.node[1] = node[1];
-	static_config.node[2] = node[2];
+	config.node[0] = node[0];
+	config.node[1] = node[1];
+	config.node[2] = node[2];
 	initConfig();
 	cmdIo.print("N ");
-	cmdIo.println(static_config.node);
+	cmdIo.println(config.node);
 }
 
 static void configNodeIDCmd() {
-	parser >> static_config.node_id;
+	parser >> config.node_id;
 	initConfig();
 	cmdIo.print("C ");
 	cmdIo.println(node_id);
@@ -303,9 +303,9 @@ static void configEEPROM() {
 	int write;
 	parser >> write;
 	if (write) {
-		writeConfig(static_config);
+		writeConfig(config);
 	} else {
-		loadConfig(static_config);
+		loadConfig(config);
 		initConfig();
 	}
 	cmdIo.print("W ");
@@ -362,7 +362,7 @@ static void eraseEEPROM() {
 
 void initConfig(void)
 {
-	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	sprintf(node_id, "%s%i", config.node, config.node_id);
 	if (config.temp_k == 0) {
 		config.temp_k = 1.0;
 	}
