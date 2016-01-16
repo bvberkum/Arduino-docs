@@ -18,8 +18,11 @@ TODO: central node, with USB-UART bridge to processing host
   And maybe add SD logging, for Relay Nodes (with no or minimal on-board
   sensors).
 
-TODO: on announce store node_id, reserve 5 bytes per node.
-That should allow almost 200 nodes. Load ids into array on start-up.
+TODO: store node_id (3+2 bytes + null=6 byte) with adress (uint16_t=2 byte)
+on announce.
+
+XXX: Load ids into array on start-up for quick lookup of address.
+
 
 TODO: map alphachar node_id prefix to sketch payload struct.
 
@@ -44,6 +47,7 @@ TODO: map alphachar node_id prefix to sketch payload struct.
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include "printf.h"
+#include <hashmap.h>
 
 
 
@@ -61,6 +65,8 @@ char node_id[4];
 
 // Network address of current node
 const uint16_t link_node = 0;
+
+
 
 
 
@@ -109,7 +115,7 @@ struct {
 
 
 struct Config {
-	char node[4]; // Alphanumeric Id (for sketch)
+	char node[3]; // Alphanumeric Id (for sketch)
 	int node_id; // Id suffix integer (for unique run-time Id)
 	int version; // Sketch version
 	signed int temp_offset;
@@ -118,12 +124,18 @@ struct Config {
 	uint16_t nodes; // Node count
 } static_config = {
 	/* default values */
-	{ node[0], node[1], node[2], 0 }, 0, version,
+	{ node[0], node[1], node[2] }, 0, version,
 	TEMP_OFFSET, TEMP_K,
 	00, 00
 };
 
 Config config;
+
+struct Record {
+	char node[3];
+	int node_id;
+	uint16_t address;
+};
 
 bool loadConfig(Config &c)
 {
@@ -168,6 +180,16 @@ void writeConfig(Config &c)
 	}
 }
 
+Record* nodes;
+
+bool nodeConfigured(uint16_t address)
+{
+	for (Record * r = nodes; ; ++r) {
+		if (r->address == address)
+			return true;
+	}
+	return false;
+}
 
 
 /* *** /EEPROM config *** }}} */
@@ -246,9 +268,28 @@ void initLibs()
 
 /* *** Run-time handlers *** {{{ */
 
+void loadNodeAddresses(void)
+{
+	Record record;
+	unsigned int x;
+	unsigned int y = sizeof(config);
+	unsigned int w = sizeof(record);
+	nodes = (Record*) malloc(config.nodes * w);
+	for (unsigned int i=0; i<config.nodes; i++) {
+		x = i * w;
+		for (unsigned int t=0; t<w; t++)
+		{
+			*((char*)&record + t) = EEPROM.read(CONFIG_EEPROM_START + y + x + t);
+			nodes[i] = record;
+		}
+	}
+}
+
 void doReset(void)
 {
 	doConfig();
+
+	loadNodeAddresses();
 
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
@@ -258,18 +299,21 @@ void doReset(void)
 	//scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
-bool nodeConfigured(uint16_t id)
-{
-}
-
 void nodeReportRead(RF24NetworkHeader header)
 {
-//	header.type;
+		header.type;
 	network.read(header, &payload, sizeof(payload));
 }
 
 void registerNode(RF24NetworkHeader header)
 {
+	Record record;
+	Record announce;
+	// XXX: read bytes until announce header
+	network.read(header, &announce, sizeof(announce));
+	//record.node = announce.node;
+	//record.node_id = announce.node_id;
+	//record.address = announce.address;
 }
 
 /* *** /Run-time handlers }}} *** */
@@ -333,20 +377,18 @@ void loop(void)
 		//Serial.println();
 #endif
 
-		if (nodeConfigured(header.from_node)) {
-
-			nodeReportRead(header);
-
-		} else {
-
-			if (header.id == 0) {
-
+		switch (header.type) {
+			case 0:
 				registerNode(header);
-
-			} else {
-				Serial.println("Discarded messsage, no node config");
-				// TODO request node config
-			}
+				break;
+			case 1:
+				if (nodeConfigured(header.from_node)) {
+					nodeReportRead(header);
+				} else {
+		//		Serial.println("Discarded messsage, no node config");
+		//		// TODO request node config
+				}
+				break;
 		}
 
 	}
