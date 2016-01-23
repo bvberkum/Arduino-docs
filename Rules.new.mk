@@ -17,11 +17,17 @@ INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
 
 
 
-copy-from-ino15:
-	mkdir -vp hardware/
-
-	rsync -avzui \
-		~/Library/Arduino15/packages/ hardware/adafruit
+link-hardware-to-ino15:
+	@mkdir -vp hardware/adafruit
+	@cd hardware/adafruit; \
+		test -h avr && rm avr; \
+		ln -s ~/Library/Arduino15/packages/adafruit/hardware/avr/1.4.2 avr
+	@mkdir -vp hardware/digistump
+	@cd hardware/digistump/; \
+		test -h avr && rm avr; \
+		ln -s ~/Library/Arduino15/packages/digistump/hardware/avr/1.6.5 avr
+	#rsync -avzui \
+	#	~/Library/Arduino15/packages/ hardware/adafruit
 
 
 arduino-mk := make \
@@ -69,12 +75,11 @@ boards:
 	@echo "  BRD -> BOARD_TAG"
 	@touch arduino-docs.ino
 
-
-blink:
-	@cd Prototype/Blink; $(arduino-mk-run) ; $(arduino-mk-run) upload
-
-tinyrf24:
-	@cd Mpe/TinyRF24/; $(arduino-mk-run) ; $(arduino-mk-run) upload
-
+build::
+	@$(ll) header1 PREFIX "$(INO_PREF)"
+	@$(ll) header1 CORE "$(AC)"
+	@$(ll) header1 BOARD "$(BRD)"
+	@$(ll) header1 DEFINES "$(DEFINES)"
+	@cd $(INO_PREF); $(arduino-mk-run) ; $(arduino-mk-run) upload
 
 

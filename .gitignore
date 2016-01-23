@@ -13,7 +13,6 @@
 #*.bz
 #*.bz2
 #*.rar
-#libraries/RF24_gitbub
 
 #*.hex
 
@@ -32,10 +31,8 @@ Misc/usbasp
 Misc/ESP8266/License
 Misc/ESP8266/esp_iot_sdk_v0.9.5/
 Misc/ESP8266/release_note.txt
-Prototype/SensorNode/printf.h
+Misc/ESP8266/esp_iot_sdk_v0.9.5_15_01_23.zip
 Prototype/Serial/uart_irq/
-hardware/adafruit/
-hardware/attiny/avr/
 libraries/Keypad/
 libraries/LiquidCrystalCustomI2C/
 libraries/LiquidCrystal_I2C
