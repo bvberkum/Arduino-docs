@@ -77,7 +77,10 @@ boards:
 	@echo "  BRD -> BOARD_TAG"
 	@touch arduino-docs.ino
 
-build::
+
+TRGT += arduino-upload
+
+arduino-upload:
 	@$(ll) header1 PREFIX "$(INO_PREF)"
 	@$(ll) header1 CORE "$(C)"
 	@$(ll) header1 BOARD "$(BRD)"
