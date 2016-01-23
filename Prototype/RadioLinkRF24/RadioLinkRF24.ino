@@ -301,8 +301,14 @@ void doReset(void)
 
 void nodeReportRead(RF24NetworkHeader header)
 {
-		header.type;
-	network.read(header, &payload, sizeof(payload));
+	for (Record * r = nodes; ; ++r) {
+		if (r->address == header.from_node) {
+			r->node;
+			r->node_id;
+		}
+	}
+
+	//network.read(header, &payload, sizeof(payload));
 }
 
 void registerNode(RF24NetworkHeader header)

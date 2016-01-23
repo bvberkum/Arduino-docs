@@ -356,16 +356,13 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
 void initConfig(void)
 {
 	sprintf(node_id, "%s%i", config.node, config.node_id);
-	if (config.temp_k == 0) {
-		config.temp_k = 1.0;
-	}
 }
 
 void doConfig(void)
@@ -395,16 +392,14 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-/* see CarrierCase */
 #if SERIAL && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-
-	cmdIo.println(node_id);
 #endif // SERIAL && DEBUG
+	cmdIo.println(node_id);
 	return false;
 }
 

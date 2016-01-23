@@ -29,46 +29,59 @@
  *
  * - Marked '*' has PWM.
  */
-int blinkPin = 13;
-int blinkCount = 2;
-int delay_low = 150;
-int delay_high = 100;
-long delay_loop = 1000;
+
+#ifndef BLINK_PIN
+#define BLINK_PIN 13
+#endif
+
+#ifndef BLINK_COUNT
+#define BLINK_COUNT 1
+#endif
+#ifndef DELAY_HIGH
+#define DELAY_HIGH 1000
+#endif
+#ifndef DELAY_LOW
+#define DELAY_LOW 1000
+#endif
+#ifndef DELAY_LOOP
+#define DELAY_LOOP 0
+#endif
+
 
 void blink(int led, int count) {
   //unsigned long currentMillis = millis();
   for (int i=0;i<count;i++) {
     digitalWrite(led, HIGH);
-    delay(delay_high);
+    delay(DELAY_HIGH);
     digitalWrite(led, LOW);
-    delay(delay_low);
+    delay(DELAY_LOW);
   }
 }
 
-void setup() 
+void setup()
 {
 #if !defined(__AVR_ATtiny85__)
   Serial.begin(57600);
   Serial.println("BlinkNoDelay");
 #endif
-  pinMode(blinkPin, OUTPUT);
-  digitalWrite(blinkPin, LOW);
+  pinMode(BLINK_PIN, OUTPUT);
+  digitalWrite(BLINK_PIN, LOW);
 //  delay(5);
 //  blink(pin, 5);
 //  delay(1500);
 }
 
-void loop() 
+void loop()
 {
-  blink(blinkPin, blinkCount);
-  delay(delay_loop);
+  blink(BLINK_PIN, BLINK_COUNT);
+  delay(DELAY_LOOP);
 }
 
 /*
 	TQFP:
-           PD2 1 0 PC6 5 4 3 2  
-           32      29        25 
-          .-------------------. 
+           PD2 1 0 PC6 5 4 3 2
+           32      29        25
+          .-------------------.
 	PD3 1 |O                  | 24 PC1
 	PD4 2 |                   | 23 PC0
 	GND 3 |                   | 22 ADC7 (*)
@@ -77,9 +90,9 @@ void loop()
 	VCC 6 |                   | 19 ADC6 (*)
 	PB6 7 |                   | 18 AVCC
 	PB7 8 |                   | 17 PB5
-		  '-------------------' 
-	       9       12        16 
-	       PD5 6 7 PB0 1 2 3 4  
+		  '-------------------'
+	       9       12        16
+	       PD5 6 7 PB0 1 2 3 4
 
-	- ports/signals same as PDIP, except: 
+	- ports/signals same as PDIP, except:
 	* denotes extra ADC pins on TQFP */

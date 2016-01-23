@@ -14,10 +14,10 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           0 /* Enable trace statements */
 
-#define _MEM            1
+#define _MEM            1   // Report free memory
 
 #define ANNOUNCE_START  0
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
 #define CONFIG_VERSION "nx1"
@@ -249,6 +249,7 @@ void writeConfig(Config &c)
 
 #if _LCD84x48
 
+
 #endif // LCD84x48
 
 #if _DS
@@ -279,7 +280,6 @@ void writeConfig(Config &c)
 #endif // HMC5883L
 
 
-
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
@@ -294,11 +294,11 @@ void irq0()
 
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
 #if SERIAL
 
-static void ser_helpCmd(void) {
+void help_sercmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 //	Serial.println("v: print version");
@@ -307,15 +307,17 @@ static void ser_helpCmd(void) {
 	cmdIo.println("m: print free and used memory");
 	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
+	cmdIo.println("o: temperature config");
 	cmdIo.println("r: report");
 	cmdIo.println("M: measure");
 //	Serial.println("W: load/save EEPROM");
 	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("x: reset");
 	cmdIo.println("?/h: this help");
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void memStat() {
+void memstat_serscmd() {
 	int free = freeRam();
 	int used = usedRam();
 
@@ -328,24 +330,29 @@ void memStat() {
 }
 
 // forward declarations
+void doReset(void);
 void doReport(void);
 void doMeasure(void);
 
-void reportCmd () {
+void reset_sercmd() {
+	doReset();
+}
+
+void report_sercmd() {
 	doReport();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void measureCmd() {
+void measure_sercmd() {
 	doMeasure();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void stdbyCmd() {
+void stdby_sercmd() {
 	ui = false;
 }
 
-static void configCmd() {
+void config_sercmd() {
 	cmdIo.print("c ");
 	cmdIo.print(config.node);
 	cmdIo.print(" ");
@@ -357,7 +364,7 @@ static void configCmd() {
 	cmdIo.println();
 }
 
-void ser_tempConfig(void) {
+void ctempconfig_sercmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
@@ -366,7 +373,7 @@ void ser_tempConfig(void) {
 	Serial.println(internalTemp());
 }
 
-void ser_tempOffset(void) {
+void ctempoffset_sercmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -379,9 +386,9 @@ void ser_tempOffset(void) {
 	writeConfig(config);
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void ctemp_sercmd(void) {
+	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	Serial.println( t );
 }
 
 static void eraseEEPROM() {
@@ -401,7 +408,7 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -409,9 +416,6 @@ void initConfig(void)
 {
 	// See Prototype/Node
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
-	if (config.temp_k == 0) {
-		config.temp_k = 1.0;
-	}
 }
 
 void doConfig(void)
@@ -442,20 +446,20 @@ void doReset(void)
 	attachInterrupt(INT0, irq0, RISING);
 	ui_irq = true;
 	tick = 0;
-
 	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 }
 
 bool doAnnounce(void)
 {
-
+#if SERIAL && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
+#endif // SERIAL && DEBUG
+	cmdIo.println(node_id);
 
-	cmdIo.println(config.node_id);
 	return false;
 }
 
@@ -475,7 +479,7 @@ void doReport(void)
 
 void uiStart()
 {
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 	if (!ui) {
 		ui = true;
 	}
@@ -518,17 +522,18 @@ void runScheduler(char task)
 #if SERIAL
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'm', 0, memStat },
+	{ '?', 0, help_sercmd },
+	{ 'h', 0, help_sercmd },
+	{ 'm', 0, memstat_serscmd },
+	{ 'c', 0, config_sercmd},
 	{ 'c', 0, configCmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'M', 0, measureCmd },
-	{ 'r', 0, reportCmd },
-	{ 's', 0, stdbyCmd },
-	{ 'x', 0, doReset },
+	{ 'o', 0, ctempconfig_sercmd },
+	{ 'T', 1, ctempoffset_sercmd },
+	{ 't', 0, ctemp_sercmd },
+	{ 'r', 0, reset_sercmd },
+	{ 's', 0, stdby_sercmd },
+	{ 'x', 0, report_sercmd },
+	{ 'M', 0, measure_sercmd },
 	{ 'E', 0, eraseEEPROM },
 	{ 0 }
 };
@@ -594,6 +599,7 @@ void loop(void)
 #ifdef _DBG_LED
 		blink(_DBG_LED, 1, 25);
 #endif
+		debugline("Sleep");
 		serialFlush();
 		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {

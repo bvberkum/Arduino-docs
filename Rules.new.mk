@@ -2,85 +2,79 @@ $(module-header,new,$/Rules.new.mk)
 #
 #      ------------ --
 
+ARDUINO_DIR := /Applications/Arduino.app
+BOARDS_TXT := $(ARDUINO_DIR)/Contents/Java/hardware/arduino/avr/boards.txt
+ARDUINO_SKETCHBOOK := ~/project/arduino-docs
 
-#DIR                 := $/mydir
-#include                $(call rules,$(DIR)/)
-#
-# DMK += $/dynamic-makefile.mk
-# DEP += $/generated-dependency
-# TRGT += $/build-target
-# CLN += $/tmpfile
-# TEST += $/testtarget
+#ARDMK_DIR     = /usr/local
+#AVR_TOOLS_DIR = /usr
+#MONITOR_PORT  = /dev/ttyACM0
 
-CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
+ALTERNATE_CORE := $(AC)
+BOARD_TAG := $(BRD)
 
-ARDUINO_DIR = /usr/share/arduino
-
-PORTS = \
-		USB0=/dev/ttyUSB0 \
-		USB1=/dev/ttyUSB1 \
-		USB2=/dev/ttyUSB2 \
-		usbserial=/dev/tty.usbserial-A900TTH0
-
-BOARDS_FILES := $(wildcard  \
-	$(ARDUINO_DIR)/hardware/*/boards.txt \
-	./hardware/*/boards.txt)
-
-# TODO filter boards for existing entry
-
-# BRD
-# PRT
-define build-arduino-firmware
-	[ -e "$<" ] && { \
-		$(ll) attention "$@" "Building flash image, board $(BRD).." "$(<)"; \
-	} || {  \
-		echo "Missing source"; \
-		$(ll) error "$@" "Missing source" "$<"; \
-		exit 1; \
-	};
-	P=$$(realpath .); \
-	BOARDS_TXT=$(shell grep -l '$(BRD).name=' $(BOARDS_FILES));\
-	cd $$(dirname $<); \
-		make -f $$P/arduino.debian.mk \
-			ARDUINO_DIR=$(ARDUINO_DIR) \
-			BOARDS_TXT=$$BOARDS_TXT \
-			BOARD_TAG=$(BRD) \
-			ARDUINO_PORT=$(call key,PORTS,$(PRT)) \
-			ARDUINO_LIBS=$(ARDUINO_LIBS) \
-			$(ARDUINO_TARGETS);
-	[ -e "$@" ] && { \
-		$(ll) ok "$@" "Done"; \
-	} || {  \
-		$(ll) error "$@" "Missing target"; \
-		exit 1; \
-	};
-endef
-
-$/%.hex: $/%.ino
-	@\
-	$(build-arduino-firmware)
-
-$/%.hex: $/%.pde
-	@\
-	$(build-arduino-firmware)
-
-Mpe/CarrierCase/CarrierCase.hex: BRD := uno
-
-carriercase: BRD := uno
-carriercase: P := Mpe/CarrierCase/
-carriercase: I := Mpe/CarrierCase/CarrierCase.hex
-carriercase: jeenode upload
+INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
 
 
-# XXX: how does Mpe/MySketch/MySketch.hex get to firmware/Mpe-MySketch-<version>-<static-params>-<board>.hex
-# Or how does some rule or one like this trigger the build and rename of
-# Mpe/MySketch?
-#firmware/Mpe-CarrierCase-uno-DEBUG.hex: DEBUG_BUILD := 1
 
-# via params perhaps
-#firmware/Mpe-CarrierCase.builds
-# XXX: look at passing env vars
+copy-from-ino15:
+	mkdir -vp hardware/
 
-#      ------------ --
-#
-# vim:noet:
+	rsync -avzui \
+		~/Library/Arduino15/packages/ hardware/adafruit
+
+
+arduino-mk := make \
+		ARDUINO_SKETCHBOOK=$(ARDUINO_SKETCHBOOK) \
+		MAKE="make -f $(INO_MK)" \
+		-f $(INO_MK)
+
+ifneq ($(ALTERNATE_CORE),)
+arduino-mk := $(arduino-mk) \
+		ALTERNATE_CORE=$(ALTERNATE_CORE)
+endif
+
+ifneq ($(DEFINES),)
+arduino-mk := $(arduino-mk) \
+		DEFINES="$(DEFINES)"
+endif
+
+ifneq ($(BOARD_TAG),)
+arduino-mk-run := $(arduino-mk) \
+		BOARD_TAG=$(BOARD_TAG)
+else
+arduino-mk-run := $(arduino-mk) \
+		BOARD_TAG=atmega328
+endif
+
+
+
+help::
+	@touch arduino-docs.ino
+	@$(arduino-mk) $@
+	@touch arduino-docs.ino
+
+clean::
+	@touch arduino-docs.ino
+	@$(arduino-mk) $@
+	@touch arduino-docs.ino
+
+boards:
+	@$(ll) attention $@ "Listing boards"
+	@#grep \.name= $(BOARDS_TXT) | cut -f 1 -d . | column
+	@touch arduino-docs.ino
+	@$(arduino-mk) show_boards
+	@echo "Var aliases:"
+	@echo "  AC -> ALTERNATE_CORE"
+	@echo "  BRD -> BOARD_TAG"
+	@touch arduino-docs.ino
+
+
+blink:
+	@cd Prototype/Blink; $(arduino-mk-run) ; $(arduino-mk-run) upload
+
+tinyrf24:
+	@cd Mpe/TinyRF24/; $(arduino-mk-run) ; $(arduino-mk-run) upload
+
+
+

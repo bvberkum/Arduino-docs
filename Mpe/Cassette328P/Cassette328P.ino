@@ -42,13 +42,13 @@ Free pins
 #define _MEM            0   // Report free memory
 //#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
 #define _DHT            1
-#define DHT_PIN        15
 #define DHT_HIGH        0
-#define _RFM12LOBAT     0
+#define _DS             0
 #define _LCD            0
 #define _LCD84x48       0
 #define _RTC            0
 #define _RFM12B         0
+#define _RFM12LOBAT     0
 #define _NRF24          1
 #define _DBG_LED        0
 
@@ -63,14 +63,11 @@ Free pins
 //#define TEMP_OFFSET     -57
 //#define TEMP_K          1.0
 #define ANNOUNCE_START  0
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define CONFIG_VERSION "cs1"
 #define CONFIG_EEPROM_START 0
 #define NRF24_CHANNEL   90
-
-
-
 
 
 
@@ -109,13 +106,17 @@ static const int LED_YELLOW    =  6;
 static const int LED_GREEN     =  7;
 #       define CSN       8  // NRF24
 #       define CE        9  // NRF24
-//                       15 // A1 DHT_PIN
+#if _DHT
+static const byte DHT_PIN = 15;
+#endif
+//#       define _DBG_LED 13 // SCK
 
 
 
 MpeSerial mpeser (57600);
 
 MilliTimer idle, stdby;
+
 
 /* *** InputParser *** {{{ */
 
@@ -288,10 +289,14 @@ Port ldr (LDR_PORT);
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
-#define DHTTYPE   DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
-DHT dht(DHT_PIN, DHTTYPE);
-/* DHTxx (jeelib) */
-//DHTxx dht (A1); // connected to ADC1
+#if DHT_HIGH
+DHT dht (DHT_PIN, DHT21);
+//DHT dht (DHT_PIN, DHT22);
+// AM2301
+// DHT21, AM2302? AM2301?
+#else
+DHT dht(DHT_PIN, DHT11);
+#endif
 #endif // DHT
 
 #if _LCD84x48
@@ -305,6 +310,7 @@ OneWire ds(DS_PIN);
 
 uint8_t ds_count = 0;
 uint8_t ds_search = 0;
+
 
 //uint8_t ds_addr[ds_count][8] = {
 //	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
@@ -330,7 +336,11 @@ enum { DS_OK, DS_ERR_CRC };
 RF24 radio(CE, CSN);
 
 // Network uses that radio
+#if DEBUG
 RF24NetworkDebug network(radio);
+#else
+RF24Network network(radio);
+#endif
 
 // Address of the other node
 const uint16_t rf24_link_node = 0;
@@ -431,6 +441,7 @@ void i2c_lcd_start()
 
 #if _LCD84x48
 
+
 #endif // LCD84x48
 
 #if _DS
@@ -452,107 +463,16 @@ void rf24_init()
 {
 	SPI.begin();
 	radio.begin();
-	//radio.setRetries(15, 15); /* delay, number */
-	//radio.setPayloadSize(8);
-	//radio.powerDown();
-	config.rf24id = 1;
 	network.begin( NRF24_CHANNEL, config.rf24id );
 }
 
-// XXX: old RF24 code
 void rf24_start()
 {
 #if DEBUG
 	radio.printDetails();
 #endif
-	/* Start radio */
-  radio.openWritingPipe(config.rf24routes[0]);
-  radio.openReadingPipe(1, config.rf24addr);
-  radio.startListening();
 }
 
-void radio_run()
-{
-	if (role == role_logger)
-	{
-		if (radio.available()) {
-			unsigned long got_time;
-			bool done = false;
-			while (!done)
-			{
-				// Fetch the payload, and see if this was the last one.
-				done = radio.read( &got_time, sizeof(unsigned long) );
-				// Spew it
-				printf("Got payload %lu...", got_time);
-				// Delay just a little bit to let the other unit
-				// make the transition to receiver
-				delay(20);
-
-				/** XXX: echo time during debugging */
-				// First, stop listening so we can talk
-				radio.stopListening();
-
-				// Send the final one back.
-				radio.write( &got_time, sizeof(unsigned long) );
-				printf("Sent response.\n\r");
-
-				// Now, resume listening so we catch the next packets.
-				radio.startListening();
-			}
-		}
-	}
-	if (role == role_reporter)
-	{
-		// First, stop listening so we can talk.
-		radio.stopListening();
-		// Take the time, and send it.  This will block until complete
-		unsigned long time = millis();
-		printf("Now sending %lu...",time);
-		bool ok = radio.write( &time, sizeof(unsigned long) );
-
-		if (ok)
-			printf("ok...");
-		else
-			printf("failed.\n\r");
-
-		// Now, continue listening
-		radio.startListening();
-
-		/* XXX: while debugging wait for echo and display time delay */
-
-		// Wait here until we get a response, or timeout (250ms)
-		unsigned long started_waiting_at = millis();
-		bool timeout = false;
-		while ( ! radio.available() && ! timeout )
-			if (millis() - started_waiting_at > 200 )
-				timeout = true;
-
-		// Describe the results
-		if ( timeout )
-		{
-			printf("Failed, response timed out.\n\r");
-		}
-		else
-		{
-			// Grab the response, compare, and send to debugging spew
-			unsigned long got_time;
-			radio.read( &got_time, sizeof(unsigned long) );
-
-			// Spew it
-			printf("Got response %lu, round-trip delay: %lu\n\r",got_time,millis()-got_time);
-		}
-
-		// Try again 1s later
-		delay(1000);
-	}
-}
-
-void saveRF24Config(Config &c) {
-	for (unsigned int t=0; t<sizeof(c); t++)
-	{
-		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
-	}
-}
 
 #endif // NRF24 funcs
 
@@ -681,32 +601,33 @@ void rtc_run(void)
 
 /* *** UI *** {{{ */
 
-
-
-
-
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
 #if SERIAL
 
-static void ser_helpCmd(void) {
-	//cmdIo.println("n: print Node ID");
+void help_sercmd(void) {
+	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 	cmdIo.println("m: print free and used memory");
 	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
+	cmdIo.println("o: temperature config");
 	cmdIo.println("r: report");
 	cmdIo.println("M: measure");
 	cmdIo.println("S: stand-by");
 	cmdIo.println("x: reset");
 	cmdIo.println("E: erase EEPROM!");
 	cmdIo.println("?/h: this help");
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void memStat() {
+void nodeinfo_serscmd() {
+  cmdIo.println(node_id);
+}
+
+void memstat_serscmd() {
 	int free = freeRam();
 	int used = usedRam();
 
@@ -719,24 +640,29 @@ void memStat() {
 }
 
 // forward declarations
+void doReset(void);
 void doReport(void);
 void doMeasure(void);
 
-void reportCmd () {
+void reset_sercmd() {
+	doReset();
+}
+
+void report_sercmd() {
 	doReport();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void measureCmd() {
+void measure_sercmd() {
 	doMeasure();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void stdbyCmd() {
+void stdby_sercmd() {
 	ui = false;
 }
 
-static void configCmd() {
+void config_sercmd() {
 	cmdIo.print("c ");
 	cmdIo.print(config.node);
 	cmdIo.print(" ");
@@ -748,7 +674,7 @@ static void configCmd() {
 	cmdIo.println();
 }
 
-void ser_tempConfig(void) {
+void ctempconfig_sercmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
@@ -757,7 +683,7 @@ void ser_tempConfig(void) {
 	Serial.println(internalTemp());
 }
 
-void ser_tempOffset(void) {
+void ctempoffset_sercmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -770,9 +696,9 @@ void ser_tempOffset(void) {
 	writeConfig(config);
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void ctemp_sercmd(void) {
+	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	Serial.println( t );
 }
 
 static void eraseEEPROM() {
@@ -792,16 +718,13 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
 void initConfig(void)
 {
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
-	if (config.temp_k == 0) {
-		config.temp_k = 1.0;
-	}
 }
 
 void doConfig(void)
@@ -873,6 +796,7 @@ void resetPayload(void)
 void doReset(void)
 {
 	doConfig();
+	ui_irq = true;
 	resetPayload();
 
 	pinMode( LED_GREEN, OUTPUT );
@@ -941,10 +865,11 @@ void doMeasure(void)
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		payload.rhum = smoothedAverage(payload.rhum, h, firstTime);
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
-		Serial.print((int)h);
+		Serial.print(rh);
 		Serial.print(' ');
 		Serial.println(payload.rhum);
 #endif
@@ -996,8 +921,10 @@ void doMeasure(void)
 
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-void doReport(void)
+bool doReport(void)
 {
+	bool ok;
+
 #if _RFM12B
 	serialFlush();
 	rf12_sleep(RF12_WAKEUP);
@@ -1008,22 +935,15 @@ void doReport(void)
 #if _NRF24
 	//rf24_run();
 	RF24NetworkHeader header(/*to node*/ rf24_link_node);
-	bool ok = network.write(header, &payload, sizeof(payload));
-	if (ok) {
-		debugline("ACK");
-		blink(LED_GREEN, 2, 100);
-	} else {
-		debugline("NACK");
-		blink(LED_RED, 2, 200);
-	}
-#endif // NRF24
+	ok = network.write(header, &payload, sizeof(payload));
+#endif //_NRF24
 #if RTC
 	blink(LED_YELLOW, 2, 25);
 	rtc_run();
 #endif // RTC
 #if SERIAL
 	/* Report over serial, same fields and order as announced */
-	Serial.print(node);
+	Serial.print(node_id);
 #if LDR_PORT
 	Serial.print(' ');
 	Serial.print((int) payload.light);
@@ -1055,6 +975,8 @@ void doReport(void)
 
 	Serial.println();
 #endif //SERIAL
+
+  return ok;
 }
 
 
@@ -1069,7 +991,9 @@ void runScheduler(char task)
 		case ANNOUNCE:
 				doAnnounce();
 				scheduler.timer(MEASURE, 0); //schedule next step
+#if SERIAL
 			serialFlush();
+#endif
 			break;
 
 		case MEASURE:
@@ -1092,10 +1016,16 @@ void runScheduler(char task)
 			break;
 
 		case REPORT:
-			debugline("REPORT");
 //			payload.msgtype = REPORT_MSG;
 			blink(LED_YELLOW, 4, 50);
-			doReport();
+			bool ok = doReport();
+			if (ok) {
+				debugline("ACK");
+				blink(LED_GREEN, 2, 100);
+			} else {
+				debugline("NACK");
+				blink(LED_RED, 2, 200);
+			}
 			serialFlush();
 			break;
 
@@ -1125,18 +1055,19 @@ void runScheduler(char task)
 #if SERIAL
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'm', 0, memStat},
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'r', 0, reportCmd },
-	{ 'M', 0, measureCmd },
-	{ 's', 0, stdbyCmd },
-	{ 'c', 0, configCmd },
+	{ '?', 0, help_sercmd },
+	{ 'h', 0, help_sercmd },
+	{ 'n', 0, nodeinfo_serscmd },
+	{ 'm', 0, memstat_serscmd },
+	{ 'c', 0, config_sercmd },
+	{ 'o', 0, ctempconfig_sercmd },
+	{ 'T', 1, ctempoffset_sercmd },
+	{ 't', 0, ctemp_sercmd },
+	{ 'r', 0, reset_sercmd },
+	{ 's', 0, stdby_sercmd },
+	{ 'x', 0, report_sercmd },
+	{ 'M', 0, measure_sercmd },
 	{ 'E', 0, eraseEEPROM },
-	{ 'x', 0, doReset },
 	{ 0 }
 };
 
@@ -1188,6 +1119,9 @@ void setup(void)
 
 void loop(void)
 {
+#if _NRF24
+	network.update();
+#endif
 #ifdef _DBG_LED
 	blink(_DBG_LED, 3, 10, -1, true);
 #endif

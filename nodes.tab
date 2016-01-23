@@ -1,0 +1,4 @@
+#ID           PREFIX         CORE       BOARD          DEFINES
+blink-t85-20  Mpe/Blink      attiny     attiny85-20    BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
+tinyrf24      Mpe/TinyRF24   attiny     attiny85-20
+

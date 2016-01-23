@@ -14,6 +14,8 @@ AtmegaTemp extends Node
 #define DEBUG_MEASURE   0
 
 #define _MEM            1   // Report free memory
+#define _DHT            1
+#define DHT_HIGH        0   // enable for DHT22/AM2302, low for DHT11
 #define _NRF24          1
 
 #define REPORT_EVERY    5   // report every N measurement cycles
@@ -24,10 +26,11 @@ AtmegaTemp extends Node
 //#define TEMP_OFFSET     -57
 //#define TEMP_K          1.0
 #define ANNOUNCE_START  0
+#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_STDBY        8000  // ms
 #define CONFIG_VERSION "nx1"
 #define CONFIG_EEPROM_START 50
 #define NRF24_CHANNEL   90
-
 
 
 
@@ -62,6 +65,9 @@ char node_id[7];
 //              RXD      0
 //              TXD      1
 //              INT0     2
+#if _DHT
+static const byte DHT_PIN = 7;
+#endif
 #       define CSN      8  // NRF24
 #       define CE       9  // NRF24
 //              MOSI     11
@@ -73,6 +79,7 @@ char node_id[7];
 
 MpeSerial mpeser (57600);
 
+MilliTimer idle, stdby;
 
 
 /* *** InputParser *** {{{ */
@@ -117,9 +124,6 @@ struct {
 #if _RFM12LOBAT
 	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
 #endif
-//#if _RTC
-// XXX: datetime? See Cassette328P
-//#endif
 } payload;
 
 
@@ -157,10 +161,12 @@ struct Config {
 	char config_id[4];
 	signed int temp_offset;
 	float temp_k;
+	int rf24id;
 } static_config = {
 	/* default values */
 	{ node[0], node[1], node[2], node[3] }, 0, version,
-	CONFIG_VERSION, TEMP_OFFSET, TEMP_K
+	CONFIG_VERSION,
+	TEMP_OFFSET, TEMP_K, 2
 };
 
 Config config;
@@ -227,12 +233,15 @@ Port ldr (LDR_PORT);
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
-#define DHTTYPE   DHT11   // DHT 11 / DHT 22 (AM2302) / DHT 21 (AM2301)
-DHT dht(DHT_PIN, DHTTYPE);
-#endif // DHT
-
-#if _DHT2
+#if DHT_HIGH
+DHT dht (DHT_PIN, DHT21);
+//DHT dht (DHT_PIN, DHT22);
+// AM2301
+// DHT21, AM2302? AM2301?
+#else
+DHT dht(DHT_PIN, DHT11);
 #endif
+#endif // DHT
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -258,7 +267,11 @@ DHT dht(DHT_PIN, DHTTYPE);
 RF24 radio(CE, CSN);
 
 // Network uses that radio
-RF24Network/*Debug*/ network(radio);
+#if DEBUG
+RF24NetworkDebug network(radio);
+#else
+RF24Network network(radio);
+#endif
 
 // Address of the other node
 const uint16_t rf24_link_node = 0;
@@ -267,11 +280,11 @@ const uint16_t rf24_link_node = 0;
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
-#define DS1307_I2C_ADDRESS 0x68
 #endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
+
 
 #endif // HMC5883L
 
@@ -300,6 +313,7 @@ const uint16_t rf24_link_node = 0;
 
 #if _LCD84x48
 
+
 #endif // LCD84x48
 
 #if _DS
@@ -317,11 +331,12 @@ const uint16_t rf24_link_node = 0;
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-void rf24_init()
+void radio_init()
 {
 	SPI.begin();
 	radio.begin();
-	network.begin(/*channel*/ NRF24_CHANNEL, /*node address*/ this_node);
+	config.rf24id = 3;
+	network.begin( NRF24_CHANNEL, config.rf24id );
 }
 
 void rf24_start()
@@ -346,39 +361,47 @@ void rf24_start()
 
 /* *** /Peripheral hardware routines *** }}} */
 
+
 /* *** UI *** {{{ */
-
-
-
-
 
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
 #if SERIAL
-static void ser_helpCmd(void) {
+
+void help_sercmd(void) {
 	cmdIo.println("n: print Node ID");
-	cmdIo.println("t: internal temperatuer");
+	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
+	cmdIo.println("o: temperature config");
 	cmdIo.println("r: report");
 	cmdIo.println("M: measure");
 	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("x: reset");
 	cmdIo.println("?/h: this help");
 }
 
+// forward declarations
+void doReset(void);
+void doReport(void);
+void doMeasure(void);
 
-void reportCmd () {
+void reset_sercmd() {
+	doReset();
+}
+
+void report_sercmd() {
 	doReport();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-void measureCmd() {
+void measure_sercmd() {
 	doMeasure();
-	idle.set(UI_IDLE);
+	idle.set(UI_SCHED_IDLE);
 }
 
-static void configCmd() {
+void config_sercmd() {
 	cmdIo.print("c ");
 	cmdIo.print(config.node);
 	cmdIo.print(" ");
@@ -390,7 +413,7 @@ static void configCmd() {
 	cmdIo.println();
 }
 
-void ser_tempConfig(void) {
+void ctempconfig_sercmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
@@ -399,7 +422,7 @@ void ser_tempConfig(void) {
 	Serial.println(internalTemp());
 }
 
-void ser_tempOffset(void) {
+void ctempoffset_sercmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -412,9 +435,9 @@ void ser_tempOffset(void) {
 	writeConfig(config);
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void ctemp_sercmd(void) {
+	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	Serial.println( t );
 }
 
 static void eraseEEPROM() {
@@ -434,16 +457,13 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
 void initConfig(void)
 {
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
-	if (config.temp_k == 0) {
-		config.temp_k = 1.0;
-	}
 }
 
 void doConfig(void)
@@ -458,8 +478,13 @@ void doConfig(void)
 void initLibs()
 {
 #if _NRF24
-	rf24_init();
+	radio_init();
+	rf24_start();
 #endif // NRF24
+
+#if SERIAL && DEBUG
+	printf_begin();
+#endif
 }
 
 
@@ -481,16 +506,14 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-/* see CarrierCase */
 #if SERIAL && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-
-	cmdIo.println(node_id);
 #endif // SERIAL && DEBUG
+	cmdIo.println(node_id);
 #if LDR_PORT
 	Serial.print("light:8 ");
 #endif
@@ -503,12 +526,12 @@ bool doAnnounce(void)
 #endif
 	Serial.print(F("ctemp:10 "));
 #if _MEM
+#if SERIAL
 	Serial.print(F("memfree:16 "));
 #endif
 #if _RFM12LOBAT
 	Serial.print(F("lobat:1 "));
 #endif //_RFM12LOBAT
-	Serial.println("");
 	return false;
 }
 
@@ -545,10 +568,11 @@ void doMeasure(void)
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
-		payload.rhum = smoothedAverage(payload.rhum, h, firstTime);
+		int rh = h * 10;
+		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
 #if SERIAL && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
-		Serial.print((int)h);
+		Serial.print(rh);
 		Serial.print(' ');
 		Serial.println(payload.rhum);
 #endif
@@ -581,14 +605,6 @@ void doMeasure(void)
 #endif
 #endif // LDR_PORT
 
-#if SHT11_PORT
-#endif //SHT11_PORT
-#if PIR_PORT
-#endif
-#if _DS
-#endif //_DS
-#if _HMC5883L
-#endif //_HMC5883L
 #if _MEM
 	payload.memfree = freeRam();
 #if SERIAL && DEBUG_MEASURE
@@ -600,8 +616,10 @@ void doMeasure(void)
 
 
 // periodic report, i.e. send out a packet and optionally report on serial port
-void doReport(void)
+bool doReport(void)
 {
+	bool ok;
+
 #if _RFM12B
 	serialFlush();
 	rf12_sleep(RF12_WAKEUP);
@@ -612,12 +630,8 @@ void doReport(void)
 #if _NRF24
 	//rf24_run();
 	RF24NetworkHeader header(/*to node*/ rf24_link_node);
-	bool ok = network.write(header, &payload, sizeof(payload));
-	if (ok)
-		debugline("ACK");
-	else
-		debugline("NACK");
-#endif // NRF24
+	ok = network.write(header, &payload, sizeof(payload));
+#endif //_NRF24
 
 #if SERIAL
 	/* Report over serial, same fields and order as announced */
@@ -653,6 +667,7 @@ void doReport(void)
 
 	Serial.println();
 #endif //SERIAL
+  return ok;
 }
 
 
@@ -663,7 +678,9 @@ void runScheduler(char task)
 		case ANNOUNCE:
 				doAnnounce();
 				scheduler.timer(MEASURE, 0); //schedule next step
+#if SERIAL
 			serialFlush();
+#endif
 			break;
 
 		case MEASURE:
@@ -715,14 +732,16 @@ void runScheduler(char task)
 #if SERIAL
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'M', 0, measureCmd },
+	{ '?', 0, help_sercmd },
+	{ 'h', 0, help_sercmd },
+	{ 'c', 0, config_sercmd},
+	{ 'o', 0, ctempconfig_sercmd },
+	{ 'T', 1, ctempoffset_sercmd },
+	{ 't', 0, ctemp_sercmd },
+	{ 'r', 0, reset_sercmd },
+	{ 'x', 0, report_sercmd },
+	{ 'M', 0, measure_sercmd },
 	{ 'E', 0, eraseEEPROM },
-	{ 'x', 0, doReset },
 	{ 0 }
 };
 
@@ -739,7 +758,6 @@ void setup(void)
 #if SERIAL
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
-	//virtSerial.begin(4800);
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
@@ -757,10 +775,16 @@ void loop(void)
 #ifdef _DBG_LED
 	blink(_DBG_LED, 1, 25);
 #endif
+#if _NRF24
+	// Pump the network regularly
+	network.update();
+#endif
 	debug_ticks();
+	serialFlush();
 
 	if (cmdIo.available()) {
 		parser.poll();
+		return;
 	}
 
 	char task = scheduler.poll();
@@ -768,7 +792,6 @@ void loop(void)
 		runScheduler(task);
 	}
 
-	return; // no sleep
 		serialFlush();
 		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {

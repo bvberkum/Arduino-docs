@@ -7,6 +7,8 @@ MK                  += $(MK_$d)
 ARDUINODIR := $(shell realpath ./arduinodir/)
 $(info $(shell $(call log,header2,ARDUINODIR,$(ARDUINODIR))))
 
+#      ------------ --
+
 arduinodir-libraries-relink::
 	for f in libraries/*; do \
 		F=$$(basename $$f); \
@@ -69,15 +71,15 @@ screen:
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 #endif
 
-OLD ?= 1
+
+
+OLD ?= 0
 
 ifeq ($(OLD),1)
-include Rules.old.mk
+include Rules.arduino.mk
 else
 include Rules.new.mk
 endif
-
-include Rules.simple-m8.mk
 
 
 ./Misc/Soarer_Converter/docs:
