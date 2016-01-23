@@ -10,7 +10,9 @@ ARDUINO_SKETCHBOOK := ~/project/arduino-docs
 #AVR_TOOLS_DIR = /usr
 #MONITOR_PORT  = /dev/ttyACM0
 
-ALTERNATE_CORE := $(AC)
+ifneq ($(C),arduino)
+ALTERNATE_CORE := $(C)
+endif
 BOARD_TAG := $(BRD)
 
 INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
@@ -71,13 +73,13 @@ boards:
 	@touch arduino-docs.ino
 	@$(arduino-mk) show_boards
 	@echo "Var aliases:"
-	@echo "  AC -> ALTERNATE_CORE"
+	@echo "  C -> arduino|ALTERNATE_CORE"
 	@echo "  BRD -> BOARD_TAG"
 	@touch arduino-docs.ino
 
 build::
 	@$(ll) header1 PREFIX "$(INO_PREF)"
-	@$(ll) header1 CORE "$(AC)"
+	@$(ll) header1 CORE "$(C)"
 	@$(ll) header1 BOARD "$(BRD)"
 	@$(ll) header1 DEFINES "$(DEFINES)"
 	@cd $(INO_PREF); $(arduino-mk-run) ; $(arduino-mk-run) upload
