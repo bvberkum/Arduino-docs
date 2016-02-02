@@ -25,6 +25,7 @@ arduino-*
 Misc/usbasp
 .htdignore
 
+*.cuthd
 
 # TODO: cleanup
 
@@ -40,4 +41,6 @@ libraries/LiquidCrystal_old/
 libraries/LiquidCrystal_v1.2.0.zip
 libraries/hashmap/
 libraries/keypad.zip
+
+build-*
 

@@ -38,7 +38,7 @@
 	path = libraries/Adafruit_GFX
 	url = git@github.com:adafruit/Adafruit-GFX-Library.git
 [submodule "libraries/TinyGPS++"]
-	path = libraries/TinyGPS++
+	path = libraries/TinyGPSpp
 	url = git@github.com:mikalhart/TinyGPSPlus.git
 [submodule "Misc/HID-Serial"]
 	path = Misc/HID-Serial
@@ -61,3 +61,12 @@
 [submodule "libraries/Tictocs"]
 	path = libraries/Tictocs
 	url = https://github.com/maniacbug/Tictocs
+[submodule "libraries/Adafruit_BMP085_U"]
+	path = libraries/Adafruit_BMP085_U
+	url = https://github.com/adafruit/Adafruit_BMP085_Unified.git
+[submodule "libraries/Adafruit_Sensor"]
+	path = libraries/Adafruit_Sensor
+	url = https://github.com/adafruit/Adafruit_Sensor.git
+[submodule "libraries/AM2321"]
+	path = libraries/AM2321
+	url = https://github.com/wangdong/AM2321.git

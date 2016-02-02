@@ -1,0 +1,15 @@
+
+nanodccduino.name=NANO DCCduino
+
+nanodccduino.build.mcu=atmega328p
+nanodccduino.build.f_cpu=16000000L
+nanodccduino.build.core=arduino
+nanodccduino.build.variant=eightanaloginputs
+nanodccduino.build.board=AVR_MPE_DUINO
+
+nanodccduino.upload.tool=avrdude
+nanodccduino.upload.protocol=arduino
+nanodccduino.upload.maximum_size=30720
+nanodccduino.upload.maximum_data_size=2048
+nanodccduino.upload.speed=57600
+

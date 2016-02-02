@@ -4,7 +4,14 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
-ARDUINODIR := $(shell realpath ./arduinodir/)
+ARDUINOAPPDIR := $(shell realpath ./arduinodir/)
+ifeq ($(shell test -e $(ARDUINODIR)/Contents/Resources && echo 1),1)
+ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Resources/Java
+else
+ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Java
+endif
+
+
 $(info $(shell $(call log,header2,ARDUINODIR,$(ARDUINODIR))))
 
 #      ------------ --
@@ -28,7 +35,7 @@ arduinodir-libraries-relink::
 	done
 
 # add devices here, wildcard checks with FS for available devices
-PORTS := $(wildcard /dev/tty.usbserial-* /dev/ttyUSB*)
+PORTS := $(wildcard /dev/tty.usbserial-* /dev/ttyUSB* /dev/tty.wchusbserial*)
 # get list of actually connected devices, select one
 port ?= 1
 PORT := $(word $(port),$(PORTS))

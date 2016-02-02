@@ -88,6 +88,13 @@ download: I :=
 download: X := -D
 download: _download
 
+
+_read_fuses:
+	$(avrdude) \
+		-p $(C) \
+		$(call key,METHODS,$(M)) \
+		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h
+
 _download:
 	@\
 	$(ll) attention $@ "Starting flash/eeprom download using $(M).." $(I);\

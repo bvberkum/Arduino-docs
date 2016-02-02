@@ -5,3 +5,4 @@ tinyrf24      Mpe/TinyRF24           digistump  digispark-tiny
 sensornode    Prototype/SensorNode   arduino    fio
 #sensornode    Prototype/SensorNode   arduino    mini
 #sensornode    Prototype/SensorNode   arduino    8MHzatmega328
+weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
