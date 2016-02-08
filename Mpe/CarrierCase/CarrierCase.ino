@@ -81,7 +81,6 @@ ToDo
 #define _DHT            0
 #define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
 #define _DS             0
-#define DS_PIN          A5
 #define DEBUG_DS        1
 //#define FIND_DS    1
 #define DHT_PIN         0   // DIO for DHTxx
@@ -117,6 +116,8 @@ ToDo
 #include <avr/sleep.h>
 #include <util/atomic.h>
 
+#include <Wire.h>
+#include <OneWire.h>
 #include <EEPROM.h>
 // include EEPROMEx.h
 // Adafruit DHT
@@ -125,11 +126,10 @@ ToDo
 #include <RF24.h>
 #include <RF24Network.h>
 #include <DHT.h>
-#include <Wire.h>
-#include <OneWire.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include <EmBencode.h>
+//#include "printf.h"
 
 
 
@@ -150,12 +150,21 @@ String node_id = "cc-1";
 //              MOSI     11
 //              MISO     12
 //              SCK 13
+#define DS_PIN          A5
 
 
 MpeSerial mpeser (57600);
 
-MilliTimer idle, stdby;
+//MilliTimer idle, stdby;
 
+/* *** InputParser *** {{{ */
+
+Stream& cmdIo = Serial;
+extern InputParser::Commands cmdTab[];
+InputParser parser (50, cmdTab);
+
+
+/* *** /InputParser }}} *** */
 
 /* *** Report variables *** {{{ */
 
@@ -165,7 +174,7 @@ enum { ANNOUNCE_MSG, REPORT_MSG };
 static byte reportCount;    // count up until next report, i.e. packet send
 static byte rf12_id;       // node ID used for this unit
 
-// This defines the structure of the packets which get sent out by wireless:
+/* Data reported by this sketch */
 struct {
 	int msgtype     :8; // XXX: incorporated, but not the right place..
 #if LDR_PORT
@@ -193,7 +202,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -312,9 +321,7 @@ ISR(PCINT2_vect) { pir.poll(); }
 /* *** /PIR support }}} *** */
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHTxx: Digital temperature/humidity (Adafruit) */
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 
 #define DHTTYPE DHT11   // DHT 11
@@ -323,20 +330,16 @@ ISR(PCINT2_vect) { pir.poll(); }
 DHT dht (DHT_PIN, DHTTYPE); // DHT lib
 #endif // DHT
 
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
-
-
-#endif //_RFM12B
+#if _AM2321
+#endif
 
 #if _LCD84x48
 /* Nokkia 5110 display */
-
-
 #endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
 OneWire ds(DS_PIN);
 
 uint8_t ds_count = 0;
@@ -348,6 +351,12 @@ enum { DS_OK, DS_ERR_CRC };
 
 #endif // DS
 
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif //_RFM12B
+
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
 
@@ -355,6 +364,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // NRF24
 
 #if _RTC
+/* DS1307: Real Time Clock over I2C */
 #endif //_RTC
 
 #if _HMC5883L
@@ -440,33 +450,15 @@ void freeEmbencBuff() {
 /* *** /PIR support *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
 
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio routines */
-
-// wait a few milliseconds for proper ACK to me, return true if indeed received
-static bool waitForAck() {
-    MilliTimer ackTimer;
-    while (!ackTimer.poll(ACK_TIME)) {
-        if (rf12_recvDone() && rf12_crc == 0 &&
-                // see http://talk.jeelabs.net/topic/811#post-4712
-                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
-            return 1;
-        set_sleep_mode(SLEEP_MODE_SCHED_IDLE);
-        sleep_mode();
-    }
-    return 0;
-}
-
-
-#endif // RFM12B
+#if _LCD
+#endif //_LCD
 
 #if _LCD84x48
+
 
 #endif // LCD84x48
 
@@ -649,7 +641,28 @@ static void findDS18B20s(void) {
 	writeDSAddr(addr);
 }
 
+
 #endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+// wait a few milliseconds for proper ACK to me, return true if indeed received
+static bool waitForAck() {
+    MilliTimer ackTimer;
+    while (!ackTimer.poll(ACK_TIME)) {
+        if (rf12_recvDone() && rf12_crc == 0 &&
+                // see http://talk.jeelabs.net/topic/811#post-4712
+                rf12_hdr == (RF12_HDR_DST | RF12_HDR_CTL | rf12_id))
+            return 1;
+        set_sleep_mode(SLEEP_MODE_SCHED_IDLE);
+        sleep_mode();
+    }
+    return 0;
+}
+
+
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -695,7 +708,7 @@ static void sendSomeData () {
 #endif // NRF24 funcs
 
 #if _RTC
-#endif // RTC
+#endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -749,16 +762,98 @@ int HMC5803L_Read(byte Axis)
 
 
 
-
-
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
-/* UART commands }}} */
+#if SERIAL
 
-/* *** Wire *** {{{ */
-/* *** Wire }}} *** */
+void ser_helpCmd(void) {
+	cmdIo.println("n: print Node ID");
+	cmdIo.println("t: internal temperature");
+	cmdIo.println("T: set offset");
+	cmdIo.println("o: temperature config");
+	cmdIo.println("r: report");
+	cmdIo.println("M: measure");
+	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("x: reset");
+	cmdIo.println("?/h: this help");
+}
+
+// forward declarations
+void doReset(void);
+void doReport(void);
+void doMeasure(void);
+
+void reset_sercmd() {
+	doReset();
+}
+
+void report_sercmd() {
+	doReport();
+}
+
+void measure_sercmd() {
+	doMeasure();
+}
+
+void ser_configCmd() {
+	cmdIo.print("c ");
+	cmdIo.print(config.node);
+	cmdIo.print(" ");
+	cmdIo.print(config.node_id);
+	cmdIo.print(" ");
+	cmdIo.print(config.version);
+	cmdIo.print(" ");
+	cmdIo.print(config.config_id);
+	cmdIo.println();
+}
+
+void ser_tempConfig(void) {
+	Serial.print("Offset: ");
+	Serial.println(config.temp_offset);
+	Serial.print("K: ");
+	Serial.println(config.temp_k);
+	Serial.print("Raw: ");
+	Serial.println(internalTemp());
+}
+
+void ser_tempOffset(void) {
+	char c;
+	parser >> c;
+	int v = c;
+	if( v > 127 ) {
+		v -= 256;
+	}
+	config.temp_offset = v;
+	Serial.print("New offset: ");
+	Serial.println(config.temp_offset);
+	writeConfig(config);
+}
+
+void ser_temp(void) {
+	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	Serial.println( t );
+}
+
+static void eraseEEPROM() {
+	cmdIo.print("! Erasing EEPROM..");
+	for (int i = 0; i<EEPROM_SIZE; i++) {
+		char b = EEPROM.read(i);
+		if (b != 0x00) {
+			EEPROM.write(i, 0);
+			cmdIo.print('.');
+		}
+	}
+	cmdIo.println(' ');
+	cmdIo.print("E ");
+	cmdIo.println(EEPROM_SIZE);
+}
+
+#endif
+
+
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -831,6 +926,17 @@ void doConfig(void)
 
 void initLibs()
 {
+#if _RTC
+#endif //_RTC
+
+#if _DHT
+#endif //_DHT
+
+#if _AM2321
+#endif //_AM2321
+
+#if _BMP085
+#endif // _BMP085
 
 #if _HMC5883L
 	/* Initialise the Wire library */
@@ -846,13 +952,13 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
-	//doConfig();
+	doConfig();
 
 #ifdef _DBG_LED2
 	pinMode(_DBG_LED2, OUTPUT);
@@ -862,17 +968,14 @@ void doReset(void)
 #ifdef _DBG_LED
 	pinMode(_DBG_LED, OUTPUT);
 #endif
-
 	tick = 0;
-
 	reportCount = REPORT_EVERY;     // report right away for easy debugging
-	//scheduler.timer(ANNOUNCE, 0);
 	scheduler.timer(MEASURE, 0);    // start the measurement loop going
 }
 
 /* After init, before going to regular scheduling first confer config with
  * central node */
-bool doAnnounce()
+bool doAnnounce(void)
 {
 #if SERIAL
 
@@ -922,7 +1025,7 @@ bool doAnnounce()
 	payload_spec.push(1);
 	payload_spec.endList();
 #if SERIAL
-	Serial.print("moved ");
+	Serial.print("moved:1 ");
 #endif
 #endif
 #if _DHT
@@ -1014,8 +1117,9 @@ bool doAnnounce()
 #endif
 }
 
+
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -1028,17 +1132,20 @@ void doMeasure()
 	Serial.print(' ');
 	Serial.println(payload.ctemp);
 #endif
+
 #if SHT11_PORT
 #endif //SHT11_PORT
+
+#if _AM2321
+#endif //_AM2321
+
+#if _BMP085
+
+#endif //_BMP085
+
 #if PIR_PORT
 	payload.moved = pir.state();
 #endif
-#if LDR_PORT
-	//ldr.digiWrite2(1);  // enable AIO pull-up
-	byte light = ~ ldr.anaRead() >> 2;
-	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
-	payload.light = smoothedAverage(payload.light, light, firstTime);
-#endif // LDR
 #if _DHT
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
@@ -1069,6 +1176,14 @@ void doMeasure()
 #endif
 	}
 #endif //_DHT
+
+#if LDR_PORT
+	//ldr.digiWrite2(1);  // enable AIO pull-up
+	byte light = ~ ldr.anaRead() >> 2;
+	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	payload.light = smoothedAverage(payload.light, light, firstTime);
+#endif //LDR_PORT
+
 #if _DS
 	uint8_t addr[8];
 	for ( int i = 0; i < ds_count; i++) {
@@ -1076,11 +1191,13 @@ void doMeasure()
 		ds_value[i] = readDS18B20(addr);
 	}
 #endif //_DS
+
 #if _HMC5883L
 	payload.magnx = smoothedAverage(payload.magnx, HMC5803L_Read(X), firstTime);
 	payload.magny = smoothedAverage(payload.magny, HMC5803L_Read(Y), firstTime);
 	payload.magnz = smoothedAverage(payload.magnz, HMC5803L_Read(Z), firstTime);
 #endif //_HMC5883L
+
 #if _MEM
 	payload.memfree = freeRam();
 #if SERIAL && DEBUG_MEASURE
@@ -1088,6 +1205,7 @@ void doMeasure()
 	Serial.println(payload.memfree);
 #endif
 #endif //_MEM
+
 #if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
 #if SERIAL && DEBUG_MEASURE
@@ -1108,7 +1226,7 @@ void doReport(void)
 	rf12_sendNow(0, &payload, sizeof payload);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	rf12_sleep(RF12_SLEEP);
-#endif
+#endif //_RFM12B
 
 #if SERIAL
 	/* Report over serial, same fields and order as announced */
@@ -1129,6 +1247,10 @@ void doReport(void)
 	Serial.print(' ');
 #endif
 	Serial.print((int) payload.ctemp);
+#if _AM2321
+#endif //_AM2321
+#if _BMP085
+#endif //_BMP085
 	Serial.print(' ');
 #if _DS
 	for (int i=0;i<ds_count;i++) {
@@ -1225,7 +1347,6 @@ void runScheduler(char task)
 			break;
 
 		case MEASURE:
-			debugline("MEASURE");
 			// reschedule these measurements periodically
 			scheduler.timer(MEASURE, MEASURE_PERIOD);
 			doMeasure();
@@ -1244,7 +1365,6 @@ void runScheduler(char task)
 			break;
 
 		case REPORT:
-			debugline("REPORT");
 			payload.msgtype = REPORT_MSG;
 			doReport();
 			serialFlush();
@@ -1271,6 +1391,28 @@ void runScheduler(char task)
 
 /* *** /Run-time handlers *** }}} */
 
+/* *** InputParser handlers *** {{{ */
+
+#if SERIAL
+
+InputParser::Commands cmdTab[] = {
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
+	{ 'c', 0, ser_configCmd},
+	{ 'o', 0, ser_tempConfig },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
+	{ 'r', 0, reset_sercmd },
+	{ 'x', 0, report_sercmd },
+	{ 'M', 0, measure_sercmd },
+	{ 'E', 0, eraseEEPROM },
+	{ 0 }
+};
+
+#endif // SERIAL
+
+
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
 
@@ -1293,7 +1435,6 @@ void setup(void)
 #endif
 
 	//writeConfig();
-	//doConfig();
 	//return;
 
 	// Reported on serial?
@@ -1325,7 +1466,6 @@ void setup(void)
 //#if DEBUG
 //		Serial.println("");
 //#endif
-		doConfig();
 //	}
 	Serial.println();
 	serialFlush();
@@ -1364,10 +1504,23 @@ void loop(void)
 	}
 #endif
 
+	if (cmdIo.available()) {
+		parser.poll();
+		return;
+	}
+
 	char task = scheduler.poll();
 	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
+		return;
 	}
+
+		/* Sleep */
+		serialFlush();
+		task = scheduler.pollWaiting();
+		if (-1 < task && task < SCHED_IDLE) {
+			runScheduler(task);
+		}
 
 }
 

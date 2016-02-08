@@ -70,11 +70,11 @@
 // You can allways change these during runtime and save to eeprom
 // After loading firmware, issue a 'reset' command to load the defaults.
 
-#define DEFAULT_NAME        "newdevice"         // Enter your device friendly name
-#define DEFAULT_SSID        "ssid"              // Enter your network SSID
-#define DEFAULT_KEY         "wpakey"            // Enter your network WPA key
-#define DEFAULT_SERVER      "192.168.0.8"       // Enter your Domoticz Server IP address
-#define DEFAULT_PORT        8080                // Enter your Domoticz Server port value
+#define DEFAULT_NAME        "W3-0601"         // Enter your device friendly name
+#define DEFAULT_SSID        "Wirez"              // Enter your network SSID
+#define DEFAULT_KEY         "9n753bskrudn210dg127fdlr"            // Enter your network WPA key
+#define DEFAULT_SERVER      "192.168.99.100"       // Enter your Domoticz Server IP address
+#define DEFAULT_PORT        8084                // Enter your Domoticz Server port value
 #define DEFAULT_DELAY       60                  // Enter your Send delay in seconds
 #define DEFAULT_AP_KEY      "configesp"         // Enter network WPA key for AP (config) mode
 #define DEFAULT_PROTOCOL    1                   // Protocol used for controller communications
@@ -85,7 +85,7 @@
 //   5 = OpenHAB MQTT
 //   6 = PiDome MQTT
 //   7 = EmonCMS
-#define UNIT                0
+#define UNIT                3
 
 // ********************************************************************************
 //   DO NOT CHANGE ANYTHING BELOW THIS LINE

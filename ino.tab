@@ -1,4 +1,7 @@
 #ID           PREFIX                 CORE       BOARD          DEFINES
+jn1-1112
+jn2-1306
+jn3-1306
 blink-t85-20  Prototype/Blink        attiny     attiny85-20    BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
 tinyrf24-20   Mpe/TinyRF24           attiny     attiny85-20
 tinyrf24      Mpe/TinyRF24           digistump  digispark-tiny 
@@ -6,3 +9,5 @@ sensornode    Prototype/SensorNode   arduino    fio
 #sensornode    Prototype/SensorNode   arduino    mini
 #sensornode    Prototype/SensorNode   arduino    8MHzatmega328
 weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
+#tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
+tinyclock     Prototype/ClockTemp    digistump  tiny

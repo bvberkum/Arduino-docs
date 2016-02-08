@@ -96,7 +96,6 @@ InputParser parser (50, cmdTab);
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
-/* Data reported by this sketch */
 struct {
 #if LDR_PORT
 	byte light      :8;     // light sensor: 0..255
@@ -198,6 +197,11 @@ bool loadConfig(Config &c)
 
 void writeConfig(Config &c)
 {
+#if SERIAL && DEBUG
+	Serial.print("Writing ");
+	Serial.print(sizeof(c));
+	Serial.println(" bytes to EEPROM");
+#endif
 	for (unsigned int t=0; t<sizeof(c); t++) {
 
 		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
@@ -258,7 +262,7 @@ DHT dht(DHT_PIN, DHT11);
 /* HopeRF RFM12B 868Mhz digital radio */
 
 
-#endif // RFM12B
+#endif //_RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -280,11 +284,10 @@ const uint16_t rf24_link_node = 0;
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
-#endif // RTC
+#endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
 
 #endif // HMC5883L
 
@@ -299,9 +302,8 @@ const uint16_t rf24_link_node = 0;
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif // PIR_PORT
+#endif //PIR_PORT
 /* *** /PIR support *** }}} */
-
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -320,7 +322,7 @@ const uint16_t rf24_link_node = 0;
 /* Dallas DS18B20 thermometer routines */
 
 
-#endif // DS
+#endif //_DS
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
@@ -350,7 +352,7 @@ void rf24_start()
 #endif // NRF24 funcs
 
 #if _RTC
-#endif // RTC
+#endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -360,7 +362,6 @@ void rf24_start()
 
 
 /* *** /Peripheral hardware routines *** }}} */
-
 
 /* *** UI *** {{{ */
 
@@ -375,20 +376,26 @@ void help_sercmd(void) {
 	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
 	cmdIo.println("o: temperature config");
-	cmdIo.println("r: report");
+	cmdIo.println("a: announce");
+	cmdIo.println("x: report");
 	cmdIo.println("M: measure");
 	cmdIo.println("E: erase EEPROM!");
-	cmdIo.println("x: reset");
+	cmdIo.println("r: reset");
 	cmdIo.println("?/h: this help");
 }
 
 // forward declarations
 void doReset(void);
+bool doAnnounce(void);
 void doReport(void);
 void doMeasure(void);
 
 void reset_sercmd() {
 	doReset();
+}
+
+void announce_sercmd() {
+	doAnnounce();
 }
 
 void report_sercmd() {
@@ -436,7 +443,9 @@ void ctempoffset_sercmd(void) {
 }
 
 void ctemp_sercmd(void) {
-	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	double tr = internalTemp();
+	Serial.println(tr);
+	double t = ( tr + config.temp_offset ) * config.temp_k ;
 	Serial.println( t );
 }
 
@@ -464,6 +473,8 @@ static void eraseEEPROM() {
 void initConfig(void)
 {
 	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	if (config.temp_k == 0)
+		config.temp_k = 1;
 }
 
 void doConfig(void)
@@ -506,14 +517,16 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-#if SERIAL && DEBUG
+#if SERIAL
+#if DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
-	cmdIo.println(node_id);
+#endif // DEBUG
+	cmdIo.print(node_id);
+	cmdIo.print(' ');
 #if LDR_PORT
 	Serial.print("light:8 ");
 #endif
@@ -526,12 +539,13 @@ bool doAnnounce(void)
 #endif
 	Serial.print(F("ctemp:10 "));
 #if _MEM
-#if SERIAL
 	Serial.print(F("memfree:16 "));
 #endif
 #if _RFM12LOBAT
 	Serial.print(F("lobat:1 "));
 #endif //_RFM12LOBAT
+	Serial.println();
+#endif //if SERIAL
 	return false;
 }
 
@@ -544,7 +558,8 @@ void doMeasure(void)
 	int ctemp = ( internalTemp() + config.temp_offset ) * config.temp_k ;
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL && DEBUG_MEASURE
-	Serial.println();
+	Serial.print("Payload size: ");
+	Serial.println(sizeof(payload));
 	Serial.print("AVR T new/avg ");
 	Serial.print(ctemp);
 	Serial.print(' ');
@@ -590,7 +605,7 @@ void doMeasure(void)
 		Serial.println(payload.temp);
 #endif
 	}
-#endif // _DHT
+#endif //_DHT
 
 #if LDR_PORT
 	ldr.digiWrite2(1);  // enable AIO pull-up
@@ -603,7 +618,7 @@ void doMeasure(void)
 	Serial.print(' ');
 	Serial.println(payload.light);
 #endif
-#endif // LDR_PORT
+#endif //LDR_PORT
 
 #if _MEM
 	payload.memfree = freeRam();
@@ -739,6 +754,7 @@ InputParser::Commands cmdTab[] = {
 	{ 'T', 1, ctempoffset_sercmd },
 	{ 't', 0, ctemp_sercmd },
 	{ 'r', 0, reset_sercmd },
+	{ 'a', 0, announce_sercmd },
 	{ 'x', 0, report_sercmd },
 	{ 'M', 0, measure_sercmd },
 	{ 'E', 0, eraseEEPROM },
@@ -775,12 +791,13 @@ void loop(void)
 #ifdef _DBG_LED
 	blink(_DBG_LED, 1, 25);
 #endif
+
 #if _NRF24
 	// Pump the network regularly
 	network.update();
 #endif
+
 	debug_ticks();
-	serialFlush();
 
 	if (cmdIo.available()) {
 		parser.poll();
@@ -790,9 +807,11 @@ void loop(void)
 	char task = scheduler.poll();
 	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
+		return;
 	}
 
 		serialFlush();
+		/* Sleep */
 		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {
 			runScheduler(task);

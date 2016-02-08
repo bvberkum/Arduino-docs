@@ -1,0 +1,12 @@
+# ID               NODE     TYPE      DEFINES
+rfm12b-1112-jn     jn1-1112 rfm12b    CE= IRQ=
+rfm12b-1306-jn-1   jn2-1306 rfm12b    CE= IRQ=
+rfm12b-1306-jn-2   jn3-1306 rfm12b    CE= IRQ=
+rfm12b-1306-1               rfm12b    CE= IRQ=
+rfm12b-1306-2               rfm12b    CE= IRQ=
+rfm12b-1306-3               rfm12b    CE= IRQ=
+rfm12b-1306-4               rfm12b    CE= IRQ=
+rfm12b-1306-5               rfm12b    CE= IRQ=
+rfm12b-1306-6               rfm12b    CE= IRQ=
+
+nrf

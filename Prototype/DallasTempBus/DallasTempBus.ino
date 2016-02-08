@@ -1,24 +1,26 @@
-/* 
-Dallas OneWire Temperature Bus with autodetect and eeprom config 
-*/
+/*
+Dallas OneWire Temperature Bus with autodetect and eeprom config
+ */
+
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1   // set to 1 to enable serial interface
+#define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
-							
-#define _MEM            1   // Report free memory 
+#define DEBUG_MEASURE   1
+
+#define _MEM            1   // Report free memory
 #define _DHT            0
 #define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
 #define _DS             1
 #define DEBUG_DS        0
 #define _LCD84x48       0
 #define _NRF24          0
-							
+
 #define SMOOTH          5   // smoothing factor used for running averages
-							
+
 #define MAXLENLINE      79
-							
+
 
 #include <EEPROM.h>
 #if defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
@@ -28,9 +30,9 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 #define I2C_SLAVE       0
 #endif
 
+#include <OneWire.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
-#include <OneWire.h>
 
 void receiveEvent(int howMany);
 
@@ -41,6 +43,9 @@ const int version = 0;
 
 
 /* IO pins */
+//              RXD      0
+//              TXD      1
+//              INT0     2
 #if _DS
 static const byte DS_PIN = 8;
 #endif
@@ -56,18 +61,18 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 
 
-/* *** /EEPROM config }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -80,27 +85,24 @@ Port ldr (LDR_PORT);
 
 #if _LCD84x48
 /* Nokkia 5110 display */
-#endif // LCD84x48
+#endif //_LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
 OneWire ds(DS_PIN);
 
-uint8_t ds_count = 0;
-uint8_t ds_search = 0;
+volatile int ds_value[0];
 
-//uint8_t ds_addr[ds_count][8] = {
-//	{ 0x28, 0xCC, 0x9A, 0xF4, 0x03, 0x00, 0x00, 0x6D }, // In Atmega8TempGaurd
-//	{ 0x28, 0x8A, 0x5B, 0xDD, 0x03, 0x00, 0x00, 0xA6 },
-//	{ 0x28, 0x45, 0x94, 0xF4, 0x03, 0x00, 0x00, 0xB3 },
-//	{ 0x28, 0x08, 0x76, 0xF4, 0x03, 0x00, 0x00, 0xD5 },
-//	{ 0x28, 0x82, 0x27, 0xDD, 0x03, 0x00, 0x00, 0x4B },
-//};
 enum { DS_OK, DS_ERR_CRC };
 
-
 #endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio */
+
+
+#endif //_RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -108,37 +110,36 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // NRF24
 
 #if _RTC
-#endif // RTC
+/* DS1307: Real Time Clock over I2C */
+#endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
+
 #endif // HMC5883L
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
+
 
 #if LDR_PORT
 #endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif
+#endif //PIR_PORT
 /* *** /PIR support *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor 
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
 
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio routines */
-
-#endif //_RFM12B
+#if _LCD
+#endif //_LCD
 
 #if _LCD84x48
 
@@ -165,7 +166,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 
 #if SERIAL && DEBUG_DS
 	Serial.print(F("Data="));
-	Serial.print(present,HEX);
+	Serial.print(present, HEX);
 	Serial.print(" ");
 #endif
 	for ( i = 0; i < 9; i++) {           // we need 9 bytes
@@ -188,9 +189,9 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 #endif
 
 	if (crc8 != data[8]) {
-		return DS_ERR_CRC; 
-	} else { 
-		return DS_OK; 
+		return DS_ERR_CRC;
+	} else {
+		return DS_OK;
 	}
 }
 
@@ -213,8 +214,19 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-	int result = ds_readdata(addr, data);	
-	
+#if SERIAL && ( DEBUG || DEBUG_DS )
+	Serial.print("Reading Address=");
+	for (int i=0;i<8;i++) {
+		Serial.print(i);
+		Serial.print(':');
+		Serial.print(addr[i], HEX);
+		Serial.print(' ');
+	}
+	Serial.println();
+#endif
+
+	int result = ds_readdata(addr, data);
+
 	if (result != DS_OK) {
 #if SERIAL
 		Serial.println(F("CRC error in ds_readdata"));
@@ -232,128 +244,123 @@ static int readDS18B20(uint8_t addr[8]) {
 	}
 }
 
-static uint8_t readDSCount() {
-	uint8_t ds_count = EEPROM.read(3);
+static int readDSCount() {
+	int ds_count = EEPROM.read(DS_EEPROM_OFFSET);
 	if (ds_count == 0xFF) return 0;
 	return ds_count;
 }
 
-static void updateDSCount(uint8_t new_count) {
+static void updateDSCount(int new_count) {
+	int ds_count = EEPROM.read(DS_EEPROM_OFFSET);
 	if (new_count != ds_count) {
-		EEPROM.write(3, new_count);
-		ds_count = new_count;
+		EEPROM.write(DS_EEPROM_OFFSET, new_count);
 	}
 }
 
-static void writeDSAddr(uint8_t addr[8]) {
-	int l = 4 + ( ( ds_search-1 ) * 8 );
+static void writeDSAddr(int a, byte addr[8]) {
+	int l = DS_EEPROM_OFFSET + 1 + ( a * 8 );
 	for (int i=0;i<8;i++) {
 		EEPROM.write(l+i, addr[i]);
 	}
 }
 
-static void readDSAddr(int a, uint8_t addr[8]) {
-	int l = 4 + ( a * 8 );
+static void readDSAddr(int a, byte addr[8]) {
+	int l = DS_EEPROM_OFFSET + 1 + ( a * 8 );
 	for (int i=0;i<8;i++) {
 		addr[i] = EEPROM.read(l+i);
 	}
 }
 
-// TODO see CarrierCase for more up to date code
-static void printDS18B20s(void) {
+static void printDSAddrs(int ds_count) {
+#if SERIAL && DEBUG_DS
+	Serial.print("Reading ");
+	Serial.print(ds_count);
+	Serial.println(" DS18B20 sensors");
+	for (int q=0; q<ds_count;q++) {
+		Serial.print("Mem Address=");
+		int l = DS_EEPROM_OFFSET + 1 + ( q * 8 );
+		int r[8];
+		for (int i=0;i<8;i++) {
+			r[i] = EEPROM.read(l+i);
+			Serial.print(i);
+			Serial.print(':');
+			Serial.print(r[i], HEX);
+			Serial.print(' ');
+		}
+		Serial.println();
+	}
+#endif
+}
+
+static int findDS18B20s(int &ds_search) {
 	byte i;
-	byte data[8];
 	byte addr[8];
-	int SignBit;
 
 	if (!ds.search(addr)) {
+		ds.reset_search();
 #if SERIAL && DEBUG_DS
 		Serial.println("No more addresses.");
+		Serial.print("Found ");
+		Serial.print(ds_search);
+		Serial.println(" addresses.");
+		Serial.print("Previous search found ");
+		Serial.print(readDSCount());
+		Serial.println(" addresses.");
 #endif
-		ds.reset_search();
-		return;
+		return 0;
 	}
 
-#if SERIAL && DEBUG
-	Serial.print("Address: ");
+	if ( OneWire::crc8( addr, 7 ) != addr[7]) {
+#if SERIAL
+		Serial.println("CRC is not valid!");
+#endif
+		return 2;
+	}
+
+#if SERIAL && ( DEBUG || DEBUG_DS )
+	Serial.print("New Address=");
 	for( i = 0; i < 8; i++) {
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(addr[i], HEX);
 		Serial.print(" ");
 	}
-	Serial.println("");
+	Serial.println();
 #endif
 
-	if ( OneWire::crc8( addr, 7) != addr[7]) {
-#if SERIAL && DEBUG_DS
-		Serial.println("CRC for address is not valid!");
-#endif
-		return;
-	}
+	ds_search++;
+	Serial.println(ds_search);
 
-#if SERIAL && DEBUG_DS
-	if ( addr[0] == 0x10) {
-		Serial.println("Device is a DS18S20 family device.");
-	}
-	else if ( addr[0] == 0x28) {
-		Serial.println("Device is a DS18B20 family device.");
-	}
-	else {
-		Serial.print("Device family is not recognized: 0x");
-		Serial.println(addr[0],HEX);
-		return;
-	}
-#endif
+	writeDSAddr(( ds_search-1 ), addr);
 
-	int result = ds_readdata(addr, data);	
-	
-	if (result != 0) {
-#if SERIAL && DEBUG_DS
-		Serial.println("CRC error in ds_readdata");
-#endif
-		return;
-	}
-
-	int Tc_100 = ds_conv_temp_c(data, SignBit);
-
-	int Whole, Fract;
-	Whole = Tc_100 / 100;  // separate off the whole and fractional portions
-	Fract = Tc_100 % 100;
-
-	// XXX: add value to payload
-#if SERIAL && DEBUG_DS
-	Serial.print("Temp: ");
-	if (SignBit) // If its negative
-	{
-		Serial.print("-");
-	}
-	Serial.print(Whole);
-	Serial.print(".");
-	if (Fract < 10)
-	{
-		Serial.print("0");
-	}
-	Serial.print(Fract);
-
-	Serial.println("");
-
-	serialFlush();
-#endif
+	return 1;
 }
 
 
-#endif // DS
+#endif //_DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif //_RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-void rf24_init()
+void radio_init()
 {
+	SPI.begin();
+	radio.begin();
+	config.rf24id = 3;
+	network.begin( NRF24_CHANNEL, config.rf24id );
 }
 
-void rf24_run()
+void rf24_start()
 {
+#if DEBUG
+	radio.printDetails();
+#endif
 }
 
 
@@ -369,12 +376,16 @@ void rf24_run()
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
 
-/* *** /UI }}} *** */
+/* *** /UI *** }}} */
 
+/* *** UART commands *** {{{ */
+
+
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -391,7 +402,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -399,29 +410,38 @@ void doReset(void)
 {
 	doConfig();
 
+#if _DS
+	int ds_search = 0;
+	while (findDS18B20s(ds_search) == 1) ;
+	updateDSCount(ds_search);
+#endif
+
 	tick = 0;
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
 }
 
+
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
 }
+
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
 }
 
+
 void runScheduler(char task)
 {
 }
 
 
-/* *** /Run-time handlers }}} *** */
+/* *** /Run-time handlers *** }}} */
 
 #if I2C_SLAVE
 void receiveEvent(int howMany)
@@ -443,17 +463,10 @@ void setup(void)
 {
 #if SERIAL
 	mpeser.begin();
-	mpeser.startAnnounce(sketch, version);
+	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
 	Serial.print(F("Free RAM: "));
 	Serial.println(freeRam());
-#endif
-#if DS 
-	ds_count = readDSCount();
-	for ( int i = 0; i < ds_count; i++) {
-		Serial.print(" ds-");
-		Serial.print(i+1);
-	}
 #endif
 	serialFlush();
 #endif
@@ -468,13 +481,21 @@ void loop(void)
 #ifdef _DBG_LED
 	blink(_DBG_LED, 1, 15);
 #endif
+
+#if _NRF24
+	// Pump the network regularly
+	network.update();
+#endif
+
 #if _DS
 	bool ds_reset = digitalRead(7);
-	if (ds_search || ds_reset) {
-		//if (ds_reset) {
-		//	Serial.println("Reset triggered");
-		//}
-		printDS18B20s();
+	if (ds_reset) {
+		if (ds_reset) {
+			Serial.println("Reset triggered");
+		}
+		int ds_search = 0;
+		while (findDS18B20s(ds_search) == 1) ;
+		updateDSCount(ds_search);
 		return;
 	}
 #endif
@@ -488,5 +509,5 @@ void loop(void)
 	//delay(15000);
 }
 
-/* }}} *** */
+/* *** }}} */
 

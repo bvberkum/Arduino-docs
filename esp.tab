@@ -1,6 +1,6 @@
 #ID          TYPE           AP                  STA
-ESP-12-0601  ESP-12E                            5c:cf:7f:0f:6f:70
-W1-0601      ESP-03 512kb   1A-FE-34-9C-02-F7   18-FE-34-9C-02-F7
-W2-0601      ESP-03 512kb   1A-FE-34-9E-E4-67   18-FE-34-9E-E4-67
-W3-0601      ESP-03 512kb   1A-FE-34-9C-02-C0   18-FE-34-9C-02-C0
-W4-0601      ESP-03 512kb   1a:fe:34:9c:03:1b   18:fe:34:9c:03:1b
+ESP-12-1601  ESP-12E                            5c:cf:7f:0f:6f:70
+W1-1601      ESP-03 512kb   1A-FE-34-9C-02-F7   18-FE-34-9C-02-F7
+W2-1601      ESP-03 512kb   1A-FE-34-9E-E4-67   18-FE-34-9E-E4-67
+W3-1601      ESP-03 512kb   1A-FE-34-9C-02-C0   18-FE-34-9C-02-C0
+W4-1601      ESP-03 512kb   1a:fe:34:9c:03:1b   18:fe:34:9c:03:1b

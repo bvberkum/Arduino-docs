@@ -126,6 +126,15 @@ struct {
 #endif
 } payload;
 
+// 2**6  64
+// 2**9  512
+// 2**10 1024
+// 2**11 2048
+// 2**12 4096
+// 2**13 8192
+
+// nRF24L01 max length: 32 bytes? RF24Network header? - iow. 256 bits
+
 
 /* *** /Report variables *** }}} */
 
