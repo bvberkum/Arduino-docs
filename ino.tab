@@ -11,3 +11,7 @@ sensornode    Prototype/SensorNode   arduino    fio
 weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
 #tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
 tinyclock     Prototype/ClockTemp    digistump  tiny
+
+
+#ID           PREFIX                                                           CORE       BOARD          DEFINES
+#i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     

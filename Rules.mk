@@ -4,11 +4,17 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
-ARDUINOAPPDIR := $(shell realpath ./arduinodir/)
-ifeq ($(shell test -e $(ARDUINODIR)/Contents/Resources && echo 1),1)
+#ARDUINOAPPDIR := $(shell realpath ./arduinodir)
+ARDUINOAPPDIR := $(shell cd /Applications/Arduino.app/; pwd -P)
+
+ifneq ($(wildcard $(ARDUINOAPPDIR)/Contents/Resources/Java),)
 ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Resources/Java
 else
+ifneq ($(wildcard $(ARDUINOAPPDIR)/Contents/Java),)
 ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Java
+else
+$(error No ARDUINODIR for $(ARDUINOAPPDIR))
+endif
 endif
 
 
