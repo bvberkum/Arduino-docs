@@ -37,6 +37,7 @@ arduino-mk := make \
 		MAKE="make "\
 			--debug \
 			-f $(INO_MK) \
+			ARDUINO_VERSION=164 \
 			DEVICE_PATH=$(PORT)
 
 ifneq ($(ALTERNATE_CORE),)

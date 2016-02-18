@@ -13,9 +13,9 @@ weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
 tinyclock     Prototype/ClockTemp    digistump  tiny
 
 # V-USB for arduino 005 device: not for tiny8, or m8
-#vusb-t85      Prototype/VUSB         attiny     attiny85
+vusb-t85      Prototype/VUSB         attiny     attiny85
 #vusb-m8       Prototype/VUSB         arduino    atmega8
-vusb-m328     Prototype/VUSB         arduino    uno
+#vusb-m328     Prototype/VUSB         arduino    uno
 
 #ID           PREFIX                                                           CORE       BOARD          DEFINES
 #i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     
