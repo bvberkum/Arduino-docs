@@ -2,7 +2,7 @@
 jn1-1112
 jn2-1306
 jn3-1306
-blink-t85-20  Prototype/Blink        attiny     attiny85-20    BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
+blink-t85     Prototype/Blink        attiny     attiny85       BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
 tinyrf24-20   Mpe/TinyRF24           attiny     attiny85-20
 tinyrf24      Mpe/TinyRF24           digistump  digispark-tiny 
 sensornode    Prototype/SensorNode   arduino    fio
@@ -12,6 +12,7 @@ weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
 #tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
 tinyclock     Prototype/ClockTemp    digistump  tiny
 
+vusb-t85      Prototype/VUSB         attiny     attiny85
 
 #ID           PREFIX                                                           CORE       BOARD          DEFINES
 #i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     

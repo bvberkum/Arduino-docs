@@ -172,7 +172,7 @@ _flash:
 				$(call key,METHODS,$(M)) \
 				-U lock:w:$(UB):m \
 				|| exit 2;\
-		}; \
+		} || echo "No unlock"; \
 		$(ll) attention $@ "Writing new fuses.." && \
 		([ -n "$(EF)" ] && { \
 			$(D) $${sudo}$(avrdude) \
@@ -585,10 +585,10 @@ jeenodeisp-repair: I := firmware/isp_repair2_m328p.hex
 #jeenodeisp-repair: X := -D
 jeenodeisp-repair: upload
 
-blink: C := m328p
+#blink: C ?= m328p
 blink: P := Prototype/Blink
 blink: I := Prototype/Blink/Blink.hex
-blink: jeenode upload
+blink: arduino upload
 
 blinknodelayJeelib: C := m328p
 blinknodelayJeelib: P := Prototype/Blink/BlinkNodelayJeelib
@@ -791,7 +791,7 @@ at85mn: C:=t85
 at85mn: LF:=0xE1
 at85mn: HF:=0xDD
 at85mn: EF:=0xFE
-at85mn: X:=-B1
+at85mn: X:=-B12
 at85mn: I:=firmware/attiny85-micronucleus-bootloader.hex
 at85mn: _flash
 

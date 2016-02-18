@@ -34,13 +34,15 @@ link-hardware-to-ino15:
 
 arduino-mk := make \
 		ARDUINO_SKETCHBOOK=$(ARDUINO_SKETCHBOOK) \
-		MAKE="make -f $(INO_MK)" \
-		-f $(INO_MK) \
-		DEVICE_PATH=$(PORT)
+		MAKE="make "\
+			--debug \
+			-f $(INO_MK) \
+			DEVICE_PATH=$(PORT)
 
 ifneq ($(ALTERNATE_CORE),)
 arduino-mk := $(arduino-mk) \
-		ALTERNATE_CORE=$(ALTERNATE_CORE)
+	ALTERNATE_CORE=$(ALTERNATE_CORE) \
+	ARDUINO_VAR_PATH=/Users/berend/project/arduino-docs/hardware/$(ALTERNATE_CORE)/avr/variants
 endif
 
 ifneq ($(DEFINES),)

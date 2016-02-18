@@ -31,7 +31,7 @@
  */
 
 #ifndef BLINK_PIN
-#define BLINK_PIN 13
+#define BLINK_PIN 1
 #endif
 
 #ifndef BLINK_COUNT
