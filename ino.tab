@@ -12,6 +12,10 @@ weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
 #tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
 tinyclock     Prototype/ClockTemp    digistump  tiny
 
+#rgb           Mpe/WS2801             attiny     attiny85
+rgb           Mpe/WS2812             arduino    atmega328
+mf            Mpe/RC522              arduino    atmega328
+
 # V-USB for arduino 005 device: not for tiny8, or m8
 vusb-t85      Prototype/VUSB         attiny     attiny85
 #vusb-m8       Prototype/VUSB         arduino    atmega8

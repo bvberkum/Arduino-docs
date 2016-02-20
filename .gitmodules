@@ -70,3 +70,15 @@
 [submodule "libraries/AM2321"]
 	path = libraries/AM2321
 	url = https://github.com/wangdong/AM2321.git
+[submodule "libraries/Adafruit_WS2801"]
+	path = libraries/Adafruit_WS2801
+	url = https://github.com/adafruit/Adafruit-WS2801-Library.git
+[submodule "libraries/MFRC522"]
+	path = libraries/MFRC522
+	url = https://github.com/miguelbalboa/rfid.git
+[submodule "Tool/arduino-mk"]
+	path = Tool/arduino-mk
+	url = https://github.com/sudar/Arduino-Makefile.git
+[submodule "libraries/Adafruit_NeoPixel"]
+	path = libraries/Adafruit_NeoPixel
+	url = https://github.com/adafruit/Adafruit_NeoPixel.git

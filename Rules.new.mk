@@ -3,7 +3,7 @@ $(module-header,new,$/Rules.new.mk)
 #      ------------ --
 
 ARDUINO_DIR := /Applications/Arduino.app
-BOARDS_TXT := $(ARDUINO_DIR)/Contents/Java/hardware/arduino/avr/boards.txt
+BOARDS_TXT := $(wildcard $(ARDUINO_DIR)/Contents/Java/hardware/arduino/boards.txt $(ARDUINO_DIR)/Contents/Java/hardware/arduino/avr/boards.txt)
 ARDUINO_SKETCHBOOK := ~/project/arduino-docs
 
 #ARDMK_DIR     = /usr/local
@@ -16,6 +16,7 @@ endif
 BOARD_TAG := $(BRD)
 
 INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
+#INO_MK := $(shell pwd)/Tool/arduino-mk/Arduino.mk
 
 
 
@@ -42,8 +43,11 @@ arduino-mk := make \
 
 ifneq ($(ALTERNATE_CORE),)
 arduino-mk := $(arduino-mk) \
-	ALTERNATE_CORE=$(ALTERNATE_CORE) \
+	ALTERNATE_CORE=$(ALTERNATE_CORE)
+ifneq ($(ALTERNATE_CORE),arduino)
+arduino-mk := $(arduino-mk) \
 	ARDUINO_VAR_PATH=/Users/berend/project/arduino-docs/hardware/$(ALTERNATE_CORE)/avr/variants
+endif
 endif
 
 ifneq ($(DEFINES),)
