@@ -23,3 +23,6 @@ vusb-t85      Prototype/VUSB         attiny     attiny85
 
 #ID           PREFIX                                                           CORE       BOARD          DEFINES
 #i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     
+
+#ID           PREFIX                 CORE       BOARD          DEFINES
+ssd1306       Mpe/SSD1306            arduino    atmega328      SSD1306_128_64=1
