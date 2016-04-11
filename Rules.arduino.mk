@@ -117,7 +117,9 @@ _uctest:
 	$(D) $${sudo}$(avrdude) \
 		-p $(C) \
 		$(call key,METHODS,$(M)) \
-		-U lock:r:-:h -U lfuse:r:-:h -U hfuse:r:-:h \
+		-U lfuse:r:-:h \
+		-U hfuse:r:-:h \
+		-U lock:r:-:h \
 		$(X)
 	@$(ll) OK $@
 
@@ -162,13 +164,14 @@ flash: _flash
 _flash:
 	@\
 	[ "$(M)" = "usbasp" ] && { sudo="sudo "; } || { sudo=; }; \
+	test -n "$(ERASE)" && erase_f=-e || erase_f=-D; \
 	$(ll) attention $@ "Starting flash to $(C) using $(M).." $(I);\
 	X="$(X)";\
 	( [ -n "$(HF)" ] && [ -n "$(LF)" ] || { exit 1; } ) && ( \
 		[ -n "$(UB)" ] && { \
-			$(ll) attention $@ "Unlocking & erasing.." && \
+			$(ll) attention $@ "Unlocking.." && \
 			$(D) $${sudo}$(avrdude) \
-				-p $(C) -e $$X \
+				-p $(C) $$erase_f $$X \
 				$(call key,METHODS,$(M)) \
 				-U lock:w:$(UB):m \
 				|| exit 2;\
@@ -176,7 +179,7 @@ _flash:
 		$(ll) attention $@ "Writing new fuses.." && \
 		([ -n "$(EF)" ] && { \
 			$(D) $${sudo}$(avrdude) \
-				-p $(C) -e $$X \
+				-p $(C) $$erase_f $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
@@ -184,7 +187,7 @@ _flash:
 				&& $(ll) info $@ OK \
 				|| exit 3;\
 		} || { \
-			$(D) $${sudo}$(avrdude) -p $(C) -e $$X \
+			$(D) $${sudo}$(avrdude) -p $(C) $$erase_f $$X \
 				$(call key,METHODS,$(M)) \
 				-U hfuse:w:$(HF):m \
 				-U lfuse:w:$(LF):m \
@@ -206,7 +209,7 @@ _flash:
 				-V -U flash:w:$(I) \
 				&& $(ll) info $@ OK \
 				|| exit 6;\
-		});\
+		} || printf "");\
 		([ -n "$(LB)" ] && { \
 			$(ll) attention $@ "Locking.." && \
 				$(D) $${sudo}$(avrdude) $$X \
@@ -215,7 +218,7 @@ _flash:
 					-U lock:w:$(LB):m \
 					&& $(ll) info $@ OK \
 					|| exit 7;\
-		}); \
+		} || printf ""); \
 	)
 
 ### Preset common flash 
@@ -786,6 +789,8 @@ at85blink: TARGETS:= clean all
 at85blink: _arduino _flash
 
 # micronucleus allows v-usb uploads
+# PLL, startup time/powerdown reset: 1K CK/14K CK+64ms
+# BODLEVEL: 101 (2.7V)
 at85mn: M:=usbasp
 at85mn: C:=t85
 at85mn: LF:=0xE1
@@ -1077,6 +1082,29 @@ TFT_ILI9163C_graphicstest: C := m328p
 TFT_ILI9163C_graphicstest: P := libraries/TFT_ILI9163C/examples/graphicstest
 TFT_ILI9163C_graphicstest: I := libraries/TFT_ILI9163C/examples/graphicstest/graphicstest.hex
 TFT_ILI9163C_graphicstest: jeenode upload
+
+Misc/i2c_tiny_usb.zip:
+	git annex get $@
+
+Misc/i2c_tiny_usb/firmware/firmware.hex: Misc/i2c_tiny_usb.zip
+	unzip $< -d Misc/i2c_tiny_usb
+
+i2c-tiny-usb: C := t45
+i2c-tiny-usb: X := -B3
+i2c-tiny-usb: M := usbasp
+i2c-tiny-usb: I := Misc/i2c_tiny_usb/firmware/firmware.hex
+#i2c-tiny-usb: $(I) _upload
+
+# Normal t45 fuses
+#i2c-tiny-usb: LF := 0x62
+#i2c-tiny-usb: HF := 0xdf
+
+# These fuses brick the t45 (need HSVP)
+i2c-tiny-usb: ERASE :=
+i2c-tiny-usb: LF := 0xdf
+i2c-tiny-usb: HF := 0x5f
+i2c-tiny-usb: $(I) _flash
+
 
 habr-usbasp-i2c-tiny-usb: C := m8
 habr-usbasp-i2c-tiny-usb: M := usbasp
