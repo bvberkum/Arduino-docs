@@ -12,7 +12,7 @@ The sketches can be build without starting the Arduino frontend:
 - Example::
 
     $ make arduino P=Mpe/Blink B=atmega328p
-    $ make upload I=Mpe/Blink/Blink.hex C=m328p M=arduino 
+    $ make upload I=Mpe/Blink/Blink.hex C=m328p M=arduino
 
   Read the source for more on the parameters.
 - I uses AVRISP mkII to upload sketches to m328p, using an USB BUB II module (w/ FTDI TF232RL chip).
@@ -20,7 +20,7 @@ The sketches can be build without starting the Arduino frontend:
   bootloaders.
 
 - **Libraries** are scanned for based on name, to inlude 'myLib.h' the file must
-  be in 
+  be in
 
 * JeeNode Fuses stuff http://forum.jeelabs.net/node/848
 
@@ -36,7 +36,7 @@ UNO
   - USB board. Now at rev3. PDIP.
 JeeNode
   - Six versions, all 3.3v.
-    The mainline is compatible with Duemilanove, and later 
+    The mainline is compatible with Duemilanove, and later
     with Uno (OptiBoot 0.44). [#]_
 
 8, 168 and 328 are pin-compatible, but have different hardware.
@@ -47,7 +47,7 @@ avrdude::
   avrdude
     -U <memtype>:r|w|v:<filename>[:format]
 
-The easiest upload for Arduino land is using a bootloader. 
+The easiest upload for Arduino land is using a bootloader.
 This makes the chip accepts new program code over an serial connection.
 Usually a FTDI device, and you have all you need to wire up and program an
 AVR of atmega series.
@@ -59,19 +59,19 @@ For compiling, arduino.mk does the job OK and I don't mess with it much.
 
 The avrdude protocol usually is arduino.
 
-Baudrates do matter. 
+Baudrates do matter.
 Sometimes -B is needed to lower the clock speeds in order to catch attention of
 an slower running chip.
 
 Here are my alternatives of serial bootloader aided uploads:
 
-=================== ======== ========================
-Protocol            Baudrate Device
-=================== ======== =======================
-Arduino (328/2009)  57600    Generic FTDI
-Arduino ISP         19200    +Arduino or compatible
-Uno (optiboot?)     115200   "
-=================== ======== =======================
+=================== ========= ========================
+Protocol            Baudrate  Device
+------------------- --------- ------------------------
+Arduino (328/2009)  57600     Generic FTDI
+Arduino ISP         19200     +Arduino or compatible
+Uno (optiboot?)     115200    "
+=================== ========= ========================
 
 Remember running ATmega328P at 3.3v/16Mhz is out of specs already.
 
@@ -86,25 +86,26 @@ _____________
 
 Fuses and bootloader file for various devices.
 
-=================== ============== ================= ===== ======
-Board               U1 Device ID   Fuses             Lock  Unlock
-=================== ============== ================= ===== ======
-                                   Low   High  Ext    
 =================== ============== ===== ===== ===== ===== ======
-Arduino 328/2009    0x1e950f       0xFF  0xDE  0x05  0x    0x  
-Arduino UNO         "              0xFF  0XDE  0x05  0x    0x  
-JeeNode m328p       "              0x    0X    0x05  0x    0x  
-Arduino 32          0x1e950e       0xE1  0X99  0x05  0x    0x  
-Arduino 48          0x1e920a       0x    0X    0x    0x    0x  
-48A                 0x1e9205       0x    0X    0x    0x    0x  
-USBisp m8           0x1e9307       0xCF  0xBF  -     0x3C  0x  
-eBay Sanguino 1284  0x             0x    0x    0x    0x    0x  
+Board               U1 Device ID   Fuses             Lock  Unlock
+------------------- -------------- ----------------- ----- ------
+                                   Low   High  Ext
+------------------- -------------- ----- ----- ----- ----- ------
+Arduino 328/2009    0x1e950f       0xFF  0xDE  0x05  0x    0x
+Arduino UNO         "              0xFF  0XDE  0x05  0x    0x
+JeeNode m328p       "              0x    0X    0x05  0x    0x
+Arduino 32          0x1e950e       0xE1  0X99  0x05  0x    0x
+Arduino 48          0x1e920a       0x    0X    0x    0x    0x
+48A                 0x1e9205       0x    0X    0x    0x    0x
+USBisp m8           0x1e9307       0xCF  0xBF  -     0x3C  0x
+eBay Sanguino 1284  0x             0x    0x    0x    0x    0x
 =================== ============== ===== ===== ===== ===== ======
 
 Makefile
   C
     m328p m1284p
   BRD
+    ..
 
 Boards
 ------
@@ -118,21 +119,21 @@ Cassette328P
 
 Module support
 --------------
-Notes on individual plugs and modules. 
+Notes on individual plugs and modules.
 
 USBisp ``mx-usbisp-v3.00``
   I'm not sure if the delivered device is supposed to do anything, I cant test
   it outside of Linux, and I'm pretty sure it's not doing anything there.
 
   - an tiny Atmega8L USB package with colored slide on metal cover and AVR isp
-    compatible header IDC header. Came with about 60cm flatcable. 
-  - Blue and red onboard SMT LEDs, under a milimiter sized hole 
-    drilled in the aluminium cover. At arduino pins 14 (blue) and 15 (red). 
+    compatible header IDC header. Came with about 60cm flatcable.
+  - Blue and red onboard SMT LEDs, under a milimiter sized hole
+    drilled in the aluminium cover. At arduino pins 14 (blue) and 15 (red).
   - Modded: added two buttons, one to reset, one to enable reprogramming the
     application (using USBaspLoader, to reflash bootloader another USBasp module is
     used). Attaching program switch does not look feasible at all, need need to use
     USBaspLoader bootloader image with timeout setting.
-  - modded: removed surplus GND header pins (that would normally alternate the MOSI, 
+  - modded: removed surplus GND header pins (that would normally alternate the MOSI,
     MISO, and SCK cores in a flat cable) and nc pin, with intention to route SDA/SCL
     and TX/RX, but chip is to small to solder. At least connector is compatible
     with other USBasp mods.
@@ -140,20 +141,20 @@ USBisp ``mx-usbisp-v3.00``
   * Cannot be modded further than adding reset. SPI pins available only, chip is
     too small.
   * Usable for arduino projects with SPI and USB toys.
-  
+
   - Programmed using another USB module, an usbasp from betemcu::
 
-    avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m 
-      -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader.2010-07-27_configured_for_betemcu/firmware/hexfiles/alternate_USBaspLoader_betemcu_timeout.hex 
-      -U lock:w:0x0F:m
+      avrdude -v -p m8 -c usbasp -U hfuse:w:0xC8:m -U lfuse:w:0xBF:m
+        -U flash:w:firmware/betemcu-usbasp/alternate_USBaspLoader.2010-07-27_configured_for_betemcu/firmware/hexfiles/alternate_USBaspLoader_betemcu_timeout.hex
+        -U lock:w:0x0F:m
 
-  - Now it accepts any program using arduino protocol, e.g. 
-   `vusb_mouse_example.hex` which turns the stick into a mouse device that
+  - Now it accepts any program using arduino protocol, e.g.
+    `vusb_mouse_example.hex` which turns the stick into a mouse device that
     slowly circles the cursor over your screen.
-  - It can be turned into an usbasp programmer itself by uploading the original 
+  - It can be turned into an usbasp programmer itself by uploading the original
     firmware to flash again::
 
-      avrdude -v -p m8 -c usbasp -U flash:w:mx-usbisp-v3.00-flash.hex 
+      avrdude -v -p m8 -c usbasp -U flash:w:mx-usbisp-v3.00-flash.hex
 
     Just press the reset, note that blue led lights up and then start avrdude.
 
@@ -164,12 +165,12 @@ USBasp ``betemcu-usbasp-miniprog`` MiniProg
   - Moddable to route I2C/TWI (SDA/SCL) and serial (TX/RX). Additional routes
     with glued on female jumper strip (16 extra pins should be enough for
     almost all spare atmega pins).
-  - no suitable project box or cover. 
+  - no suitable project box or cover.
   - upon connecting the jumper for reprogramming, the device is no longer
-    recognized as usbasp.  
+    recognized as usbasp.
 
-  * Problem: different behaviours upon reflash. 
-  * Using two new betemcu's, one soldered to be reprogrammed. 
+  * Problem: different behaviours upon reflash.
+  * Using two new betemcu's, one soldered to be reprogrammed.
     Verify using ``make verify-betemcu``, yields these fuses:
 
     :hfuse: 0xd9
@@ -189,15 +190,15 @@ USBasp ``betemcu-usbasp-miniprog`` MiniProg
     - lock is okay (0x3c).
 
     The problem seems independent of programmer. Strangely though one
-    stick reads lock 0x3f? 
+    stick reads lock 0x3f?
 
     After a little investigating it turns out I might have to unlock and then
     lock before writing flash, as indicated by `project ouroboros post`_.
 
   * Using previous observation, updated ``make upload-betemcu``. Will now erase,
-    and set lock bit to value given in ouroboros project for avrdude (0x3F). 
-    Then a second run to flash and set fuses, and then lock the lock bit. 
-    The first erase, and turning of erase on second flash-write may be 
+    and set lock bit to value given in ouroboros project for avrdude (0x3F).
+    Then a second run to flash and set fuses, and then lock the lock bit.
+    The first erase, and turning of erase on second flash-write may be
     important, its left untested.
 
     :unlock: 0x3F
@@ -212,7 +213,7 @@ USBasp ``betemcu-usbasp-miniprog`` MiniProg
     but my own download looks like garbage. Maybe also something to do with the
     fuses. A bit of fiddling suggest then -e  flag together with the unlock
     is needed, and rereading/verifying the flash might be impossible.
-    
+
 
 .. _project ouroboros post: http://jethomson.wordpress.com/2011/08/18/project-ouroboros-reflashing-a-betemcu-usbasp-programmer/
 
@@ -229,9 +230,9 @@ betemcu-usbasp/alternate_USBaspLoader_betemcu_timeout.hex
 
 betemcu-usbasp/usbasp.2011-05-28/bin/firmware/usbasp.atmega8.2011-05-28.hex
   Working bootloader
-  
+
 atmega8_mkjdz.com_I2C_lcd1602.hex
-  Program data to run I2C LCD demo on USBasp 
+  Program data to run I2C LCD demo on USBasp
 
 ArduinoISP_mega328.hex
   Arduino as ISP.
@@ -250,7 +251,7 @@ TODO: mkII, usbasp, stk500v1
 Downloads
 ---------
 firmware/betemcu-usbasp/usbprog.rar
-  From.  
+  From.
 
 
 ------
@@ -282,7 +283,8 @@ betemcu 1 flash attempt using JeeNode ISP::
 My Boards
   1. Atmega16 test
   2. Atmega32 Dual Inline board
-     - Upload bootloader OK. 
+
+     - Upload bootloader OK.
        Not sure about fuses.
        Cannot get serial upload.
 
@@ -290,16 +292,18 @@ My Boards
   4. Atmega328 Cassette Board
 
 
-ATmegaBOOT.hex                          16.000    19200  atmega8
-ATmegaBOOT_168_ng.hex                   16.000    19200
-ATmegaBOOT_168_diecimila.hex            16.000    19200  atmega168
-ATmegaBOOT_168_pro_8MHz.hex              8.000    19200
-ATmegaBOOT_168_atmega328.hex            16.000    57600
-ATmegaBOOT_168_atmega328_bt.hex         16.000    19200  
-ATmegaBOOT_168_atmega328_pro_8MHz.hex    8.000    57600
-ATmegaBOOT_168_atmega1280.hex           16.000    57600  atmega1280
-LilyPadBOOT_168.hex                      8.000    19200  
-optiboot_atmega328.hex                  16.000   115200
-optiboot_atmega328-Mini.hex             16.000   115200  
+::
 
-  
+  ATmegaBOOT.hex                          16.000    19200  atmega8
+  ATmegaBOOT_168_ng.hex                   16.000    19200
+  ATmegaBOOT_168_diecimila.hex            16.000    19200  atmega168
+  ATmegaBOOT_168_pro_8MHz.hex              8.000    19200
+  ATmegaBOOT_168_atmega328.hex            16.000    57600
+  ATmegaBOOT_168_atmega328_bt.hex         16.000    19200
+  ATmegaBOOT_168_atmega328_pro_8MHz.hex    8.000    57600
+  ATmegaBOOT_168_atmega1280.hex           16.000    57600  atmega1280
+  LilyPadBOOT_168.hex                      8.000    19200
+  optiboot_atmega328.hex                  16.000   115200
+  optiboot_atmega328-Mini.hex             16.000   115200
+
+
