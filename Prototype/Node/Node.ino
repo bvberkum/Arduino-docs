@@ -3,9 +3,9 @@
 Basetype Node
 	+ r/w config from EEPROM
 
-	- node_id    xy-1
-	- sketch_id  XY
-	- version    0
+	- node_id		xy-1
+	- sketch_id	XY
+	- version		0
 
 - Subtypes of this prototype: Serial.
 
@@ -40,17 +40,17 @@ Serial config
 
 
 /* *** Globals and sketch configuration *** */
-#define DEBUG           1 /* Enable trace statements */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG_MEASURE   0
+#define SERIAL					1 /* Enable serial */
+#define DEBUG					  1 /* Enable trace statements */
+#define DEBUG_MEASURE	  0
 
-#define _MEM            1   // Report free memory
-#define _RFM12B         0
-#define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
+#define _MEM						1	 // Report free memory
+#define _RFM12B				 0
+#define _RFM12LOBAT		 0	 // Use JeeNode lowbat measurement
 
-#define ANNOUNCE_START  0
-#define UI_IDLE         4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
+#define ANNOUNCE_START	0
+#define UI_IDLE				 4000	// tenths of seconds idle time, ...
+#define UI_STDBY				8000	// ms
 #define CONFIG_VERSION "nx1"
 #define CONFIG_EEPROM_START 0
 
@@ -87,12 +87,12 @@ bool ui;
 
 
 /* IO pins */
-//              RXD      0
-//              TXD      1
-//              INT0     2
-//              MOSI     11
-//              MISO     12
-//#       define _DBG_LED 13 // SCK
+//							RXD			0
+//							TXD			1
+//							INT0		 2
+//							MOSI		 11
+//							MISO		 12
+//#			 define _DBG_LED 13 // SCK
 
 
 //SoftwareSerial virtSerial(11, 12); // RX, TX
@@ -114,27 +114,27 @@ InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;    // count up until next report, i.e. packet send
+static byte reportCount;		// count up until next report, i.e. packet send
 
 // This defines the structure of the packets which get sent out by wireless:
 struct {
 #if _DHT
-	int rhum    :7;  // 0..100 (avg'd)
+	int rhum		:7;	// 0..100 (avg'd)
 #if DHT_HIGH
 /* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
-	int temp    :10; // -500..+500 (int value of tenths avg)
+	int temp		:10; // -500..+500 (int value of tenths avg)
 //#else
 ///* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
-//	int temp    :10; // -500..+500 (tenths, .5 resolution)
+//	int temp		:10; // -500..+500 (tenths, .5 resolution)
 #endif // DHT_HIGH
 #endif //_DHT
 
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+	int ctemp			 :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree     :16;
+	int memfree		 :16;
 #endif
 #if _RFM12LOBAT
-	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+	byte lobat			:1;	// supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
@@ -257,7 +257,7 @@ Port ldr (LDR_PORT);
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
+/* nRF24L01+: nordic 2.4Ghz digital radio	*/
 
 
 #endif // NRF24
@@ -386,7 +386,8 @@ static void configCmd() {
 }
 
 static void configNodeCmd(void) {
-	Serial.println("n " + node_id);
+	cmdIo.print("n ");
+	cmdIo.print(node_id);
 }
 
 static void configVersionCmd(void) {
@@ -413,7 +414,7 @@ static void configNodeIDCmd() {
 	serialFlush();
 }
 
-static void configEEPROM() {
+static void configToEEPROMCmd() {
 	int write;
 	parser >> write;
 	if (write) {
@@ -426,7 +427,7 @@ static void configEEPROM() {
 	cmdIo.println(write);
 }
 
-static void eraseEEPROM() {
+static void eraseEEPROMCmd() {
 	cmdIo.print("! Erasing EEPROM..");
 	for (int i = 0; i<EEPROM_SIZE; i++) {
 		char b = EEPROM.read(i);
@@ -443,7 +444,7 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -486,13 +487,14 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-
+/* see CarrierCase */
+#if SERIAL && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-
+#endif // SERIAL && DEBUG
 	cmdIo.println(node_id);
 	return false;
 }
@@ -501,7 +503,7 @@ bool doAnnounce(void)
 // readout all the sensors and other values
 void doMeasure()
 {
-	// none, see  SensorNode
+	// none, see	SensorNode
 }
 
 // periodic report, i.e. send out a packet and optionally report on serial port
@@ -571,10 +573,10 @@ InputParser::Commands cmdTab[] = {
 	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },
-	{ 'W', 1, configEEPROM },
+	{ 'W', 1, configToEEPROMCmd },
 	{ 's', 0, stdbyCmd },
 	{ 'x', 0, doReset },
-	{ 'E', 0, eraseEEPROM },
+	{ 'E', 0, eraseEEPROMCmd },
 	{ 0 }
 };
 

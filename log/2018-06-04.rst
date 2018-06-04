@@ -1,0 +1,49 @@
+Monday 2018.23
+==============
+:created: 2018-06-04
+
+
+Dev
+  Arduino Makefile
+    ::
+
+      . ~/.pyvenv/htd/bin/activate
+      pip install pyserial
+
+    ::
+
+      brew install arduino-mk
+      # /usr/local/opt/arduino-mk/examples
+
+      brew install Caskroom/cask/crosspack-avr
+      brew tap osx-cross/avr
+      brew install avr-libc
+      brew install avrdude --with-usb
+
+
+    ::
+
+      wget http://ed.am/dev/make/arduino-mk/arduino.mk -O arduino.mk
+
+    TODO: arduino old vs. new mk
+    need some boilerplate handling per project..
+
+    maybe see about adapting sudar/arduino-mk or edam's makefile
+
+  Arduino Makefile on OSX
+    So sudar makefile works, refreshed tool-chain::
+
+      brew install Caskroom/cask/crosspack-avr
+      brew tap osx-cross/avr
+      brew install osx-cross/avr/avr-gcc
+      brew install avrdude --with-usb
+
+    And prepared project::
+
+      cp /usr/local/opt/arduino-mk/examples/MakefileExample Prototype/SensorNode/sudar-arduino.mk
+      vim Prototype/SensorNode/sudar-arduino.mk
+
+      cd Prototype/SensorNode
+      make -f sudar-arduino.mk
+
+    But some issues with the code prevent compilation. Fair enough until now.

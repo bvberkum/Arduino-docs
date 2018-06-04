@@ -5,7 +5,8 @@ MK                  += $(MK_$d)
 #      ------------ --
 
 #ARDUINOAPPDIR := $(shell realpath ./arduinodir)
-ARDUINOAPPDIR := $(shell cd /Applications/Arduino.app/; pwd -P)
+ARDUINOAPPDIR := $(shell cd /Applications/Arduino.app/ && pwd -P)
+#$(info $(shell $(call log,header2,ARDUINOAPPDIR,$(ARDUINOAPPDIR))))
 
 ifneq ($(wildcard $(ARDUINOAPPDIR)/Contents/Resources/Java),)
 ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Resources/Java
@@ -103,4 +104,3 @@ endif
 #
 include                $(MK_SHARE)Core/Main.dirstack-pop.mk
 # vim:noet:
-

@@ -3,7 +3,7 @@
 
 	boilerplate for ATmega node with Serial interface
 	uses JeeLib scheduler like JeeLab's roomNode.
-	XXX: No radio?  Using std nrf24.
+	XXX: No radio?	Using std nrf24.
 
 	TODO: test sketch, serial.
 		Simple protocol for control, data retrieval sessions?
@@ -13,31 +13,31 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
-#define DEBUG_MEASURE   1
+#define SERIAL					1 /* Enable serial */
+#define DEBUG					  1 /* Enable trace statements */
+#define DEBUG_MEASURE	  1
 
-#define _MEM            1   // Report free memory
-#define LDR_PORT    0   // defined if LDR is connected to a port's AIO pin
-#define _DHT            1
-#define DHT_HIGH        0   // enable for DHT22/AM2302, low for DHT11
-#define _DS             0
-#define _LCD            0
-#define _LCD84x48       0
-#define _RTC            0
-#define _RFM12B         0
-#define _RFM12LOBAT     0   // Use JeeNode lowbat measurement
-#define _NRF24          0
+#define _MEM						1	 // Report free memory
+#define LDR_PORT		    0	 // defined if LDR is connected to a port's AIO pin
+#define _DHT						0
+#define DHT_HIGH				0	 // enable for DHT22/AM2302, low for DHT11
+#define _DS						  0
+#define _LCD						0
+#define _LCD84x48			  0
+#define _RTC						0
+#define _RFM12B				  0
+#define _RFM12LOBAT		  0	 // Use JeeNode lowbat measurement
+#define _NRF24					0
 
-#define REPORT_EVERY    1   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
-//#define TEMP_OFFSET     -57
-//#define TEMP_K          1.0
-#define ANNOUNCE_START  0
-#define CONFIG_VERSION "sn1"
+#define REPORT_EVERY		1	 // report every N measurement cycles
+#define SMOOTH					5	 // smoothing factor used for running averages
+#define MEASURE_PERIOD	30	// how often to measure, in tenths of seconds
+//#define TEMP_OFFSET		 -57
+//#define TEMP_K					1.0
+#define ANNOUNCE_START	0
+#define CONFIG_VERSION "sn1 "
 #define CONFIG_EEPROM_START 0
-#define NRF24_CHANNEL   90
+#define NRF24_CHANNEL	 90
 
 
 
@@ -47,7 +47,9 @@
 #include <EEPROM.h>
 #include <JeeLib.h>
 #include <SPI.h>
+#if _DHT
 #include <DHT.h> // Adafruit DHT
+#endif
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include "printf.h"
@@ -64,19 +66,19 @@ char node_id[7];
 
 
 /* IO pins */
-//              RXD      0
-//              TXD      1
-//              INT0     2
+//							RXD			0
+//							TXD			1
+//							INT0		 2
 #if _DHT
 static const byte DHT_PIN = 7;
 #endif
 #if _DS
 static const byte DS_PIN = 8;
 #endif
-//              MOSI     11
-//              MISO     12
-//             SCK      13    NRF24
-#       define _DBG_LED 13 // SCK
+//							MOSI		 11
+//							MISO		 12
+//						 SCK			13		NRF24
+#			 define _DBG_LED 13 // SCK
 
 
 MpeSerial mpeser (57600);
@@ -94,40 +96,40 @@ InputParser parser (50, cmdTab);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;    // count up until next report, i.e. packet send
+static byte reportCount;		// count up until next report, i.e. packet send
 
 /* Data reported by this sketch */
 struct {
 #if LDR_PORT
-	byte light      :8;     // light sensor: 0..255
+	byte light			:8;		 // light sensor: 0..255
 #endif
 #if PIR_PORT
-	byte moved      :1;  // motion detector: 0..1
+	byte moved			:1;	// motion detector: 0..1
 #endif
 
 #if _DHT
-	int rhum    :7;  // 0..100 (avg'd)
+	int rhum		:7;	// 0..100 (avg'd)
 // XXX : dht temp
 #if DHT_HIGH
 /* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
-	int temp    :10; // -500..+500 (int value of tenths avg)
+	int temp		:10; // -500..+500 (int value of tenths avg)
 #else
 /* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
-	int temp    :10; // -500..+500 (tenths, .5 resolution)
+	int temp		:10; // -500..+500 (tenths, .5 resolution)
 #endif // DHT_HIGH
 #endif //_DHT
 
-	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+	int ctemp			 :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree     :16;
+	int memfree		 :16;
 #endif
 #if _RFM12LOBAT
-	byte lobat      :1;  // supply voltage dropped under 3.1V: 0..1
+	byte lobat			:1;	// supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
-// 2**6  64
-// 2**9  512
+// 2**6	64
+// 2**9	512
 // 2**10 1024
 // 2**11 2048
 // 2**12 4096
@@ -159,42 +161,44 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* *** /Scheduled tasks *** }}} */
 
-/* *** EEPROM config *** {{{ */
+/* *** EEPROM static_config *** {{{ */
 
 
 struct Config {
 	char node[3];
 	int node_id;
 	int version;
-	char config_id[4];
 	signed int temp_offset;
+	//int temp_k;
+	// http://playground.arduino.cc/Code/EEPROMWriteAnything
 	float temp_k;
+	char config_id[4];
 } static_config = {
 	/* default values */
 	{ node[0], node[1], 0, }, 0, version,
-	{ CONFIG_VERSION[0], CONFIG_VERSION[1], CONFIG_VERSION[2], },
-	TEMP_OFFSET, TEMP_K
+	TEMP_OFFSET, TEMP_K,
+	CONFIG_VERSION
 };
 
-Config config;
+//Config static_config;
 
-bool loadConfig(Config &c)
+bool loadConfig()
 {
-	unsigned int w = sizeof(c);
+	unsigned int w = sizeof(static_config);
 
 	if (
-			EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+			EEPROM.read(CONFIG_EEPROM_START +w-1 ) == CONFIG_VERSION[3] &&
+			EEPROM.read(CONFIG_EEPROM_START +w-2 ) == CONFIG_VERSION[2] &&
+			EEPROM.read(CONFIG_EEPROM_START +w-3 ) == CONFIG_VERSION[1] &&
+			EEPROM.read(CONFIG_EEPROM_START +w-4 ) == CONFIG_VERSION[0]
 	) {
 
 		for (unsigned int t=0; t<w; t++)
 		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+			*((char*)&static_config + t) = EEPROM.read(CONFIG_EEPROM_START + t);
 		}
-		return true;
 
+		return true;
 	} else {
 #if SERIAL && DEBUG
 		Serial.println("No valid data in eeprom");
@@ -203,14 +207,14 @@ bool loadConfig(Config &c)
 	}
 }
 
-void writeConfig(Config &c)
+void writeConfig()
 {
-	for (unsigned int t=0; t<sizeof(c); t++) {
+	for (unsigned int t=0; t<sizeof(static_config); t++) {
 
-		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&static_config + t));
 
 		// verify
-		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&static_config + t))
 		{
 			// error writing to EEPROM
 #if SERIAL && DEBUG
@@ -280,7 +284,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
+/* nRF24L01+: nordic 2.4Ghz digital radio	*/
 
 
 #endif // NRF24
@@ -362,15 +366,21 @@ enum { DS_OK, DS_ERR_CRC };
 #if SERIAL
 
 void ser_helpCmd(void) {
-	cmdIo.println("n: print Node ID");
-	cmdIo.println("t: internal temperature");
-	cmdIo.println("T: set offset");
-	cmdIo.println("o: temperature config");
-	cmdIo.println("r: report");
-	cmdIo.println("M: measure");
+	cmdIo.println("[Prototype/SensorNode:0] Help");
+	cmdIo.println("c: print node, -id, version and config-id");
+	cmdIo.println("t: print internal temperature");
+	cmdIo.println("<O> T: set internal temperature offset (integer)");
+	// TODO: cmdIo.println("<O> K: set internal temperature coefficient (float)");
+	cmdIo.println("o: print temp. cfg.");
+	cmdIo.println("r: report now");
+	cmdIo.println("M: measure now");
+	cmdIo.println("<TYPE> N: set Node (3 byte char)");
+	cmdIo.println("<ID> C: set Node ID (1 byte int)");
+	cmdIo.println("1/0 W: write or load config to/from EEPROM");
+	// TODO: cmdIo.println("R: reset config to factory defaults and write to EEPROM");
 	cmdIo.println("E: erase EEPROM!");
 	cmdIo.println("x: reset");
-	cmdIo.println("?/h: this help");
+	cmdIo.println("?: this help");
 }
 
 // forward declarations
@@ -390,23 +400,52 @@ void measure_sercmd() {
 	doMeasure();
 }
 
-void ser_configCmd() {
+static void configCmd() {
 	cmdIo.print("c ");
-	cmdIo.print(config.node);
+	cmdIo.print(static_config.node);
 	cmdIo.print(" ");
-	cmdIo.print(config.node_id);
+	cmdIo.print(static_config.node_id);
 	cmdIo.print(" ");
-	cmdIo.print(config.version);
+	cmdIo.print(static_config.version);
 	cmdIo.print(" ");
-	cmdIo.print(config.config_id);
+	cmdIo.print(static_config.config_id);
 	cmdIo.println();
+}
+
+static void configNodeCmd(void) {
+	cmdIo.print("n ");
+	cmdIo.print(node_id);
+}
+
+static void configVersionCmd(void) {
+	cmdIo.print("v ");
+	cmdIo.println(static_config.version);
+}
+
+static void configSetNodeCmd() {
+	const char *node;
+	parser >> node;
+	static_config.node[0] = node[0];
+	static_config.node[1] = node[1];
+	static_config.node[2] = node[2];
+	initConfig();
+	cmdIo.print("N ");
+	cmdIo.println(static_config.node);
+}
+
+static void configNodeIDCmd() {
+	parser >> static_config.node_id;
+	initConfig();
+	cmdIo.print("C ");
+	cmdIo.println(node_id);
+	serialFlush();
 }
 
 void ser_tempConfig(void) {
 	Serial.print("Offset: ");
-	Serial.println(config.temp_offset);
+	Serial.println(static_config.temp_offset);
 	Serial.print("K: ");
-	Serial.println(config.temp_k);
+	Serial.println(static_config.temp_k);
 	Serial.print("Raw: ");
 	Serial.println(internalTemp());
 }
@@ -418,18 +457,31 @@ void ser_tempOffset(void) {
 	if( v > 127 ) {
 		v -= 256;
 	}
-	config.temp_offset = v;
+	static_config.temp_offset = v;
 	Serial.print("New offset: ");
-	Serial.println(config.temp_offset);
-	writeConfig(config);
+	Serial.println(static_config.temp_offset);
+	writeConfig();
 }
 
 void ser_temp(void) {
-	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	double t = ( internalTemp() + static_config.temp_offset ) * static_config.temp_k ;
 	Serial.println( t );
 }
 
-static void eraseEEPROM() {
+static void configToEEPROMCmd() {
+	int write;
+	parser >> write;
+	if (write) {
+		writeConfig();
+	} else {
+		loadConfig();
+		initConfig();
+	}
+	cmdIo.print("W ");
+	cmdIo.println(write);
+}
+
+static void eraseEEPROMCmd() {
 	cmdIo.print("! Erasing EEPROM..");
 	for (int i = 0; i<EEPROM_SIZE; i++) {
 		char b = EEPROM.read(i);
@@ -459,8 +511,8 @@ void initConfig(void)
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig(config)) {
-		writeConfig(static_config);
+	if (!loadConfig()) {
+		writeConfig();
 	}
 	initConfig();
 }
@@ -502,8 +554,11 @@ void doReset(void)
 	pinMode(_DBG_LED, OUTPUT);
 #endif
 	tick = 0;
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	reportCount = REPORT_EVERY;		 // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
+#if SERIAL && DEBUG
+	Serial.println("Reinitialized");
+#endif
 }
 
 bool doAnnounce(void)
@@ -548,7 +603,7 @@ void doMeasure(void)
 #if SERIAL && DEBUG_MEASURE
 	Serial.print("AVR T new/avg ");
 	Serial.print(ctemp);
-	Serial.print(' ');
+	Serial.print('/');
 	Serial.println(payload.ctemp);
 #endif
 
@@ -594,9 +649,9 @@ void doMeasure(void)
 #endif // _DHT
 
 #if LDR_PORT
-	ldr.digiWrite2(1);  // enable AIO pull-up
+	ldr.digiWrite2(1);	// enable AIO pull-up
 	byte light = ~ ldr.anaRead() >> 2;
-	ldr.digiWrite2(0);  // disable pull-up to reduce current draw
+	ldr.digiWrite2(0);	// disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
 #if SERIAL && DEBUG_MEASURE
 	Serial.print(F("LDR new/avg "));
@@ -654,7 +709,7 @@ void runScheduler(char task)
 			if (strlen(node_id) > 0) {
 				Serial.print("Node: ");
 				Serial.println(node_id);
-				//scheduler.timer(MEASURE, 0);
+				//scheduler.timer(MEASURE, 0); schedule next step
 			} else {
 				doAnnounce();
 				scheduler.timer(MEASURE, 0); //schedule next step
@@ -712,15 +767,19 @@ void runScheduler(char task)
 
 InputParser::Commands cmdTab[] = {
 	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'c', 0, ser_configCmd},
+	{ 'c', 0, configCmd},
+	{ 'n', 0, configNodeCmd },
+	{ 'v', 0, configVersionCmd },
+	{ 'N', 3, configSetNodeCmd },
+	{ 'C', 1, configNodeIDCmd },
 	{ 'o', 0, ser_tempConfig },
 	{ 'T', 1, ser_tempOffset },
 	{ 't', 0, ser_temp },
+	{ 'W', 1, configToEEPROMCmd },
 	{ 'r', 0, reset_sercmd },
 	{ 'x', 0, report_sercmd },
 	{ 'M', 0, measure_sercmd },
-	{ 'E', 0, eraseEEPROM },
+	{ 'E', 0, eraseEEPROMCmd },
 	{ 0 }
 };
 

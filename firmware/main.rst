@@ -25,7 +25,7 @@
     - http://www.fischl.de/usbasp/
     - usbasp.2011-05-28.tar.gz
     - usbasp.2011-05-28
-   
+
   Misc.
     - betemcu_blink (via J. Thomson) for debugging the leds on the betemcu board.
     - vusb_mouse_example.hex turn the device into an USB mouse that moves the
@@ -33,7 +33,6 @@
 
 
 MX-USBISP-V3.00
-
   - Original firmware downloaded november 2012. Not sure if these files are
     correct.
 

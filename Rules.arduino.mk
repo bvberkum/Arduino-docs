@@ -518,6 +518,7 @@ _arduino:
 		AVRTOOLSPATH="$(AVRTOOLSPATH)" \
 		BOARD=$(BRD) \
 		make -f $$p/arduino.mk $(TARGETS)
+		#make -f /usr/local/opt/arduino-mk/Arduino.mk $(TARGETS)
 
 arduino: TARGETS := target
 arduino: _arduino

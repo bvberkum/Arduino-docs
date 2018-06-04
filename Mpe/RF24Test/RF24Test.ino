@@ -3,7 +3,7 @@
  This'll initialize the nRF24L01, set it to listening and then
  dump register values to serial.
 
- If it is hooked up correctly, it'll show actual values--no zero's.
+ If it is hooked up correctly, it'll show actual values--not all-zero's.
 
  Compiled with Arduino 1.0.[4-6]
 
@@ -44,7 +44,7 @@ static String node = "rf24test";
 
 
 /* IO pins */
-#       define CSN       8  // NRF24
+#       define CSN       10  // NRF24
 #       define CE        9  // NRF24
 
 
@@ -78,8 +78,8 @@ RF24 radio(CE, CSN);
 
 // nRF24L01 addresses: one for broadcast, one for listening
 const uint64_t pipes[2] = {
-	0xF0F0F0F0E1LL, /* dest id: central link node */
-	0xF0F0F0F0D2LL /* src id: local node */
+	0xF0F0F0F0D2LL, /* dest id: central link node */
+	0xF0F0F0F0E1LL /* src id: local node */
 };
 
 #endif // NRF24
