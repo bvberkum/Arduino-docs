@@ -4,9 +4,13 @@ MK                  += $(MK_$d)
 #
 #      ------------ --
 
-#ARDUINOAPPDIR := $(shell realpath ./arduinodir)
+
+ifeq ($(shell uname -s),Darwin)
 ARDUINOAPPDIR := $(shell cd /Applications/Arduino.app/ && pwd -P)
-#$(info $(shell $(call log,header2,ARDUINOAPPDIR,$(ARDUINOAPPDIR))))
+else
+ARDUINOAPPDIR := $(shell realpath ./arduinodir)
+endif
+$(info $(shell $(call log,header2,ARDUINOAPPDIR,$(ARDUINOAPPDIR))))
 
 ifneq ($(wildcard $(ARDUINOAPPDIR)/Contents/Resources/Java),)
 ARDUINODIR := $(ARDUINOAPPDIR)/Contents/Resources/Java
@@ -17,7 +21,6 @@ else
 $(error No ARDUINODIR for $(ARDUINOAPPDIR))
 endif
 endif
-
 
 $(info $(shell $(call log,header2,ARDUINODIR,$(ARDUINODIR))))
 
@@ -41,37 +44,36 @@ arduinodir-libraries-relink::
 		};\
 	done
 
-# add devices here, wildcard checks with FS for available devices
-PORTS := $(wildcard /dev/tty.usbserial-* /dev/ttyUSB* /dev/tty.wchusbserial*)
-# get list of actually connected devices, select one
-port ?= 1
-PORT := $(word $(port),$(PORTS))
-$(info $(shell $(call log,header2,PORTS[$(port)],$(PORT))))
+
+./Misc/Soarer_Converter/docs:
+	unzip ./Misc/Soarer_Converter/Soarer_Converter_v1.12_docs.zip -c Misc/Soarer_Converter
 
 
-ports:
-	@\
-		echo "Available ports:";\
-		for x in $(PORTS); do echo $$x; done
+#      ------------ --
 
-listen: D := $(PORT)
-listen: B := 57600
-#listen: B := 38400
-listen:
-	@\
-	$(ll) attention $@ "Starting minicom @$(B) baud.." $(D);\
-	minicom -D $(D) -b $(B) minirc.arduino
-	@\
-	$(ll) ok $@ "minicom ended." $(D)
+include             $/Rules.serial.mk
 
-screen: D := $(PORT)
-screen: B := 57600
-screen:
-	@\
-	$(ll) attention $@ "Calling screen $(D) $(B)..";\
-	screen $(D) $(B)
+#      ------------ --
 
-#
+
+OLD ?= 0
+ifeq ($(OLD),1)
+include             $/Rules.edams.mk
+else
+include             $/Rules.sudar.mk
+endif
+
+include             $/Rules.targets.mk
+
+#include Rules.new.mk
+
+
+#      ------------ --
+
+ifneq ($(call contains,$(MAKECMDGOALS),clean),)
+CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
+endif
+
 #DIR                 := $/mydir
 #include                $(call rules,$(DIR)/)
 #
@@ -80,25 +82,6 @@ screen:
 # TRGT += $/build-target
 # TEST += $/testtarget
 # XXX: cleanable only noticed on 'make clean'
-#ifneq ($(call contains,$(MAKECMDGOALS),clean),)
-# XXX: using find here is so wastefull (otherwise), there is no cache at all?
-CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
-#endif
-
-
-
-OLD ?= 0
-
-ifeq ($(OLD),1)
-include Rules.arduino.mk
-else
-include Rules.new.mk
-endif
-
-
-./Misc/Soarer_Converter/docs:
-	unzip ./Misc/Soarer_Converter/Soarer_Converter_v1.12_docs.zip -c Misc/Soarer_Converter
-
 
 #      ------------ -- 
 #

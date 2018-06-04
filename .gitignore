@@ -44,3 +44,15 @@ libraries/keypad.zip
 
 build-*
 
+log/last-*.rst
+log/next-*.rst
+log/friday.rst
+log/monday.rst
+log/saturday.rst
+log/sunday.rst
+log/thursday.rst
+log/today.rst
+log/tomorrow.rst
+log/tuesday.rst
+log/wednesday.rst
+log/yesterday.rst
