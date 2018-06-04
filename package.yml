@@ -4,11 +4,12 @@
   id: arduino-docs
   repositories:
     github: git@github.com:bvberkum/Arduino-docs.git
-    dotmpe: dotmpe:~/domains/dotmpe.com/htdocs/git/arduino-docs.git
+    dotmpe.origin: domains/dotmpe.com/htdocs/git/arduino-docs.git
   pd-meta:
     log: log/
     #DevLog.rst
   scripts:
     init:
       - htd package update
+      - htd package remotes-reset
       - vc regenerate
