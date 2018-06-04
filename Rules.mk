@@ -44,17 +44,16 @@ arduinodir-libraries-relink::
 		};\
 	done
 
+#      ------------ --
 
 ./Misc/Soarer_Converter/docs:
 	unzip ./Misc/Soarer_Converter/Soarer_Converter_v1.12_docs.zip -c Misc/Soarer_Converter
-
 
 #      ------------ --
 
 include             $/Rules.serial.mk
 
 #      ------------ --
-
 
 OLD ?= 0
 ifeq ($(OLD),1)
@@ -65,14 +64,21 @@ endif
 
 include             $/Rules.targets.mk
 
-#include Rules.new.mk
-
-
 #      ------------ --
 
 ifneq ($(call contains,$(MAKECMDGOALS),clean),)
 CLN += $(shell find $/ -name .dep -or -name .lib -o -name *.o -o -name *.swp -o -name *.swo)
 endif
+
+#      ------------ --
+
+clean-git:
+	git submodule foreach git clean -dfx
+	git clean -dfx
+
+STRGT += clean-git
+
+#      ------------ --
 
 #DIR                 := $/mydir
 #include                $(call rules,$(DIR)/)
