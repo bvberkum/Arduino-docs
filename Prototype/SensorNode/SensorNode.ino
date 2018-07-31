@@ -13,38 +13,38 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN				1 /* Enable serial */
-#define DEBUG						1 /* Enable trace statements */
-#define DEBUG_MEASURE	  1
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
+#define DEBUG_MEASURE     1
 
-#define _MEM						1	 // Report free memory
-#define LDR_PORT		    0	 // defined if LDR is connected to a port's AIO pin
-#define _DHT						0
-#define DHT_HIGH				0	 // enable for DHT22/AM2302, low for DHT11
-#define _DS						  0
-#define _LCD						0
-#define _LCD84x48			  0
-#define _RTC						0
-#define _RFM12B				  0
-#define _RFM12LOBAT		  0	 // Use JeeNode lowbat measurement
-#define _NRF24					0
+#define _MEM              1  // Report free memory
+#define LDR_PORT          0  // defined if LDR is connected to a port's AIO pin
+#define _DHT              0
+#define DHT_HIGH          0  // enable for DHT22/AM2302, low for DHT11
+#define _DS               0
+#define _LCD              0
+#define _LCD84x48         0
+#define _RTC              0
+#define _RFM12B           0
+#define _RFM12LOBAT       0  // Use JeeNode lowbat measurement
+#define _NRF24            0
 
-#define REPORT_EVERY		1	 // report every N measurement cycles
-#define SMOOTH					5	 // smoothing factor used for running averages
-#define MEASURE_PERIOD	30	// how often to measure, in tenths of seconds
-//#define TEMP_OFFSET		 -57
-//#define TEMP_K					1.0
-#define ANNOUNCE_START	0
-#define CONFIG_VERSION "sn1 "
+#define REPORT_EVERY      1  // report every N measurement cycles
+#define SMOOTH            5  // smoothing factor used for running averages
+#define MEASURE_PERIOD    30 // how often to measure, in tenths of seconds
+//#define TEMP_OFFSET       -57
+//#define TEMP_K            1.0
+#define CONFIG_VERSION    "sn 0"
 #define CONFIG_EEPROM_START 0
-#define NRF24_CHANNEL	 90
+#define NRF24_CHANNEL     90
+#define ANNOUNCE_START    0
 
 
 
-#include <OneWire.h>
 //#include <SoftwareSerial.h>
 #include <EEPROM.h>
 #include <JeeLib.h>
+#include <OneWire.h>
 #include <SPI.h>
 #if _DHT
 #include <Adafruit_Sensor.h>
@@ -60,7 +60,8 @@
 const String sketch = "X-SensorNode";
 const int version = 0;
 
-char node[] = "nx";
+char node[] = "sn";
+
 // determined upon handshake
 char node_id[7];
 
@@ -102,30 +103,30 @@ static byte reportCount;    // count up until next report, i.e. packet send
 /* Data reported by this sketch */
 struct {
 #if LDR_PORT
-	byte light			:8;		 // light sensor: 0..255
+	byte lighit     :8; // light sensor: 0..255
 #endif
 #if PIR_PORT
-	byte moved			:1;	// motion detector: 0..1
+	byte moved      :1; // motion detector: 0..1
 #endif
 
 #if _DHT
-	int rhum		:7;	// 0..100 (avg'd)
+	int rhum        :7; // 0..100 (avg'd)
 // XXX : dht temp
 #if DHT_HIGH
 /* DHT22/AM2302: 20% to 100% @ 2% rhum, -40C to 80C @ ~0.5 temp */
-	int temp		:10; // -500..+500 (int value of tenths avg)
+	int temp        :10; // -500..+500 (int value of tenths avg)
 #else
 /* DHT11: 20% to 80% @ 5% rhum, 0C to 50C @ ~2C temp */
-	int temp		:10; // -500..+500 (tenths, .5 resolution)
+	int temp        :10; // -500..+500 (tenths, .5 resolution)
 #endif // DHT_HIGH
 #endif //_DHT
 
-	int ctemp			 :10; // atmega temperature: -500..+500 (tenths)
+	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
 #if _MEM
-	int memfree		 :16;
+	int memfree     :16;
 #endif
 #if _RFM12LOBAT
-	byte lobat			:1;	// supply voltage dropped under 3.1V: 0..1
+	byte lobat      :1; // supply voltage dropped under 3.1V: 0..1
 #endif
 } payload;
 
@@ -166,14 +167,14 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
 struct Config {
-	char node[2];
+	char node[3];
 	int version;
 	int node_id;
 	signed int temp_offset;
 	int temp_k;
 } config = {
 	/* default values */
-	{ node[0], node[1], }, 0, version,
+	{ node[0], node[1], }, version, 0,
 	TEMP_OFFSET, TEMP_K
 };
 
@@ -183,9 +184,9 @@ bool loadConfig(Config &c)
 	unsigned int w = sizeof(c);
 
 	if (
-			EEPROM.read(CONFIG_EEPROM_START + 1 ) == CONFIG_VERSION[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + 3 ) == CONFIG_VERSION[3] &&
 			EEPROM.read(CONFIG_EEPROM_START + 2 ) == CONFIG_VERSION[2] &&
-			EEPROM.read(CONFIG_EEPROM_START + 3 ) == CONFIG_VERSION[1] &&
+			EEPROM.read(CONFIG_EEPROM_START + 1 ) == CONFIG_VERSION[1] &&
 			EEPROM.read(CONFIG_EEPROM_START) == CONFIG_VERSION[0]
 	) {
 
@@ -386,13 +387,10 @@ static void helpCmd(void) {
 }
 
 // forward declarations
+void initConfig(void);
 void doReset(void);
 void doReport(void);
 void doMeasure(void);
-
-void resetCmd() {
-	doReset();
-}
 
 static void configCmd() {
 	cmdIo.print("c ");
@@ -401,8 +399,6 @@ static void configCmd() {
 	cmdIo.print(config.node_id);
 	cmdIo.print(" ");
 	cmdIo.print(config.version);
-	cmdIo.print(" ");
-	cmdIo.print(config.config_id);
 	cmdIo.println();
 }
 
@@ -439,9 +435,11 @@ void tempConfigCmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
-	Serial.println(config.temp_k);
+	Serial.println(config.temp_k/10);
 	Serial.print("Raw: ");
-	Serial.println(internalTemp());
+  float temp_k = (float) config.temp_k / 10;
+	int ctemp = internalTemp(config.temp_offset, temp_k);
+	Serial.println(ctemp);
 }
 
 void tempOffsetCmd(void) {
@@ -458,8 +456,9 @@ void tempOffsetCmd(void) {
 }
 
 void tempCmd(void) {
-	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-	Serial.println( t );
+  float temp_k = (float) config.temp_k / 10;
+	double ctemp = internalTemp(config.temp_offset, temp_k);
+	Serial.println(ctemp);
 }
 
 static void configEEPROMCmd() {
@@ -498,7 +497,6 @@ static void eraseEEPROMCmd() {
 
 void initConfig(void)
 {
-	// See Prototype/Node
 	sprintf(node_id, "%s%i", config.node, config.node_id);
 }
 
@@ -513,6 +511,9 @@ void doConfig(void)
 
 void initLibs()
 {
+#if _NRF24
+	rf24_init();
+#endif // NRF24
 #if _RTC
 	rtc_init();
 #endif
@@ -530,9 +531,9 @@ void initLibs()
 #if _HMC5883L
 #endif //_HMC5883L
 
-#if SERIAL_EN && DEBUG
-	printf_begin();
-#endif
+// #if SERIAL_EN && DEBUG
+// 	printf_begin();
+// #endif
 }
 
 
@@ -548,7 +549,12 @@ void doReset(void)
 	pinMode(_DBG_LED, OUTPUT);
 #endif
 	tick = 0;
-	reportCount = REPORT_EVERY;		 // report right away for easy debugging
+
+#if _NRF24
+	rf24_init();
+#endif //_NRF24
+
+	reportCount = REPORT_EVERY; // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 #if SERIAL_EN && DEBUG
 	Serial.println("Reinitialized");
@@ -592,7 +598,7 @@ void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	int ctemp = internalTemp(config.temp_offset, config.temp_k);
+	int ctemp = internalTemp(config.temp_offset, (float)config.temp_k/10);
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
 	Serial.print("AVR T new/avg ");
@@ -771,9 +777,9 @@ const InputParser::Commands cmdTab[] = {
 	{ 'T', 1, tempOffsetCmd },
 	{ 't', 0, tempCmd },
 	{ 'r', 0, doReport },
-	{ 'm', 0, doMeasure },
+	{ 'M', 0, doMeasure },
 	{ 'E', 0, eraseEEPROMCmd },
-	{ 'x', 0, resetCmd },
+	{ 'x', 0, doReset },
 	{ 0 }
 };
 

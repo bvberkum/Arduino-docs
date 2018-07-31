@@ -57,7 +57,7 @@ const String sketch = "RadioLink24";
 const int version = 0;
 
 // Alpha Id for this sketch
-char node[] = "rln";
+char node[] = "nrl";
 
 // Alphanumeric Id suffixed with integer
 char node_id[4];
@@ -88,8 +88,8 @@ MpeSerial mpeser (57600);
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
-InputParser parser (50, cmdTab);
+extern const InputParser::Commands cmdTab[] PROGMEM;
+const InputParser parser (50, cmdTab);
 
 
 /* *** /InputParser }}} *** */
@@ -97,33 +97,34 @@ InputParser parser (50, cmdTab);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;		// count up until next report, i.e. packet send
+static byte reportCount;    // count up until next report, i.e. packet send
 
 /* Data reported by this sketch */
 struct {
 	int rhum    :7;  // 0..100 (avg'd)
 	int temp    :10; // -500..+500 (int value of tenths avg)
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
+#if _MEM
+	int memfree     :16;
+#endif
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
-
-
 struct Config {
 	char node[3]; // Alphanumeric Id (for sketch)
-	int node_id; // Id suffix integer (for unique run-time Id)
 	int version; // Sketch version
+	int node_id; // Id suffix integer (for unique run-time Id)
 	signed int temp_offset;
-	float temp_k;
+	int temp_k;
 	uint16_t address; // RF24Network address
 	uint16_t nodes; // Node count
 } static_config = {
 	/* default values */
-	{ node[0], node[1], node[2] }, 0, version,
+	{ node[0], node[1], node[2] }, version, 0,
 	TEMP_OFFSET, TEMP_K,
 	00, 00
 };
@@ -210,16 +211,16 @@ RF24Network network(radio);
 #endif // NRF24
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
 
 #if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
 
 #endif //_RFM12B
-
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -325,7 +326,7 @@ void registerNode(RF24NetworkHeader header)
 
 #if SERIAL_EN
 
-InputParser::Commands cmdTab[] = {
+const InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 

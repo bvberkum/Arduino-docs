@@ -17,25 +17,26 @@ TODO: get NRF24 client stuff running
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _MEM            1   // Report free memory
-#define _DHT            1
-#define DHT_HIGH        0   // enable for DHT22/AM2302, low for DHT11
-#define _DS             0
-#define _LCD            0
-#define _LCD84x48       1
-#define _NRF24          1
+#define _MEM              1  // Report free memory
+#define _DHT              0
+#define DHT_HIGH          0   // enable for DHT22/AM2302, low for DHT11
+#define _DS               0
+#define _LCD              0
+#define _LCD84x48         1
+#define _NRF24            1
 
-#define REPORT_EVERY    2   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  30  // how often to measure, in tenths of seconds
-#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
-#define BL_INVERTED     0xFF
-#define NRF24_CHANNEL   90
-#define MAXLENLINE      79
+#define REPORT_EVERY      2  // report every N measurement cycles
+#define SMOOTH            5  // smoothing factor used for running averages
+#define MEASURE_PERIOD    30 // how often to measure, in tenths of seconds
+#define UI_SCHED_IDLE     4000  // tenths of seconds idle time, ...
+#define UI_STDBY          8000  // ms
+#define BL_INVERTED       0xFF
+#define NRF24_CHANNEL     90
+#define MAXLENLINE        79
+#define ANNOUNCE_START    0
 
 
 
@@ -52,7 +53,10 @@ TODO: get NRF24 client stuff running
 #include <OneWire.h>
 #include <PCD8544.h>
 #include <SPI.h>
+#if _DHT
+#include <Adafruit_Sensor.h>
 #include <DHT.h> // Adafruit DHT
+#endif
 #include <RF24.h>
 #include <RF24Network.h>
 #include <DotmpeLib.h>
@@ -64,12 +68,14 @@ TODO: get NRF24 client stuff running
 const String sketch = "X-RF24Node";
 const int version = 0;
 
-char node[] = "rf24n";
+char node[] = "nrf";
 
 volatile bool ui_irq;
 bool ui;
 
 
+// determined upon handshake
+char node_id[7];
 
 
 /* IO pins */
@@ -95,6 +101,9 @@ bool ui;
 //#       define          A4
 //#       define          A5
 
+//#if _DHT
+//static const byte DHT_PIN = 7;
+//#endif
 
 MpeSerial mpeser (57600);
 
@@ -103,8 +112,8 @@ MilliTimer idle, stdby;
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
-InputParser parser (50, cmdTab);
+extern const InputParser::Commands cmdTab[] PROGMEM;
+const InputParser parser (50, cmdTab);
 
 
 /* *** /InputParser }}} *** */
@@ -123,7 +132,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -162,16 +171,20 @@ bool schedRunning()
 
 /* *** EEPROM config *** {{{ */
 
-
 struct Config {
-	char node[4];
-	int node_id;
+	char node[3]; // Alphanumeric Id (for sketch)
 	int version;
-	char config_id[4];
+	int node_id; // Id suffix integer (for unique run-time Id)
+	signed int temp_offset;
+	int temp_k;
 } static_config = {
 	/* default values */
-//	{ node[0], node[1], 0, 0 }, 0, version, CONFIG_VERSION
+	{ node[0], node[1], node[2], }, version, 0,
+	TEMP_OFFSET, TEMP_K
 };
+
+Config config;
+
 
 bool loadConfig(Config &c)
 {
@@ -209,9 +222,9 @@ Port ldr (LDR_PORT);
 DHT dht (DHT_PIN, DHT21);
 //DHT dht (DHT_PIN, DHT22);
 // AM2301
-// DHT21, AM2302?
+// DHT21, AM2302? AM2301?
 #else
-DHT dht (DHT_PIN, DHT11);
+DHT dht(DHT_PIN, DHT11);
 #endif
 #endif // DHT
 
@@ -258,7 +271,7 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
+/* nRF24L01+: nordic 2.4Ghz digital radio */
 
 // Set up nRF24L01 radio on SPI bus plus two extra pins
 RF24 radio(CE, CSN);
@@ -280,7 +293,6 @@ const uint16_t rf24_link_node = 0;
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
 
 #endif // HMC5883L
 
@@ -385,7 +397,7 @@ static void findDS18B20s(void) {
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
 
-#endif // RFM12B
+#endif //_RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -472,11 +484,11 @@ void printKeys(void) {
 
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-void help_sercmd(void) {
+void helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("t: internal temperature");
 	cmdIo.println("T: set offset");
@@ -498,7 +510,7 @@ void reset_sercmd() {
 	doReset();
 }
 
-void report_sercmd () {
+void reportCmd() {
 	doReport();
 	idle.set(UI_SCHED_IDLE);
 }
@@ -508,33 +520,33 @@ void stdbyCmd() {
 	digitalWrite(BL, LOW ^ BL_INVERTED);
 }
 
-void measureCmd() {
+static void measureCmd() {
 	doMeasure();
 	idle.set(UI_SCHED_IDLE);
 }
 
-void configCmd() {
+static void configCmd() {
 	cmdIo.print("c ");
 	cmdIo.print(config.node);
 	cmdIo.print(" ");
 	cmdIo.print(config.node_id);
 	cmdIo.print(" ");
 	cmdIo.print(config.version);
-	cmdIo.print(" ");
-	cmdIo.print(config.config_id);
 	cmdIo.println();
 }
 
-void ser_tempConfig(void) {
+void tempConfigCmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
-	Serial.println(config.temp_k);
+	Serial.println(config.temp_k/10);
 	Serial.print("Raw: ");
-	Serial.println(internalTemp());
+  float temp_k = (float) config.temp_k / 10;
+	int ctemp = internalTemp(config.temp_offset, temp_k);
+	Serial.println(ctemp);
 }
 
-void ser_tempOffset(void) {
+void tempOffsetCmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -547,12 +559,13 @@ void ser_tempOffset(void) {
 	writeConfig(config);
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void tempCmd(void) {
+  float temp_k = (float) config.temp_k / 10;
+	double ctemp = internalTemp(config.temp_offset, temp_k);
+	Serial.println(ctemp);
 }
 
-static void eraseEEPROM() {
+static void eraseEEPROMCmd() {
 	cmdIo.print("! Erasing EEPROM..");
 	for (int i = 0; i<EEPROM_SIZE; i++) {
 		char b = EEPROM.read(i);
@@ -569,7 +582,7 @@ static void eraseEEPROM() {
 #endif
 
 
-/* UART commands }}} */
+/* *** UART commands *** }}} */
 
 /* Wire init {{{ */
 
@@ -588,14 +601,14 @@ static void eraseEEPROM() {
 
 void initConfig(void)
 {
-	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	sprintf(node_id, "%s%i", config.node, config.node_id);
 }
 
 void doConfig(void)
 {
 	/* load valid config or reset default config */
 	if (!loadConfig(config)) {
-		writeConfig(static_config);
+		writeConfig(config);
 	}
 	initConfig();
 }
@@ -629,20 +642,23 @@ void doReset(void)
 	rf24_init();
 #endif //_NRF24
 
-	reportCount = REPORT_EVERY;     // report right away for easy debugging
+	reportCount = REPORT_EVERY; // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
+#if SERIAL_EN && DEBUG
+	Serial.println("Reinitialized");
+#endif
 }
 
 bool doAnnounce(void)
 {
 /* see CarrierCase */
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 	cmdIo.println(node_id);
 #if LDR_PORT
 	Serial.print("light:8 ");
@@ -670,9 +686,9 @@ void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	int ctemp = internalTemp();
+	int ctemp = internalTemp(config.temp_offset, (float)config.temp_k/10);
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.println();
 	Serial.print("AVR T new/avg ");
 	Serial.print(ctemp);
@@ -682,7 +698,7 @@ void doMeasure(void)
 
 #if _MEM
 	payload.memfree = freeRam();
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
@@ -705,7 +721,7 @@ void doReport(void)
 		debugline("NACK");
 #endif // NRF24
 
-#if SERIAL
+#if SERIAL_EN
 	Serial.print(node_id);
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
@@ -719,7 +735,7 @@ void doReport(void)
 #endif //_RFM12LOBAT
 
 	Serial.println();
-#endif //SERIAL
+#endif //SERIAL_EN
 }
 
 void uiStart()
@@ -737,6 +753,7 @@ void runScheduler(char task)
 	switch (task) {
 
 		case ANNOUNCE:
+			debugline("ANNOUNCE");
 			// TODO: see SensorNode
 				doAnnounce();
 				scheduler.timer(MEASURE, 0); //schedule next step
@@ -753,7 +770,7 @@ void runScheduler(char task)
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
-#if SERIAL
+#if SERIAL_EN
 			serialFlush();
 #endif
 #ifdef _DBG_LED
@@ -766,7 +783,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-#if DEBUG && SERIAL
+#if DEBUG && SERIAL_EN
 		case SCHED_WAITING:
 		case SCHED_IDLE:
 			Serial.print("!");
@@ -789,24 +806,24 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-InputParser::Commands cmdTab[] = {
-	{ '?', 0, help_sercmd },
-	{ 'h', 0, help_sercmd },
-	{ 'v', 2, valueCmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'r', 0, reset_sercmd },
-	{ 'r', 0, report_sercmd },
+const InputParser::Commands cmdTab[] = {
+	{ '?', 0, helpCmd },
+	{ 'h', 0, helpCmd },
+	{ 'c', 0, configCmd },
+	{ 'o', 0, tempConfigCmd },
+	{ 'T', 1, tempOffsetCmd },
+	{ 't', 0, tempCmd },
+	{ 'r', 0, reportCmd },
 	{ 's', 0, stdbyCmd },
 	{ 'M', 0, measureCmd },
-	{ 'E', 0, eraseEEPROM },
+	{ 'E', 0, eraseEEPROMCmd },
+	{ 'x', 0, doReset },
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -816,7 +833,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
