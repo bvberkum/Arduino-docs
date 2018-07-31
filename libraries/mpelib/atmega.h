@@ -10,11 +10,12 @@
 #endif
 
 #ifndef TEMP_K
-#define TEMP_K 1.0
+//#define TEMP_K 1.0
+#define TEMP_K 10
 #endif
 
 
-static double internalTemp(void)
+static double internalTemp(int offset, float k)
 {
 	unsigned int wADC;
 	double t;
@@ -40,7 +41,7 @@ static double internalTemp(void)
 
 	// One or two point calibration should be used to correct the output, see AVR122.
 	// With my current setup and atmega328P chips, offsets of -50 or -60 are usual.
-	t = ( wADC - 273 + TEMP_OFFSET ) * TEMP_K;
+	t = ( wADC - 273 + offset ) * k;
 
 	// The returned temperature is in degrees Celcius.
 	return (t);

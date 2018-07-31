@@ -1,11 +1,11 @@
 /*
   Lots to do
-  
+
   - must hook up PWM power
 
   - PN2907A: EBC (TO-92)
-  	
-  
+
+
   For now, working on RF24 using LDR and SHT11, see RoomNodeRF24
 */
 #define DEBUG_DHT 1
@@ -21,9 +21,9 @@
 
 /** Globals and sketch configuration  */
 #define DEBUG           1 /* Enable trace statements */
-#define SERIAL          1 /* Enable serial */
-							
-#define _MEM            1   // Report free memory 
+#define SERIAL_EN          1 /* Enable serial */
+
+#define _MEM            1   // Report free memory
 #define DHT_PIN     7   // defined if DHTxx data is connected to a DIO pin
 //#define LDR_PORT    4   // defined if LDR is connected to a port's AIO pin
 #define _DS  0
@@ -34,16 +34,16 @@
 #define LED 11
 #define _RFM12LOBAT 0
 #define _VCC 1
-							
+
 #define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-							
+
 
 String node_id = "";
 
 
-const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM 
+const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
@@ -64,13 +64,13 @@ enum { DS_OK, DS_ERR_CRC };
 // 13 = digital Pin connected to LED Power Indicator
 
 int CoSensorPower = 5; // digital power feed/indicator pin
-int MthSensorPower = 6; 
+int MthSensorPower = 6;
 int CoSensorData = 0; // measure pin (analog) for CO sensor
-int MthSensorData = A1; 
+int MthSensorData = A1;
 int VccADC = A2;
 
 const int PREHEAT_PERIOD = 600;
-const int HEATING_PERIOD = 900; 
+const int HEATING_PERIOD = 900;
 
 // The scheduler makes it easy to perform various tasks at various times:
 
@@ -152,12 +152,12 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
-	Sleepy::loseSomeTime(800); 
+	Sleepy::loseSomeTime(800);
 	//delay(1000);     // maybe 750ms is enough, maybe not
 	// we might do a ds.depower() here, but the reset will take care of it.
 
 	present = ds.reset();
-	ds.select(addr);    
+	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
 #if DEBUG_DS
@@ -184,9 +184,9 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 #endif
 
 	if (crc8 != data[8]) {
-		return DS_ERR_CRC; 
-	} else { 
-		return DS_OK; 
+		return DS_ERR_CRC;
+	} else {
+		return DS_OK;
 	}
 }
 
@@ -209,8 +209,8 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-	int result = ds_readdata(addr, data);	
-	
+	int result = ds_readdata(addr, data);
+
 	if (result != DS_OK) {
 #if DEBUG || DEBUG_DS
 		Serial.println(F("CRC error in ds_readdata"));
@@ -343,7 +343,7 @@ bool doAnnounce()
 #endif
 	Serial.print(" attemp");
 	Serial.print(" mq4");
-#if _DS 
+#if _DS
 	ds_count = readDSCount();
 	for ( int i = 0; i < ds_count; i++) {
 		Serial.print(" ds-");
@@ -364,8 +364,9 @@ bool doAnnounce()
 	return false;
 }
 
+
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
@@ -381,7 +382,7 @@ void doMeasure()
 
 	int mq4 = analogRead(MthSensorData);
 	payload.mq4 = mq4;//smoothedAverage(payload.mq4, mq4, firstTime);
-	
+
 	//int mq7 = analogRead(CoSensorData);
 	//payload.mq7 = smoothedAverage(payload.mq7, mq7, firstTime);
 
@@ -417,7 +418,7 @@ void doMeasure()
 void doReport(void)
 {
 	/* XXX no working radio */
-#if SERIAL
+#if SERIAL_EN
 	Serial.print(node_id);
 	Serial.print(".0");
 	Serial.print(" ");
@@ -460,12 +461,12 @@ void doReport(void)
 }
 
 
+/* *** Main *** {{{ */
 
-/* Main */
 
-void setup()
+void setup(void)
 {
-#if SERIAL || DEBUG
+#if SERIAL_EN || DEBUG
 	Serial.begin(57600);
 	Serial.println("AirQuality+GasDetector MQ4/MQ7");
 	serialFlush();
@@ -474,7 +475,7 @@ void setup()
 	node_id = "GAS";
 
 	// Set up PWM, the compare registers work with output compare pins 2A and
-	// 2B (OC2A and OC2B), which are Arduino pins 11 and 3 resp.		
+	// 2B (OC2A and OC2B), which are Arduino pins 11 and 3 resp.
 	//	pinMode(3, OUTPUT);
 	//	pinMode(11, OUTPUT);
 
@@ -568,3 +569,6 @@ void loop(void)
 			break;
 	}
 }
+
+/* *** }}} */
+

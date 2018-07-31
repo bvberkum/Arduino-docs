@@ -18,18 +18,18 @@ int pos = 0;
 
 /* *** Generic routines *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-void serialFlush () {
+extern void serialFlush() {
 #if ARDUINO >= 100
 	Serial.flush();
 #endif
 	delay(2); // make sure tx buf is empty before going back to sleep
 }
 
-void debug_ticks(void)
+extern void debug_ticks(void)
 {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	tick++;
 	if ((tick % 20) == 0) {
 		Serial.print('.');
@@ -43,7 +43,7 @@ void debug_ticks(void)
 #endif
 }
 
-void debugline(char* msg) {
+extern void debugline(char* msg) {
 #if DEBUG
 	Serial.println(msg);
 #endif
@@ -54,9 +54,9 @@ void debugline(char* msg) {
 void blink(int led, int count, int length, int length_off=-1, bool reverse=false) {
 	int i;
 	for (i=0;i<count;i++) {
-		digitalWrite (led, reverse and LOW or HIGH);
+		digitalWrite (led, (reverse and LOW ) or HIGH);
 		delay(length);
-		digitalWrite (led, reverse and HIGH or LOW);
+		digitalWrite (led, (reverse and HIGH ) or LOW);
 		(length_off > -1) ? delay(length_off) : delay(length);
 	}
 }

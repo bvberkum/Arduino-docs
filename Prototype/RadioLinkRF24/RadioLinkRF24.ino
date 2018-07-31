@@ -25,12 +25,11 @@ XXX: Load ids into array on start-up for quick lookup of address.
 
 
 TODO: map alphachar node_id prefix to sketch payload struct.
-
 */
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+//#define SERIAL_EN					1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
 
 #define _NRF24          1
 
@@ -47,7 +46,7 @@ TODO: map alphachar node_id prefix to sketch payload struct.
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include "printf.h"
-#include <hashmap.h>
+// #include <hashmap.h>
 
 
 
@@ -98,7 +97,7 @@ InputParser parser (50, cmdTab);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;    // count up until next report, i.e. packet send
+static byte reportCount;		// count up until next report, i.e. packet send
 
 /* Data reported by this sketch */
 struct {
@@ -156,7 +155,7 @@ bool loadConfig(Config &c)
 		return true;
 
 	} else {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println("No valid data in eeprom");
 #endif
 		return false;
@@ -173,7 +172,7 @@ void writeConfig(Config &c)
 		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 			Serial.println("Error writing "+ String(t)+" to EEPROM");
 #endif
 		}
@@ -226,17 +225,14 @@ RF24Network network(radio);
 /* Nordic nRF24L01+ radio routines */
 
 
-
-
 #endif // NRF24 funcs
 
 
-
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
 
-/* *** /UI }}} *** */
+/* *** /UI *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -322,17 +318,18 @@ void registerNode(RF24NetworkHeader header)
 	//record.address = announce.address;
 }
 
-/* *** /Run-time handlers }}} *** */
+
+/* *** /Run-time handlers *** }}} */
 
 /* *** InputParser handlers *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
 InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -342,7 +339,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM

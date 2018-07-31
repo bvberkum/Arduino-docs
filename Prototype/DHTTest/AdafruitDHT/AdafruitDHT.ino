@@ -7,9 +7,10 @@
  */
 
 
+
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+#define SERIAL_EN				1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
 #define DEBUG_MEASURE   0
 
 #define _MEM            1   // Report free memory
@@ -33,8 +34,8 @@
 #include <JeeLib.h>
 //#include <SPI.h>
 //#include <RF24.h>
-// Adafruit DHT
-#include <DHT.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
@@ -129,18 +130,19 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
 
-/* *** /EEPROM config }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
+
+#if SHT11_PORT
+#endif
 
 #if LDR_PORT
 Port ldr (LDR_PORT);
 #endif
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHTxx: Digital temperature/humidity (Adafruit) */
 //DHT dht(DHT_PIN, DHTTYPE); // Adafruit DHT
 //DHTxx dht (DHT_PIN); // JeeLib DHT
 //#define DHTTYPE DHT11   // DHT 11
@@ -166,15 +168,13 @@ DHT dht2 (DHT2_PIN, DHT11);
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-
-
 #endif // DS
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio  */
@@ -183,15 +183,17 @@ DHT dht2 (DHT2_PIN, DHT11);
 #endif // NRF24
 
 #if _RTC
-#endif //_RTC
+/* DS1307: Real Time Clock over I2C */
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
+
 #endif // HMC5883L
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -206,11 +208,12 @@ DHT dht2 (DHT2_PIN, DHT11);
 
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
+
+#if _LCD
+#endif //_LCD
 
 #if _LCD84x48
 
@@ -245,7 +248,41 @@ DHT dht2 (DHT2_PIN, DHT11);
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
+
+/* *** UART commands *** {{{ */
+
+#if SERIAL_EN
+
+static void ser_helpCmd(void) {
+	Serial.println("n: print Node ID");
+	Serial.println("c: print config");
+	Serial.println("v: print version");
+	Serial.println("m: print free and used memory");
+	Serial.println("N: set Node (3 byte char)");
+	Serial.println("C: set Node ID (1 byte int)");
+	Serial.println("W: load/save EEPROM");
+	Serial.println("E: erase EEPROM!");
+	Serial.println("?/h: this help");
+}
+
+void memstat_serscmd() {
+	int free = freeRam();
+	int used = usedRam();
+
+	cmdIo.print("m ");
+	cmdIo.print(free);
+	cmdIo.print(' ');
+	cmdIo.print(used);
+	cmdIo.print(' ');
+	cmdIo.println();
+}
+
+
+#endif
+
+
+/* *** UART commands *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -257,7 +294,7 @@ void initLibs()
 {
 #if _RFM12B
 	rf12_initialize(9, RF12_868MHZ, 5);
-//#if SERIAL && DEBUG
+//#if SERIAL_EN && DEBUG
 //	myNodeID = rf12_config();
 //	serialFlush();
 //#else
@@ -297,10 +334,10 @@ void doReset(void)
 	scheduler.timer(MEASURE, 0);    // get the measurement loop going
 }
 
-bool doAnnounce()
+bool doAnnounce(void)
 {
 /* see CarrierCase */
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	mpeser.startAnnounce(sketch, version);
 #if _DHT
 #if DHT_HIGH
@@ -333,17 +370,17 @@ bool doAnnounce()
 	//serialFlush();
 
 	//return false;
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 }
 
 // readout all the sensors and other values
-void doMeasure()
+void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
 	int ctemp = internalTemp();
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.println();
 	Serial.print("AVR T new/avg ");
 	Serial.print(ctemp);
@@ -358,12 +395,12 @@ void doMeasure()
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h) || h > 100 || h < 0) {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
 		payload.rhum = round(h);//smoothedAverage(payload.rhum, round(h), firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
 		Serial.print(h);
 		Serial.print(' ');
@@ -371,12 +408,12 @@ void doMeasure()
 #endif
 	}
 	if (isnan(t)) {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
 		payload.temp = (int)(t*10);//smoothedAverage(payload.temp, (int)(t * 10), firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT T new/avg "));
 		Serial.print(t);
 		Serial.print(' ');
@@ -389,12 +426,12 @@ void doMeasure()
 	float h2 = dht2.readHumidity();
 	float t2 = dht2.readTemperature();
 	if (isnan(h2) || h2 > 100 || h2 < 0) {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
 		payload.rhum2 = round(h2);//smoothedAverage(payload.rhum2, round(h2), firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
 		Serial.print(h2);
 		Serial.print(' ');
@@ -402,12 +439,12 @@ void doMeasure()
 #endif
 	}
 	if (isnan(t2)) {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
 		payload.temp2 = (int)(t2*10);//smoothedAverage(payload.temp2, (int)(t2 * 10), firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT T new/avg "));
 		Serial.print(t2);
 		Serial.print(' ');
@@ -418,13 +455,13 @@ void doMeasure()
 
 #if _MEM
 	payload.memfree = freeRam();
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
 #endif //_MEM
 
-#if SERIAL
+#if SERIAL_EN
 	serialFlush();
 #endif
 }
@@ -432,7 +469,7 @@ void doMeasure()
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
-#if SERIAL || DEBUG
+#if SERIAL_EN || DEBUG
 	Serial.print(node);
 #if _DHT
 	Serial.print(' ');
@@ -458,7 +495,7 @@ void doReport(void)
 	Serial.print((int) payload.lobat);
 #endif //_RFM12LOBAT
 	serialFlush();
-#endif // SERIAL || DEBUG
+#endif // SERIAL_EN || DEBUG
 
 #if _RFM12B
 	rf12_sleep(RF12_WAKEUP);
@@ -501,21 +538,11 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers }}} *** */
+/* *** /Run-time handlers *** }}} */
 
 /* *** InputParser handlers *** {{{ */
 
-static void helpCmd() {
-	Serial.println("n: print Node ID");
-	Serial.println("c: print config");
-	Serial.println("v: print version");
-	Serial.println("m: print free and used memory");
-	Serial.println("N: set Node (3 byte char)");
-	Serial.println("C: set Node ID (1 byte int)");
-	Serial.println("W: load/save EEPROM");
-	Serial.println("E: erase EEPROM!");
-	Serial.println("?/h: this help");
-}
+#if SERIAL_EN
 
 static void handshakeCmd() {
 	//int v;
@@ -529,21 +556,23 @@ static void handshakeCmd() {
 }
 
 InputParser::Commands cmdTab[] = {
-	{ '?', 0, helpCmd },
-	{ 'h', 0, helpCmd },
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
 	{ 'A', 0, handshakeCmd },
 	{ 0 }
 };
 
+#endif // SERIAL_EN
 
-/* *** /InputParser handlers }}} *** */
+
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
 
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM

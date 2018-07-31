@@ -13,8 +13,8 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL					1 /* Enable serial */
-#define DEBUG					  1 /* Enable trace statements */
+#define SERIAL_EN				1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
 #define DEBUG_MEASURE	  1
 
 #define _MEM						1	 // Report free memory
@@ -41,18 +41,18 @@
 
 
 
-
-
+#include <OneWire.h>
 //#include <SoftwareSerial.h>
 #include <EEPROM.h>
 #include <JeeLib.h>
 #include <SPI.h>
 #if _DHT
+#include <Adafruit_Sensor.h>
 #include <DHT.h> // Adafruit DHT
 #endif
 #include <DotmpeLib.h>
 #include <mpelib.h>
-#include "printf.h"
+//#include "printf.h"
 
 
 
@@ -87,8 +87,9 @@ MpeSerial mpeser (57600);
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
-InputParser parser (50, cmdTab);
+extern const InputParser::Commands cmdTab[] PROGMEM;
+byte* buffer = (byte*) malloc(50);
+const InputParser parser (buffer, 50, cmdTab);
 
 
 /* *** /InputParser }}} *** */
@@ -96,7 +97,7 @@ InputParser parser (50, cmdTab);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;		// count up until next report, i.e. packet send
+static byte reportCount;    // count up until next report, i.e. packet send
 
 /* Data reported by this sketch */
 struct {
@@ -161,67 +162,63 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* *** /Scheduled tasks *** }}} */
 
-/* *** EEPROM static_config *** {{{ */
+/* *** EEPROM config *** {{{ */
 
 
 struct Config {
-	char node[3];
-	int node_id;
+	char node[2];
 	int version;
+	int node_id;
 	signed int temp_offset;
-	//int temp_k;
-	// http://playground.arduino.cc/Code/EEPROMWriteAnything
-	float temp_k;
-	char config_id[4];
-} static_config = {
+	int temp_k;
+} config = {
 	/* default values */
-	{ node[0], node[1], 0, }, 0, version,
-	TEMP_OFFSET, TEMP_K,
-	CONFIG_VERSION
+	{ node[0], node[1], }, 0, version,
+	TEMP_OFFSET, TEMP_K
 };
 
-//Config static_config;
 
-bool loadConfig()
+bool loadConfig(Config &c)
 {
-	unsigned int w = sizeof(static_config);
+	unsigned int w = sizeof(c);
 
 	if (
-			EEPROM.read(CONFIG_EEPROM_START +w-1 ) == CONFIG_VERSION[3] &&
-			EEPROM.read(CONFIG_EEPROM_START +w-2 ) == CONFIG_VERSION[2] &&
-			EEPROM.read(CONFIG_EEPROM_START +w-3 ) == CONFIG_VERSION[1] &&
-			EEPROM.read(CONFIG_EEPROM_START +w-4 ) == CONFIG_VERSION[0]
+			EEPROM.read(CONFIG_EEPROM_START + 1 ) == CONFIG_VERSION[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + 2 ) == CONFIG_VERSION[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + 3 ) == CONFIG_VERSION[1] &&
+			EEPROM.read(CONFIG_EEPROM_START) == CONFIG_VERSION[0]
 	) {
 
 		for (unsigned int t=0; t<w; t++)
 		{
-			*((char*)&static_config + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
 		}
 
 		return true;
 	} else {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println("No valid data in eeprom");
 #endif
 		return false;
 	}
 }
 
-void writeConfig()
+void writeConfig(Config &c)
 {
-	for (unsigned int t=0; t<sizeof(static_config); t++) {
+	for (unsigned int t=0; t<sizeof(c); t++) {
 
-		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&static_config + t));
-
+		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+#if SERIAL_EN && DEBUG
 		// verify
-		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&static_config + t))
+		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
-#if SERIAL && DEBUG
 			Serial.println("Error writing "+ String(t)+" to EEPROM");
-#endif
 		}
+#endif
 	}
+#if _RFM12B
+#endif //_RFM12B
 }
 
 
@@ -284,7 +281,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio	*/
+/* nRF24L01+: nordic 2.4Ghz digital radio */
 
 
 #endif // NRF24
@@ -295,7 +292,6 @@ enum { DS_OK, DS_ERR_CRC };
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
 
 #endif // HMC5883L
 
@@ -346,7 +342,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // NRF24 funcs
 
 #if _RTC
-#endif // RTC
+#endif //_RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -359,13 +355,17 @@ enum { DS_OK, DS_ERR_CRC };
 
 /* *** UI *** {{{ */
 
+
+
+
+
 /* *** /UI *** }}} */
 
 /* *** UART commands *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-void ser_helpCmd(void) {
+static void helpCmd(void) {
 	cmdIo.println("[Prototype/SensorNode:0] Help");
 	cmdIo.println("c: print node, -id, version and config-id");
 	cmdIo.println("t: print internal temperature");
@@ -379,8 +379,10 @@ void ser_helpCmd(void) {
 	cmdIo.println("1/0 W: write or load config to/from EEPROM");
 	// TODO: cmdIo.println("R: reset config to factory defaults and write to EEPROM");
 	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("n: node cfg.");
+	cmdIo.println("v: node ver.");
 	cmdIo.println("x: reset");
-	cmdIo.println("?: this help");
+	cmdIo.println("?/h: this help");
 }
 
 // forward declarations
@@ -388,27 +390,19 @@ void doReset(void);
 void doReport(void);
 void doMeasure(void);
 
-void reset_sercmd() {
+void resetCmd() {
 	doReset();
-}
-
-void report_sercmd() {
-	doReport();
-}
-
-void measure_sercmd() {
-	doMeasure();
 }
 
 static void configCmd() {
 	cmdIo.print("c ");
-	cmdIo.print(static_config.node);
+	cmdIo.print(config.node);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.node_id);
+	cmdIo.print(config.node_id);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.version);
+	cmdIo.print(config.version);
 	cmdIo.print(" ");
-	cmdIo.print(static_config.config_id);
+	cmdIo.print(config.config_id);
 	cmdIo.println();
 }
 
@@ -419,62 +413,62 @@ static void configNodeCmd(void) {
 
 static void configVersionCmd(void) {
 	cmdIo.print("v ");
-	cmdIo.println(static_config.version);
+	cmdIo.println(config.version);
 }
 
 static void configSetNodeCmd() {
 	const char *node;
 	parser >> node;
-	static_config.node[0] = node[0];
-	static_config.node[1] = node[1];
-	static_config.node[2] = node[2];
+	config.node[0] = node[0];
+	config.node[1] = node[1];
+	config.node[2] = node[2];
 	initConfig();
 	cmdIo.print("N ");
-	cmdIo.println(static_config.node);
+	cmdIo.println(config.node);
 }
 
 static void configNodeIDCmd() {
-	parser >> static_config.node_id;
+	parser >> config.node_id;
 	initConfig();
 	cmdIo.print("C ");
 	cmdIo.println(node_id);
 	serialFlush();
 }
 
-void ser_tempConfig(void) {
+void tempConfigCmd(void) {
 	Serial.print("Offset: ");
-	Serial.println(static_config.temp_offset);
+	Serial.println(config.temp_offset);
 	Serial.print("K: ");
-	Serial.println(static_config.temp_k);
+	Serial.println(config.temp_k);
 	Serial.print("Raw: ");
 	Serial.println(internalTemp());
 }
 
-void ser_tempOffset(void) {
+void tempOffsetCmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
 	if( v > 127 ) {
 		v -= 256;
 	}
-	static_config.temp_offset = v;
+	config.temp_offset = v;
 	Serial.print("New offset: ");
-	Serial.println(static_config.temp_offset);
-	writeConfig();
+	Serial.println(config.temp_offset);
+	writeConfig(config);
 }
 
-void ser_temp(void) {
-	double t = ( internalTemp() + static_config.temp_offset ) * static_config.temp_k ;
+void tempCmd(void) {
+	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
 	Serial.println( t );
 }
 
-static void configToEEPROMCmd() {
+static void configEEPROMCmd() {
 	int write;
 	parser >> write;
 	if (write) {
-		writeConfig();
+		writeConfig(config);
 	} else {
-		loadConfig();
+		loadConfig(config);
 		initConfig();
 	}
 	cmdIo.print("W ");
@@ -505,14 +499,14 @@ static void eraseEEPROMCmd() {
 void initConfig(void)
 {
 	// See Prototype/Node
-	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+	sprintf(node_id, "%s%i", config.node, config.node_id);
 }
 
 void doConfig(void)
 {
 	/* load valid config or reset default config */
-	if (!loadConfig()) {
-		writeConfig();
+	if (!loadConfig(config)) {
+		writeConfig(config);
 	}
 	initConfig();
 }
@@ -536,7 +530,7 @@ void initLibs()
 #if _HMC5883L
 #endif //_HMC5883L
 
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	printf_begin();
 #endif
 }
@@ -556,7 +550,7 @@ void doReset(void)
 	tick = 0;
 	reportCount = REPORT_EVERY;		 // report right away for easy debugging
 	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	Serial.println("Reinitialized");
 #endif
 }
@@ -564,13 +558,13 @@ void doReset(void)
 bool doAnnounce(void)
 {
 /* see CarrierCase */
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 	cmdIo.println(node_id);
 #if LDR_PORT
 	Serial.print("light:8 ");
@@ -598,9 +592,9 @@ void doMeasure(void)
 {
 	byte firstTime = payload.ctemp == 0; // special case to init running avg
 
-	int ctemp = internalTemp();
+	int ctemp = internalTemp(config.temp_offset, config.temp_k);
 	payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.print("AVR T new/avg ");
 	Serial.print(ctemp);
 	Serial.print('/');
@@ -609,7 +603,7 @@ void doMeasure(void)
 
 #if _RFM12LOBAT
 	payload.lobat = rf12_lowbat();
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	if (payload.lobat) {
 		Serial.println("Low battery");
 	}
@@ -620,13 +614,13 @@ void doMeasure(void)
 	float h = dht.readHumidity();
 	float t = dht.readTemperature();
 	if (isnan(h)) {
-#if SERIAL | DEBUG
+#if SERIAL_EN | DEBUG
 		Serial.println(F("Failed to read DHT11 humidity"));
 #endif
 	} else {
 		int rh = h * 10;
 		payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT RH new/avg "));
 		Serial.print(rh);
 		Serial.print(' ');
@@ -634,12 +628,12 @@ void doMeasure(void)
 #endif
 	}
 	if (isnan(t)) {
-#if SERIAL | DEBUG
+#if SERIAL_EN | DEBUG
 		Serial.println(F("Failed to read DHT11 temperature"));
 #endif
 	} else {
-		payload.temp = smoothedAverage(payload.temp, t * 10, firstTime);
-#if SERIAL && DEBUG_MEASURE
+		payload.temp = smoothedAverage(payload.temp, (int)(t * 10), firstTime);
+#if SERIAL_EN && DEBUG_MEASURE
 		Serial.print(F("DHT T new/avg "));
 		Serial.print(t);
 		Serial.print(' ');
@@ -653,7 +647,7 @@ void doMeasure(void)
 	byte light = ~ ldr.anaRead() >> 2;
 	ldr.digiWrite2(0);	// disable pull-up to reduce current draw
 	payload.light = smoothedAverage(payload.light, light, firstTime);
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.print(F("LDR new/avg "));
 	Serial.print(light);
 	Serial.print(' ');
@@ -663,7 +657,7 @@ void doMeasure(void)
 
 #if _MEM
 	payload.memfree = freeRam();
-#if SERIAL && DEBUG_MEASURE
+#if SERIAL_EN && DEBUG_MEASURE
 	Serial.print("MEM free ");
 	Serial.println(payload.memfree);
 #endif
@@ -680,7 +674,7 @@ void doReport(void)
 #if _NRF24
 #endif // NRF24
 
-#if SERIAL
+#if SERIAL_EN
 	Serial.print(node_id);
 	Serial.print(' ');
 	Serial.print((int) payload.ctemp);
@@ -694,9 +688,8 @@ void doReport(void)
 #endif //_RFM12LOBAT
 
 	Serial.println();
-#endif //SERIAL
+#endif //SERIAL_EN
 }
-
 
 void runScheduler(char task)
 {
@@ -727,7 +720,7 @@ void runScheduler(char task)
 				reportCount = 0;
 				scheduler.timer(REPORT, 0);
 			}
-#if SERIAL
+#if SERIAL_EN
 			serialFlush();
 #endif
 #ifdef _DBG_LED
@@ -740,7 +733,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-#if DEBUG && SERIAL
+#if DEBUG && SERIAL_EN
 		case SCHED_WAITING:
 		case SCHED_IDLE:
 			Serial.print("!");
@@ -763,27 +756,28 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'c', 0, configCmd},
+const InputParser::Commands cmdTab[] = {
+	{ '?', 0, helpCmd },
+	{ 'h', 0, helpCmd },
+	{ 'c', 0, configCmd },
 	{ 'n', 0, configNodeCmd },
 	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'W', 1, configToEEPROMCmd },
-	{ 'r', 0, reset_sercmd },
-	{ 'x', 0, report_sercmd },
-	{ 'M', 0, measure_sercmd },
+	{ 'W', 1, configEEPROMCmd },
+	{ 'o', 0, tempConfigCmd },
+	{ 'T', 1, tempOffsetCmd },
+	{ 't', 0, tempCmd },
+	{ 'r', 0, doReport },
+	{ 'm', 0, doMeasure },
 	{ 'E', 0, eraseEEPROMCmd },
+	{ 'x', 0, resetCmd },
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -793,7 +787,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
@@ -815,16 +809,15 @@ void loop(void)
 #endif
 	debug_ticks();
 
-	if (cmdIo.available()) {
-		parser.poll();
-		return;
-	}
+	parser.poll();
 
 	char task = scheduler.poll();
 	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
+		return;
 	}
 
+		/* Sleep */
 		serialFlush();
 		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {

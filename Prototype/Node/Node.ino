@@ -40,16 +40,17 @@ Serial config
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL					1 /* Enable serial */
-#define DEBUG					  1 /* Enable trace statements */
-#define DEBUG_MEASURE	  0
+#define SERIAL_EN				1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
+#define DEBUG_MEASURE		0
 
 #define _MEM						1	 // Report free memory
-#define _RFM12B				 0
-#define _RFM12LOBAT		 0	 // Use JeeNode lowbat measurement
+#define _RFM12B					0
+#define _RFM12LOBAT			0	 // Use JeeNode lowbat measurement
+#define _NRF24          1
 
 #define ANNOUNCE_START	0
-#define UI_IDLE				 4000	// tenths of seconds idle time, ...
+#define UI_IDLE					4000	// tenths of seconds idle time, ...
 #define UI_STDBY				8000	// ms
 #define CONFIG_VERSION "nx1"
 #define CONFIG_EEPROM_START 0
@@ -104,7 +105,7 @@ MilliTimer idle, stdby;
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
+extern const InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
@@ -114,7 +115,7 @@ InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 /* *** Report variables *** {{{ */
 
 
-static byte reportCount;		// count up until next report, i.e. packet send
+static byte reportCount;    // count up until next report, i.e. packet send
 
 // This defines the structure of the packets which get sent out by wireless:
 struct {
@@ -139,7 +140,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -195,7 +196,7 @@ bool loadConfig(Config &c)
 		return true;
 
 	} else {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		cmdIo.println("No valid data in eeprom");
 #endif
 		return false;
@@ -212,7 +213,7 @@ void writeConfig(Config &c)
 		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 			cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
 		}
@@ -286,6 +287,7 @@ Port ldr (LDR_PORT);
 #endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
+
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
 
@@ -295,6 +297,7 @@ Port ldr (LDR_PORT);
 #endif //_LCD
 
 #if _LCD84x48
+
 
 #endif // LCD84x48
 
@@ -326,7 +329,6 @@ Port ldr (LDR_PORT);
 #endif // HMC5883L
 
 
-
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
@@ -341,9 +343,9 @@ void irq0()
 
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
 static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
@@ -373,7 +375,7 @@ void stdbyCmd() {
 	ui = false;
 }
 
-static void configCmd() {
+void ser_configCmd() {
 	cmdIo.print("c ");
 	cmdIo.print(static_config.node);
 	cmdIo.print(" ");
@@ -488,13 +490,13 @@ void doReset(void)
 bool doAnnounce(void)
 {
 /* see CarrierCase */
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 	cmdIo.println(node_id);
 	return false;
 }
@@ -505,6 +507,7 @@ void doMeasure()
 {
 	// none, see	SensorNode
 }
+
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
@@ -539,7 +542,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-#if DEBUG && SERIAL
+#if DEBUG && SERIAL_EN
 		case SCHED_WAITING:
 		case SCHED_IDLE:
 			Serial.print("!");
@@ -562,13 +565,13 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-InputParser::Commands cmdTab[] = {
+const InputParser::Commands cmdTab[] = {
 	{ '?', 0, ser_helpCmd },
 	{ 'h', 0, ser_helpCmd },
 	{ 'm', 0, memStat },
-	{ 'c', 0, configCmd },
+	{ 'c', 0, ser_configCmd },
 	{ 'n', 0, configNodeCmd },
 	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
@@ -580,7 +583,7 @@ InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -590,7 +593,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 	//virtSerial.begin(4800);

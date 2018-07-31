@@ -43,6 +43,7 @@ MONITOR_PORT      = /dev/tty.usbmodem*
 _arduino:
 	@\
 	$(call log,header2,BRD,$(BRD));\
+	$(call log,header2,P,$(P));\
 	p=$$(realpath $$(pwd));\
 	test -n "$(P)" || { echo "Path expected"; exit 1; };\
 	cd $(P) && \
@@ -61,8 +62,8 @@ arduino: TARGETS := target
 arduino: _arduino
 
 #jeenode: BRD := uno
-#jeenode: BRD := 16MHzatmega328
-jeenode: BRD := 8MHzatmega328
+jeenode: BRD := 16MHzatmega328
+#jeenode: BRD := 8MHzatmega328
 jeenode: M := arduino
 jeenode: arduino
 

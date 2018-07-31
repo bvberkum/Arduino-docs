@@ -7,19 +7,19 @@ AtmegaEEPROM extends Node
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+#define SERIAL_EN				1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
 
+#define _MEM						1	 // Report free memory
 #define MAXLENLINE      79
 
-#define CONFIG_VERSION "at1"
+#define CONFIG_VERSION "nx1 "
 #define CONFIG_EEPROM_START 0
 
 
 
-#include <JeeLib.h>
-#include <OneWire.h>
 #include <EEPROM.h>
+#include <JeeLib.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
 
@@ -46,13 +46,12 @@ char node_id[7];
 MpeSerial mpeser (57600);
 
 
-
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
+extern const InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
-InputParser parser (buffer, 50, cmdTab);
+const InputParser parser (buffer, 50, cmdTab);
 
 
 /* *** /InputParser }}} *** */
@@ -62,7 +61,7 @@ InputParser parser (buffer, 50, cmdTab);
 
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -74,41 +73,39 @@ InputParser parser (buffer, 50, cmdTab);
 /* *** EEPROM config *** {{{ */
 
 
-
 struct Config {
-	char node[4];
-	int node_id;
+	char node[2];
 	int version;
-	char config_id[4];
+	int node_id;
 	signed int temp_offset;
-	float temp_k;
-} static_config = {
+	//float temp_k;
+	int temp_k;
+} config = {
 	/* default values */
 	{ node[0], node[1], }, 0, version,
-	CONFIG_VERSION, TEMP_OFFSET, TEMP_K
+	TEMP_OFFSET, TEMP_K
 };
 
-Config config;
 
 bool loadConfig(Config &c)
 {
 	unsigned int w = sizeof(c);
 
 	if (
-			//EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
-			//EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+			EEPROM.read(CONFIG_EEPROM_START + 1 ) == CONFIG_VERSION[3] &&
+			EEPROM.read(CONFIG_EEPROM_START + 2 ) == CONFIG_VERSION[2] &&
+			EEPROM.read(CONFIG_EEPROM_START + 3 ) == CONFIG_VERSION[1] &&
+			EEPROM.read(CONFIG_EEPROM_START) == CONFIG_VERSION[0]
 	) {
 
 		for (unsigned int t=0; t<w; t++)
 		{
 			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
 		}
-		return true;
 
+		return true;
 	} else {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		Serial.println("No valid data in eeprom");
 #endif
 		return false;
@@ -120,16 +117,17 @@ void writeConfig(Config &c)
 	for (unsigned int t=0; t<sizeof(c); t++) {
 
 		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
-
+#if SERIAL_EN && DEBUG
 		// verify
 		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
-#if SERIAL && DEBUG
 			Serial.println("Error writing "+ String(t)+" to EEPROM");
-#endif
 		}
+#endif
 	}
+#if _RFM12B
+#endif //_RFM12B
 }
 
 
@@ -150,6 +148,7 @@ void writeConfig(Config &c)
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
+
 #endif // DS
 
 #if _RFM12B
@@ -159,13 +158,14 @@ void writeConfig(Config &c)
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
+/* nRF24L01+: nordic 2.4Ghz digital radio */
+
 
 #endif // NRF24
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
@@ -177,19 +177,18 @@ void writeConfig(Config &c)
 
 /* *** Peripheral hardware routines *** {{{ */
 
+
 #if LDR_PORT
 #endif
 
 /* *** PIR support *** {{{ */
 #if PIR_PORT
-#endif
+#endif // PIR_PORT
 /* *** /PIR support *** }}} */
 
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
 
@@ -197,6 +196,9 @@ void writeConfig(Config &c)
 /* HopeRF RFM12B 868Mhz digital radio */
 
 #endif //_RFM12B
+
+#if _LCD
+#endif //_LCD
 
 #if _LCD84x48
 
@@ -235,10 +237,11 @@ void writeConfig(Config &c)
 
 /* *** /UI *** }}} */
 
-/* UART commands {{{ */
+/* *** UART commands *** {{{ */
 
-#if SERIAL
-static void ser_helpCmd(void) {
+#if SERIAL_EN
+
+static void helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 	cmdIo.println("v: print version");
@@ -246,6 +249,9 @@ static void ser_helpCmd(void) {
 	cmdIo.println("C: set Node ID (1 byte int)");
 	cmdIo.println("W: load/save config EEPROM");
 	cmdIo.println("E: erase EEPROM!");
+	cmdIo.println("r: report now");
+	cmdIo.println("m: measure now");
+	cmdIo.println("x: reset");
 	cmdIo.println("?/h: this help");
 }
 
@@ -257,8 +263,6 @@ static void configCmd() {
 	cmdIo.print(" ");
 	cmdIo.print(config.version);
 	cmdIo.print(" ");
-	cmdIo.print(config.config_id);
-	cmdIo.println();
 }
 
 static void configNodeCmd(void) {
@@ -273,7 +277,7 @@ static void configVersionCmd(void) {
 	cmdIo.print("v ");
 	cmdIo.println(config.version);
 	//Serial.print("v ");
-	//showNibble(static_config.version);
+	//showNibble(config.version);
 	//Serial.println("");
 }
 
@@ -299,7 +303,7 @@ static void configNodeIDCmd() {
 	serialFlush();
 }
 
-static void configEEPROM() {
+static void configEEPROMCmd() {
 	int write;
 	parser >> write;
 	if (write) {
@@ -312,7 +316,7 @@ static void configEEPROM() {
 	cmdIo.println(write);
 }
 
-void ser_tempOffset(void) {
+void tempOffsetCmd(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -325,21 +329,22 @@ void ser_tempOffset(void) {
 	writeConfig(config);
 }
 
-void ser_tempConfig(void) {
+void tempConfigCmd(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
 	Serial.println(config.temp_k);
 	Serial.print("Raw: ");
-	Serial.println(internalTemp());
+	Serial.println(internalTemp(config.temp_offset, config.temp_k));
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void tempCmd(void) {
+  float temp_k = config.temp_k / 10;
+	double t = ( internalTemp(config.temp_offset, temp_k) + config.temp_offset ) * temp_k ;
+	Serial.println( t );
 }
 
-static void eraseEEPROM() {
+static void eraseEEPROMCmd() {
 	cmdIo.print("! Erasing EEPROM..");
 	for (int i = 0; i<EEPROM_SIZE; i++) {
 		char b = EEPROM.read(i);
@@ -362,6 +367,7 @@ static void eraseEEPROM() {
 
 void initConfig(void)
 {
+	// See Prototype/Node
 	sprintf(node_id, "%s%i", config.node, config.node_id);
 }
 
@@ -369,7 +375,7 @@ void doConfig(void)
 {
 	/* load valid config or reset default config */
 	if (!loadConfig(config)) {
-		writeConfig(static_config);
+		writeConfig(config);
 	}
 	initConfig();
 }
@@ -392,13 +398,14 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-#if SERIAL && DEBUG
+/* see CarrierCase */
+#if SERIAL_EN && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 	cmdIo.println(node_id);
 	return false;
 }
@@ -407,21 +414,23 @@ bool doAnnounce(void)
 // readout all the sensors and other values
 void doMeasure(void)
 {
-	int ctemp = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+	int ctemp = internalTemp(config.temp_offset, (float) config.temp_k/10);
 }
 
-void runScheduler(char task)
-{
-	switch (task) {
-	}
-}
+
+
+#if PIR_PORT
+
+// send packet and wait for ack when there is a motion trigger
+#endif // PIR_PORT
+
 
 
 /* *** /Run-time handlers *** }}} */
 
 /* *** InputParser handlers *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
 void handshakeCmd() {
 	int v;
@@ -434,25 +443,26 @@ void handshakeCmd() {
 	serialFlush();
 }
 
-InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'A', 0, handshakeCmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
+const InputParser::Commands cmdTab[] = {
+	{ '?', 0, helpCmd },
+	{ 'h', 0, helpCmd },
 	{ 'c', 0, configCmd },
 	{ 'n', 0, configNodeCmd },
 	{ 'v', 0, configVersionCmd },
 	{ 'N', 3, configSetNodeCmd },
 	{ 'C', 1, configNodeIDCmd },
-	{ 'W', 1, configEEPROM },
-	{ 'E', 0, eraseEEPROM },
+	{ 'W', 1, configEEPROMCmd },
+	{ 'o', 0, tempConfigCmd },
+	{ 'T', 1, tempOffsetCmd },
+	{ 't', 0, tempCmd },
+	{ 'A', 0, handshakeCmd },
+	{ 'm', 0, doMeasure },
+	{ 'E', 0, eraseEEPROMCmd },
 	{ 'x', 0, doReset },
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -462,7 +472,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
@@ -479,17 +489,9 @@ void setup(void)
 
 void loop(void)
 {
-	if (cmdIo.available()) {
-		parser.poll();
-		return;
-	}
+	parser.poll();
 
 		serialFlush();
-		//char task = scheduler.pollWaiting();
-		//if (-1 < task && task < SCHED_IDLE) {
-		//	runScheduler(task);
-		//}
-
 }
 
 /* *** }}} */

@@ -11,13 +11,13 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           0 /* Enable trace statements */
+#define SERIAL_EN				1 /* Enable serial */
+#define DEBUG						1 /* Enable trace statements */
 
-#define _MEM            1   // Report free memory
+#define _MEM						1	 // Report free memory
 
 #define ANNOUNCE_START  0
-#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
+#define UI_SCHED_IDLE   4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
 #define MAXLENLINE      79
 #define CONFIG_VERSION "nx1"
@@ -32,13 +32,14 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 //#include <avr/interrupt.h>
 
 //#include <SoftwareSerial.h>
+#include <Wire.h>
 #include <EEPROM.h>
 //#include <util/crc16.h>
 #include <JeeLib.h>
-#include <Wire.h>
 #include <SPI.h>
 #include <RF24.h>
 #include <RF24Network.h>
+#include <Adafruit_Sensor.h>
 #include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
@@ -79,8 +80,10 @@ MilliTimer idle, stdby;
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
-InputParser parser (50, cmdTab);
+extern const InputParser::Commands cmdTab[] PROGMEM;
+byte* buffer = (byte*) malloc(50);
+InputParser parser (buffer, 50, cmdTab);//, virtSerial);
+//InputParser parser (50, cmdTab);
 
 
 /* *** /InputParser }}} *** */
@@ -90,7 +93,7 @@ InputParser parser (50, cmdTab);
 
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -148,7 +151,7 @@ bool loadConfig(Config &c)
 		return true;
 
 	} else {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 		cmdIo.println("No valid data in eeprom");
 #endif
 		return false;
@@ -165,7 +168,7 @@ void writeConfig(Config &c)
 		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
 		{
 			// error writing to EEPROM
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 			cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
 		}
@@ -187,6 +190,9 @@ void writeConfig(Config &c)
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
 #endif // DHT
+
+#if _AM2321
+#endif
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -296,9 +302,9 @@ void irq0()
 
 /* *** UART commands *** {{{ */
 
-#if SERIAL
+#if SERIAL_EN
 
-void help_sercmd(void) {
+static void ser_helpCmd(void) {
 	cmdIo.println("n: print Node ID");
 	cmdIo.println("c: print config");
 //	Serial.println("v: print version");
@@ -352,7 +358,7 @@ void stdby_sercmd() {
 	ui = false;
 }
 
-void config_sercmd() {
+void ser_configCmd() {
 	cmdIo.print("c ");
 	cmdIo.print(config.node);
 	cmdIo.print(" ");
@@ -364,7 +370,7 @@ void config_sercmd() {
 	cmdIo.println();
 }
 
-void ctempconfig_sercmd(void) {
+void ser_tempConfig(void) {
 	Serial.print("Offset: ");
 	Serial.println(config.temp_offset);
 	Serial.print("K: ");
@@ -373,7 +379,7 @@ void ctempconfig_sercmd(void) {
 	Serial.println(internalTemp());
 }
 
-void ctempoffset_sercmd(void) {
+void ser_tempOffset(void) {
 	char c;
 	parser >> c;
 	int v = c;
@@ -386,7 +392,7 @@ void ctempoffset_sercmd(void) {
 	writeConfig(config);
 }
 
-void ctemp_sercmd(void) {
+void ser_temp(void) {
 	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
 	Serial.println( t );
 }
@@ -451,13 +457,13 @@ void doReset(void)
 
 bool doAnnounce(void)
 {
-#if SERIAL && DEBUG
+#if SERIAL_EN && DEBUG
 	cmdIo.print("\n[");
 	cmdIo.print(sketch);
 	cmdIo.print(".");
 	cmdIo.print(version);
 	cmdIo.println("]");
-#endif // SERIAL && DEBUG
+#endif // SERIAL_EN && DEBUG
 	cmdIo.println(node_id);
 
 	return false;
@@ -495,7 +501,7 @@ void runScheduler(char task)
 			serialFlush();
 			break;
 
-#if DEBUG && SERIAL
+#if DEBUG && SERIAL_EN
 		case SCHED_WAITING:
 		case SCHED_IDLE:
 			Serial.print("!");
@@ -518,18 +524,16 @@ void runScheduler(char task)
 
 /* *** InputParser handlers *** {{{ */
 
-// See Node for proper cmds, basic examples here
-#if SERIAL
+#if SERIAL_EN
 
-InputParser::Commands cmdTab[] = {
-	{ '?', 0, help_sercmd },
-	{ 'h', 0, help_sercmd },
+const InputParser::Commands cmdTab[] = {
+	{ '?', 0, ser_helpCmd },
+	{ 'h', 0, ser_helpCmd },
+	{ 'c', 0, ser_configCmd },
 	{ 'm', 0, memstat_serscmd },
-	{ 'c', 0, config_sercmd},
-	{ 'c', 0, configCmd },
-	{ 'o', 0, ctempconfig_sercmd },
-	{ 'T', 1, ctempoffset_sercmd },
-	{ 't', 0, ctemp_sercmd },
+	{ 'o', 0, ser_tempConfig },
+	{ 'T', 1, ser_tempOffset },
+	{ 't', 0, ser_temp },
 	{ 'r', 0, reset_sercmd },
 	{ 's', 0, stdby_sercmd },
 	{ 'x', 0, report_sercmd },
@@ -538,7 +542,7 @@ InputParser::Commands cmdTab[] = {
 	{ 0 }
 };
 
-#endif // SERIAL
+#endif // SERIAL_EN
 
 
 /* *** /InputParser handlers *** }}} */
@@ -548,7 +552,7 @@ InputParser::Commands cmdTab[] = {
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
@@ -576,14 +580,14 @@ void loop(void)
 	}
 	debug_ticks();
 
-	if (cmdIo.available()) {
-		parser.poll();
-		return;
+	if (parser.poll()) {
+	  return;
 	}
 
 	char task = scheduler.poll();
 	if (-1 < task && task < SCHED_IDLE) {
 		runScheduler(task);
+		return;
 	}
 
 	if (ui) {
@@ -599,7 +603,6 @@ void loop(void)
 #ifdef _DBG_LED
 		blink(_DBG_LED, 1, 25);
 #endif
-		debugline("Sleep");
 		serialFlush();
 		task = scheduler.pollWaiting();
 		if (-1 < task && task < SCHED_IDLE) {
