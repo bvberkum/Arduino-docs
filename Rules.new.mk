@@ -15,7 +15,8 @@ ALTERNATE_CORE := $(C)
 endif
 BOARD_TAG := $(BRD)
 
-INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
+#INO_MK := /usr/local/opt/arduino-mk/Arduino.mk
+INO_MK := /usr/local/opt/Arduino.mk
 #INO_MK := $(shell pwd)/Tool/arduino-mk/Arduino.mk
 
 

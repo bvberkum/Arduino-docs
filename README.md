@@ -3,23 +3,16 @@ Arduino-docs
 
 My Arduino sketch folder
 
-[See](main.rst) for personal notes on initial "headless" build setup.
+- My first "Arduino's" where BB atmega328P, and elm-chan-style TQFP
+- The first modules I bought where JeeNode's [JeeLabs](./JeeLabs/main.rst)
+  and a collection of JeePort modules
 
-[Blink](Prototype/Blink/) should be a usefull starting point in attacking
-different atmegas, attiny85 etc. No promises, lots of other stuff happening.
+* [Main doc](main.rst) for notes on "headless" build setup. 
 
-[Prototype](Prototype/main.rst] notes on using GIT history with derived files.
+* [Prototype](Prototype/main.rst) notes on using GIT history with derived files.
+* [Blink](Prototype/Blink) is always a usefull starting point
 
 ----
-
-Other notes:
-
-[firmware](./firmware/main.rst)
-[hardware](./hardware/main.rst)
-[libraries](./libraries/main.rst)
-
-[JeeLabs](./JeeLabs/main.rst)
-[Misc](./Misc/main.rst)
 
 [Prototype/TempGuard](./Prototype/TempGuard/main.rst)
 [Mpe/Cassette328P](./Mpe/Cassette328P/main.rst)
@@ -27,4 +20,12 @@ Other notes:
 [Misc/LCFrequencyMeter/](./Misc/LCFrequencyMeter/LCFrequencyMeter.rst)
 [Misc/SinePWM/](./Misc/SinePWM/SinePWM.rst)
 [Misc/nokia_pcd8544_display_testing](./Misc/nokia_pcd8544_display_testing/main.rst)
+
+Other notes:
+
+- [Firmware](./firmware/main.rst) refs and backups
+- Some ``boards.txt`` fragments in [hardware](./hardware/main.rst)
+- If needed, notes on [libraries](./libraries/main.rst)
+
+[Misc](./Misc/main.rst)
 

@@ -107,6 +107,11 @@ carriercase: P := Mpe/CarrierCase/
 carriercase: I := Mpe/CarrierCase/CarrierCase.hex
 carriercase: jeenode upload
 
+weathernode: C := m328p
+weathernode: P := Prototype/WeatherNode
+weathernode: I := Prototype/WeatherNode/WeatherNode.hex
+weathernode: jeenode upload
+
 cassette328p: C := m328p
 cassette328p: P := Mpe/Cassette328P/
 cassette328p: I := Mpe/Cassette328P/Cassette328P.hex

@@ -28,13 +28,13 @@ TODO: map alphachar node_id prefix to sketch payload struct.
 */
 
 /* *** Globals and sketch configuration *** */
-//#define SERIAL_EN					1 /* Enable serial */
-#define DEBUG						1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _NRF24          1
+#define _NRF24            1
 
 #define CONFIG_EEPROM_START 0
-#define NRF24_CHANNEL   90
+#define NRF24_CHANNEL     90
 
 
 
@@ -369,9 +369,7 @@ void loop(void)
 	while ( network.available() )
 	{
 		RF24NetworkHeader header;
-
 		network.peek(header);
-
 #if DEBUG
 		printf_P(PSTR("%lu: APP Received #%u type %c from 0%o\n\r"),
 				millis(),
@@ -382,9 +380,11 @@ void loop(void)
 #endif
 
 		switch (header.type) {
+
 			case 0:
 				registerNode(header);
 				break;
+
 			case 1:
 				if (nodeConfigured(header.from_node)) {
 					nodeReportRead(header);

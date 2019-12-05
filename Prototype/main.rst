@@ -5,7 +5,7 @@ Derived Sketches
   But also wants to grow to an Mpe style loop, serial command, eeprom etc.
   Also, want to try to write nRF24 alternative versions to RFM12.
 
-  see also git prototype
+  see also .gitprototype files, and ino.tab ofcourse
 
 Prototype
   Node
@@ -45,10 +45,38 @@ repository, checkout latest to jeelib_<branch> and then split from there.
   git co -f dev
   git read-tree --prefix=Prototype/RadioLink -u _jeelib_rf12demo
 
+This should squash examples/RF12/RF12demo/ deltas, at commit-ref _jeelib_rf12demo?
+XXX: this should output the new commit ID
+Readtree should get that new synthetic history, and add it to the index.
+
 Could wrap this in a script to handle it using standard GIT under the hood::
 
   prototype-init Prototype/RadioLink jeelib/master examples/RF12/RF12demo
   prototype-update Prototype/RadioLink
+
+So untested, it seems thats how the stupid content tracker 's
+file-content versioning can be levereged into GIT+CI. Deltas in the form of
+change-sets and merge commits can be tracked per file, and in different lines
+called branches, tagged commits, etc. as per usual GIT commit graph.
+
+So based on discrete files we can select and create a synthetic, new version
+with subtree split, and apply that elsewhere using read-tree. The subject is
+a file or directory, and hopefully the result at the target is a path that is
+updated from one, or more upstream "files" (not just branche or tag, but
+commitish plus path) and may/will have local changes as well.
+
+This derived content tracking requires some Ids to be resolved automatically,
+and maybe there is some validatation that can be done in between. This does not
+solve the composite-file use case yet, how to go from several files into one
+either means:
+
+- building a full history of the (derived) file aggregation, if that works; or
+- leverage ht-sync further (as planned) to sync blocks (like htd.sh lib
+  functions diff/sync)
+
+For .ino files the process is matching preproc lines and blocks with external
+content. Don't fancy splitting it up right now, but maybe just need to do anyway
+and compile static untracked build results instead.
 
 
 Programming connectors / Standard pinouts
@@ -68,5 +96,3 @@ Programming connectors / Standard pinouts
 4. SCK
 5. MISO
 6. MOSI
-
-

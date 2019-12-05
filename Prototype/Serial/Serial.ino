@@ -1,6 +1,5 @@
 /*
-
-Serial extends AtmegaEEPROM, AtmegaTemp
+  Serial extends AtmegaEEPROM, AtmegaTemp
 
   - boilerplate for ATmega node with Serial interface
   - uses Node event loop which is based on JeeLib scheduler.
@@ -11,10 +10,10 @@ Serial extends AtmegaEEPROM, AtmegaTemp
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN				1 /* Enable serial */
-#define DEBUG						1 /* Enable trace statements */
+#define SERIAL_EN        1 /* Enable serial */
+#define DEBUG            1 /* Enable trace statements */
 
-#define _MEM						1	 // Report free memory
+#define _MEM            1   // Report free memory
 
 #define ANNOUNCE_START  0
 #define UI_SCHED_IDLE   4000  // tenths of seconds idle time, ...
@@ -98,8 +97,8 @@ InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 /* *** Scheduled tasks *** {{{ */
 
 enum {
-	ANNOUNCE,
-	TASK_END
+  ANNOUNCE,
+  TASK_END
 };
 // Scheduler.pollWaiting returns -1 or -2
 static const char SCHED_WAITING = 0xFF; // -1: waiting to run
@@ -119,60 +118,60 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 // See Prototype Node or SensorNode
 
 struct Config {
-	char node[4];
-	int node_id;
-	int version;
-	char config_id[4];
-	signed int temp_offset;
-	float temp_k;
+  char node[4];
+  int node_id;
+  int version;
+  char config_id[4];
+  signed int temp_offset;
+  float temp_k;
 } static_config = {
-	/* default values */
-	{ node[0], node[1], 0, 0 }, 0, version,
-	CONFIG_VERSION, TEMP_OFFSET, TEMP_K,
+  /* default values */
+  { node[0], node[1], 0, 0 }, 0, version,
+  CONFIG_VERSION, TEMP_OFFSET, TEMP_K,
 };
 
 Config config;
 
 bool loadConfig(Config &c)
 {
-	unsigned int w = sizeof(c);
+  unsigned int w = sizeof(c);
 
-	if (
-			EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
-			EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
-	) {
+  if (
+      EEPROM.read(CONFIG_EEPROM_START + w - 1) == c.config_id[3] &&
+      EEPROM.read(CONFIG_EEPROM_START + w - 2) == c.config_id[2] &&
+      EEPROM.read(CONFIG_EEPROM_START + w - 3) == c.config_id[1] &&
+      EEPROM.read(CONFIG_EEPROM_START + w - 4) == c.config_id[0]
+  ) {
 
-		for (unsigned int t=0; t<w; t++)
-		{
-			*((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
-		}
-		return true;
+    for (unsigned int t=0; t<w; t++)
+    {
+      *((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
+    }
+    return true;
 
-	} else {
+  } else {
 #if SERIAL_EN && DEBUG
-		cmdIo.println("No valid data in eeprom");
+    cmdIo.println("No valid data in eeprom");
 #endif
-		return false;
-	}
+    return false;
+  }
 }
 
 void writeConfig(Config &c)
 {
-	for (unsigned int t=0; t<sizeof(c); t++) {
+  for (unsigned int t=0; t<sizeof(c); t++) {
 
-		EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
+    EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
 
-		// verify
-		if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
-		{
-			// error writing to EEPROM
+    // verify
+    if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
+    {
+      // error writing to EEPROM
 #if SERIAL_EN && DEBUG
-			cmdIo.println("Error writing "+ String(t)+" to EEPROM");
+      cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
-		}
-	}
+    }
+  }
 }
 
 
@@ -294,8 +293,8 @@ void writeConfig(Config &c)
 //ISR(INT0_vect)
 void irq0()
 {
-	ui_irq = true;
-	//Sleepy::watchdogInterrupts(0);
+  ui_irq = true;
+  //Sleepy::watchdogInterrupts(0);
 }
 
 /* *** /UI *** }}} */
@@ -305,34 +304,34 @@ void irq0()
 #if SERIAL_EN
 
 static void ser_helpCmd(void) {
-	cmdIo.println("n: print Node ID");
-	cmdIo.println("c: print config");
-//	Serial.println("v: print version");
-//	Serial.println("N: set Node (3 byte char)");
-//	Serial.println("C: set Node ID (1 byte int)");
-	cmdIo.println("m: print free and used memory");
-	cmdIo.println("t: internal temperature");
-	cmdIo.println("T: set offset");
-	cmdIo.println("o: temperature config");
-	cmdIo.println("r: report");
-	cmdIo.println("M: measure");
-//	Serial.println("W: load/save EEPROM");
-	cmdIo.println("E: erase EEPROM!");
-	cmdIo.println("x: reset");
-	cmdIo.println("?/h: this help");
-	idle.set(UI_SCHED_IDLE);
+  cmdIo.println("n: print Node ID");
+  cmdIo.println("c: print config");
+//  Serial.println("v: print version");
+//  Serial.println("N: set Node (3 byte char)");
+//  Serial.println("C: set Node ID (1 byte int)");
+  cmdIo.println("m: print free and used memory");
+  cmdIo.println("t: internal temperature");
+  cmdIo.println("T: set offset");
+  cmdIo.println("o: temperature config");
+  cmdIo.println("r: report");
+  cmdIo.println("M: measure");
+//  Serial.println("W: load/save EEPROM");
+  cmdIo.println("E: erase EEPROM!");
+  cmdIo.println("x: reset");
+  cmdIo.println("?/h: this help");
+  idle.set(UI_SCHED_IDLE);
 }
 
 void memstat_serscmd() {
-	int free = freeRam();
-	int used = usedRam();
+  int free = freeRam();
+  int used = usedRam();
 
-	cmdIo.print("m ");
-	cmdIo.print(free);
-	cmdIo.print(' ');
-	cmdIo.print(used);
-	cmdIo.print(' ');
-	cmdIo.println();
+  cmdIo.print("m ");
+  cmdIo.print(free);
+  cmdIo.print(' ');
+  cmdIo.print(used);
+  cmdIo.print(' ');
+  cmdIo.println();
 }
 
 // forward declarations
@@ -341,74 +340,74 @@ void doReport(void);
 void doMeasure(void);
 
 void reset_sercmd() {
-	doReset();
+  doReset();
 }
 
 void report_sercmd() {
-	doReport();
-	idle.set(UI_SCHED_IDLE);
+  doReport();
+  idle.set(UI_SCHED_IDLE);
 }
 
 void measure_sercmd() {
-	doMeasure();
-	idle.set(UI_SCHED_IDLE);
+  doMeasure();
+  idle.set(UI_SCHED_IDLE);
 }
 
 void stdby_sercmd() {
-	ui = false;
+  ui = false;
 }
 
 void ser_configCmd() {
-	cmdIo.print("c ");
-	cmdIo.print(config.node);
-	cmdIo.print(" ");
-	cmdIo.print(config.node_id);
-	cmdIo.print(" ");
-	cmdIo.print(config.version);
-	cmdIo.print(" ");
-	cmdIo.print(config.config_id);
-	cmdIo.println();
+  cmdIo.print("c ");
+  cmdIo.print(config.node);
+  cmdIo.print(" ");
+  cmdIo.print(config.node_id);
+  cmdIo.print(" ");
+  cmdIo.print(config.version);
+  cmdIo.print(" ");
+  cmdIo.print(config.config_id);
+  cmdIo.println();
 }
 
 void ser_tempConfig(void) {
-	Serial.print("Offset: ");
-	Serial.println(config.temp_offset);
-	Serial.print("K: ");
-	Serial.println(config.temp_k);
-	Serial.print("Raw: ");
-	Serial.println(internalTemp());
+  Serial.print("Offset: ");
+  Serial.println(config.temp_offset);
+  Serial.print("K: ");
+  Serial.println(config.temp_k);
+  Serial.print("Raw: ");
+  Serial.println(internalTemp());
 }
 
 void ser_tempOffset(void) {
-	char c;
-	parser >> c;
-	int v = c;
-	if( v > 127 ) {
-		v -= 256;
-	}
-	config.temp_offset = v;
-	Serial.print("New offset: ");
-	Serial.println(config.temp_offset);
-	writeConfig(config);
+  char c;
+  parser >> c;
+  int v = c;
+  if( v > 127 ) {
+    v -= 256;
+  }
+  config.temp_offset = v;
+  Serial.print("New offset: ");
+  Serial.println(config.temp_offset);
+  writeConfig(config);
 }
 
 void ser_temp(void) {
-	double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-	Serial.println( t );
+  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
+  Serial.println( t );
 }
 
 static void eraseEEPROM() {
-	cmdIo.print("! Erasing EEPROM..");
-	for (int i = 0; i<EEPROM_SIZE; i++) {
-		char b = EEPROM.read(i);
-		if (b != 0x00) {
-			EEPROM.write(i, 0);
-			cmdIo.print('.');
-		}
-	}
-	cmdIo.println(' ');
-	cmdIo.print("E ");
-	cmdIo.println(EEPROM_SIZE);
+  cmdIo.print("! Erasing EEPROM..");
+  for (int i = 0; i<EEPROM_SIZE; i++) {
+    char b = EEPROM.read(i);
+    if (b != 0x00) {
+      EEPROM.write(i, 0);
+      cmdIo.print('.');
+    }
+  }
+  cmdIo.println(' ');
+  cmdIo.print("E ");
+  cmdIo.println(EEPROM_SIZE);
 }
 
 #endif
@@ -420,17 +419,17 @@ static void eraseEEPROM() {
 
 void initConfig(void)
 {
-	// See Prototype/Node
-	sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
+  // See Prototype/Node
+  sprintf(node_id, "%s%i", static_config.node, static_config.node_id);
 }
 
 void doConfig(void)
 {
-	/* load valid config or reset default config */
-	if (!loadConfig(config)) {
-		writeConfig(static_config);
-	}
-	initConfig();
+  /* load valid config or reset default config */
+  if (!loadConfig(config)) {
+    writeConfig(static_config);
+  }
+  initConfig();
 }
 
 void initLibs()
@@ -444,79 +443,79 @@ void initLibs()
 
 void doReset(void)
 {
-	doConfig();
+  doConfig();
 
 #ifdef _DBG_LED
-	pinMode(_DBG_LED, OUTPUT);
+  pinMode(_DBG_LED, OUTPUT);
 #endif
-	attachInterrupt(INT0, irq0, RISING);
-	ui_irq = true;
-	tick = 0;
-	scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
+  attachInterrupt(INT0, irq0, RISING);
+  ui_irq = true;
+  tick = 0;
+  scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 }
 
 bool doAnnounce(void)
 {
 #if SERIAL_EN && DEBUG
-	cmdIo.print("\n[");
-	cmdIo.print(sketch);
-	cmdIo.print(".");
-	cmdIo.print(version);
-	cmdIo.println("]");
+  cmdIo.print("\n[");
+  cmdIo.print(sketch);
+  cmdIo.print(".");
+  cmdIo.print(version);
+  cmdIo.println("]");
 #endif // SERIAL_EN && DEBUG
-	cmdIo.println(node_id);
+  cmdIo.println(node_id);
 
-	return false;
+  return false;
 }
 
 
 // readout all the sensors and other values
 void doMeasure(void)
 {
-	// none, see  SensorNode
+  // none, see  SensorNode
 }
 
 
 // periodic report, i.e. send out a packet and optionally report on serial port
 void doReport(void)
 {
-	// none, see RadioNode
+  // none, see RadioNode
 }
 
 void uiStart()
 {
-	idle.set(UI_SCHED_IDLE);
-	if (!ui) {
-		ui = true;
-	}
+  idle.set(UI_SCHED_IDLE);
+  if (!ui) {
+    ui = true;
+  }
 }
 
 void runScheduler(char task)
 {
-	switch (task) {
+  switch (task) {
 
-		case ANNOUNCE:
-				doAnnounce();
-				//scheduler.timer(ANNOUNCE, 100);
-			serialFlush();
-			break;
+    case ANNOUNCE:
+        doAnnounce();
+        //scheduler.timer(ANNOUNCE, 100);
+      serialFlush();
+      break;
 
 #if DEBUG && SERIAL_EN
-		case SCHED_WAITING:
-		case SCHED_IDLE:
-			Serial.print("!");
-			serialFlush();
-			break;
+    case SCHED_WAITING:
+    case SCHED_IDLE:
+      Serial.print("!");
+      serialFlush();
+      break;
 
-		default:
-			Serial.print("0x");
-			Serial.print(task, HEX);
-			Serial.println(" ?");
-			serialFlush();
-			break;
+    default:
+      Serial.print("0x");
+      Serial.print(task, HEX);
+      Serial.println(" ?");
+      serialFlush();
+      break;
 #endif
 
-	}
+  }
 }
 
 
@@ -527,19 +526,19 @@ void runScheduler(char task)
 #if SERIAL_EN
 
 const InputParser::Commands cmdTab[] = {
-	{ '?', 0, ser_helpCmd },
-	{ 'h', 0, ser_helpCmd },
-	{ 'c', 0, ser_configCmd },
-	{ 'm', 0, memstat_serscmd },
-	{ 'o', 0, ser_tempConfig },
-	{ 'T', 1, ser_tempOffset },
-	{ 't', 0, ser_temp },
-	{ 'r', 0, reset_sercmd },
-	{ 's', 0, stdby_sercmd },
-	{ 'x', 0, report_sercmd },
-	{ 'M', 0, measure_sercmd },
-	{ 'E', 0, eraseEEPROM },
-	{ 0 }
+  { '?', 0, ser_helpCmd },
+  { 'h', 0, ser_helpCmd },
+  { 'c', 0, ser_configCmd },
+  { 'm', 0, memstat_serscmd },
+  { 'o', 0, ser_tempConfig },
+  { 'T', 1, ser_tempOffset },
+  { 't', 0, ser_temp },
+  { 'r', 0, reset_sercmd },
+  { 's', 0, stdby_sercmd },
+  { 'x', 0, report_sercmd },
+  { 'M', 0, measure_sercmd },
+  { 'E', 0, eraseEEPROM },
+  { 0 }
 };
 
 #endif // SERIAL_EN
@@ -553,63 +552,64 @@ const InputParser::Commands cmdTab[] = {
 void setup(void)
 {
 #if SERIAL_EN
-	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+  mpeser.begin();
+  mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
-	Serial.println(freeRam());
+  Serial.print(F("Free RAM: "));
+  Serial.println(freeRam());
 #endif
-	serialFlush();
+  serialFlush();
 #endif
 
-	initLibs();
+  initLibs();
 
-	doReset();
+  doReset();
 }
 
 void loop(void)
 {
 #ifdef _DBG_LED
-	blink(_DBG_LED, 3, 10);
+  blink(_DBG_LED, 3, 10);
 #endif
-	if (ui_irq) {
-		debugline("Irq");
-		ui_irq = false;
-		uiStart();
-		//analogWrite(BL, 0xAF ^ BL_INVERTED);
-	}
-	debug_ticks();
+  if (ui_irq) {
+    debugline("Irq");
+    ui_irq = false;
+    uiStart();
+    //analogWrite(BL, 0xAF ^ BL_INVERTED);
+  }
+  debug_ticks();
 
-	if (parser.poll()) {
-	  return;
-	}
+  if (parser.poll()) {
+    return;
+  }
 
-	char task = scheduler.poll();
-	if (-1 < task && task < SCHED_IDLE) {
-		runScheduler(task);
-		return;
-	}
+  char task = scheduler.poll();
+  if (-1 < task && task < SCHED_IDLE) {
+    runScheduler(task);
+    return;
+  }
 
-	if (ui) {
-		if (idle.poll()) {
-			stdby.set(UI_STDBY);
-		} else if (stdby.poll()) {
-			ui = false;
-		} else if (!stdby.idle()) {
-			// XXX toggle UI stdby Power, got to some lower power mode..
-			delay(30);
-		}
-	} else {
+  if (ui) {
+    if (idle.poll()) {
+      stdby.set(UI_STDBY);
+    } else if (stdby.poll()) {
+      ui = false;
+    } else if (!stdby.idle()) {
+      // XXX toggle UI stdby Power, got to some lower power mode..
+      delay(30);
+    }
+  } else {
 #ifdef _DBG_LED
-		blink(_DBG_LED, 1, 25);
+    blink(_DBG_LED, 1, 25);
 #endif
-		serialFlush();
-		task = scheduler.pollWaiting();
-		if (-1 < task && task < SCHED_IDLE) {
-			runScheduler(task);
-		}
-	}
+    serialFlush();
+    task = scheduler.pollWaiting();
+    if (-1 < task && task < SCHED_IDLE) {
+      runScheduler(task);
+    }
+  }
 }
 
 /* *** }}} */
-
+// Derive: AtmegaTemp
+// Derive: AtmegaEEPROM

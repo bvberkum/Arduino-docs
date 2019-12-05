@@ -3,6 +3,8 @@
 ### Original project where this Makefile comes from: https://github.com/WeAreLeka/Bare-Arduino-Project
 
 ARDMK_DIR         = /usr/local/opt/arduino-mk
+#ARDMK_DIR         = /usr/local/Homebrew/Library/Taps/sudar/homebrew-arduino-mk
+#ARDMK_DIR         = /usr/local/var/homebrew/linked/arduino-mk
 
 ARDUINO_DIR       = /Applications/Arduino.app/Contents/Java
 #ARDUINO_DIR       = /usr/share/arduino
@@ -42,7 +44,7 @@ MONITOR_PORT      = /dev/tty.usbmodem*
 #_arduino: TARGETS := clean all
 _arduino:
 	@\
-	$(call log,header2,BRD,$(BRD));\
+	$(call log,header2,BRD:sub,$(BRD):$(BOARD_SUB));\
 	$(call log,header2,P,$(P));\
 	p=$$(realpath $$(pwd));\
 	test -n "$(P)" || { echo "Path expected"; exit 1; };\
@@ -52,6 +54,7 @@ _arduino:
 			CURRENT_DIR=$(shell basename $(CURDIR)) \
 			PROJECT_DIR=$(P) \
 			BOARD_TAG=$(BRD) \
+			BOARD_SUB=$(BOARD_SUB) \
 			OBJDIR=".";
 
 
@@ -62,7 +65,8 @@ arduino: TARGETS := target
 arduino: _arduino
 
 #jeenode: BRD := uno
-jeenode: BRD := 16MHzatmega328
+jeenode: BRD := pro
+jeenode: BOARD_SUB := 16MHzatmega328
 #jeenode: BRD := 8MHzatmega328
 jeenode: M := arduino
 jeenode: arduino

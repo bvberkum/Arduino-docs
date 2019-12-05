@@ -1,0 +1,2 @@
+2012-07-26 JX128_Frequency: mega128 frequency meter <http://www.jnutthailand.com/hobby/hobby.htm>
+2019-02-27 DUO mega a multicore 8bit computer by Jack Eisenman [2013] <http://www.ostracodfiles.com/mega/menu.html> debug port, shared memory, flash storage, micro VGA and ethernet. 80x6 character windows. one or more cores per program, no notes on minimal cores. Uses mega but promises alternative processor modules could be added. Uses his own propietary Megaliter bytecode.

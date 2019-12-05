@@ -27,13 +27,15 @@ extern void serialFlush() {
 	delay(2); // make sure tx buf is empty before going back to sleep
 }
 
-extern void debug_ticks(void)
+extern bool debug_ticks(void)
 {
+  bool r = false;
 #if SERIAL_EN && DEBUG
 	tick++;
 	if ((tick % 20) == 0) {
 		Serial.print('.');
 		pos++;
+		r = true;
 	}
 	if (pos > MAXLENLINE) {
 		pos = 0;
@@ -41,6 +43,7 @@ extern void debug_ticks(void)
 	}
 	serialFlush();
 #endif
+  return r;
 }
 
 extern void debugline(char* msg) {
