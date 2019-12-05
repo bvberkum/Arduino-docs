@@ -3,8 +3,8 @@
   main: arduino-docs
   id: arduino-docs
   repositories:
-    github: git@github.com:bvberkum/Arduino-docs.git
-    dotmpe.origin: domains/dotmpe.com/htdocs/git/arduino-docs.git
+    github: git@github.com:dotmpe/Arduino-docs.git
+    dotmpe.origin: git-repos/arduino-docs.git
   pd-meta:
     log: log/
     #DevLog.rst
