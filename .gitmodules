@@ -18,46 +18,46 @@
 #	url = git://github.com/practicalarduino/VirtualUsbKeyboard.git
 [submodule "libraries/EmBencode"]
 	path = libraries/EmBencode
-	url = git@github.com:jcw/embencode.git
+  url = https://github.com/Unitrunker/embencode.git
 [submodule "libraries/JeeLib"]
 	path = libraries/JeeLib
-	url = git@github.com:jcw/jeelib.git
+	url = https://github.com/jeelabs/jeelib.git
 [submodule "libraries/RF24"]
 	path = libraries/RF24
-	url = git@github.com:maniacbug/RF24.git
+	url = https://github.com/maniacbug/RF24.git
 [submodule "libraries/SPI"]
 	path = libraries/SPI
-	url = git@github.com:jscrane/SPI.git
+	url = https://github.com/jscrane/SPI.git
 [submodule "libraries/RF24Network"]
 	path = libraries/RF24Network
-	url = git@github.com:jscrane/RF24Network.git
+	url = https://github.com/jscrane/RF24Network.git
 [submodule "libraries/TFT_ILI9163C"]
 	path = libraries/TFT_ILI9163C
-	url = git@github.com:sumotoy/TFT_ILI9163C.git
+	url = https://github.com/sumotoy/TFT_ILI9163C.git
 [submodule "libraries/Adafruit_GFX"]
 	path = libraries/Adafruit_GFX
-	url = git@github.com:adafruit/Adafruit-GFX-Library.git
+	url = https://github.com/adafruit/Adafruit-GFX-Library.git
 [submodule "libraries/TinyGPS++"]
 	path = libraries/TinyGPSpp
-	url = git@github.com:mikalhart/TinyGPSPlus.git
+	url = https://github.com/mikalhart/TinyGPSPlus.git
 [submodule "Misc/HID-Serial"]
 	path = Misc/HID-Serial
-	url = git@github.com:rayshobby/hid-serial.git
+	url = https://github.com/rayshobby/hid-serial.git
 [submodule "libraries/uart"]
 	path = libraries/uart
-	url = git@github.com:andygock/avr-uart.git
+	url = https://github.com/andygock/avr-uart.git
 [submodule "libraries/twi"]
 	path = libraries/twi
-	url = git@github.com:RyanLowerr/twi-avr.git
+	url = https://github.com/RyanLowerr/twi-avr.git
 [submodule "libraries/i2c"]
 	path = libraries/i2c
-	url = git@github.com:pietern/avr-i2c.git
+	url = https://github.com/pietern/avr-i2c.git
 [submodule "Misc/AVR-UART-Parse-example"]
 	path = Misc/AVR-UART-Parse-example
-	url = git@github.com:ColinBrosseau/AVR-UART-Parse-exemple.git
+	url = https://github.com/ColinBrosseau/AVR-UART-Parse-exemple.git
 [submodule "libraries/softuart"]
 	path = libraries/softuart
-	url = git@github.com:blalor/avr-softuart.git
+	url = https://github.com/blalor/avr-softuart.git
 [submodule "libraries/Tictocs"]
 	path = libraries/Tictocs
 	url = https://github.com/maniacbug/Tictocs
