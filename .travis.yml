@@ -1,0 +1,15 @@
+
+# To skip builds use [ci ckip] in GIT commit-msg
+
+language: shell
+services:
+- docker
+jobs:
+  include:
+    - stage: Build
+      script:
+        - . ./tools/ci/test.sh
+branches:
+  only:
+    - master
+    - dev

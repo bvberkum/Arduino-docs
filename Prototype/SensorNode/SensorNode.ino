@@ -17,23 +17,23 @@
 #define DEBUG             1 /* Enable trace statements */
 #define DEBUG_MEASURE     1
 
-#define _MEM              1  // Report free memory
-#define LDR_PORT          0  // defined if LDR is connected to a port's AIO pin
+#define _MEM              1 // Report free memory
+#define LDR_PORT          0 // defined if LDR is connected to a port's AIO pin
 #define _DHT              0
-#define DHT_HIGH          0  // enable for DHT22/AM2302, low for DHT11
+#define DHT_HIGH          0 // enable for DHT22/AM2302, low for DHT11
 #define _DS               0
 #define DEBUG_DS          0
-#define _AM2321           1  // AOSONG AM2321 temp./rhum
-#define _BMP085           1  // Bosch BMP085/BMP180 pressure/temp.
+#define _AM2321           1 // AOSONG AM2321 temp./rhum
+#define _BMP085           1 // Bosch BMP085/BMP180 pressure/temp.
 #define _LCD              0
 #define _LCD84x48         0
 #define _RTC              0
 #define _RFM12B           0
-#define _RFM12LOBAT       0  // Use JeeNode lowbat measurement
+#define _RFM12LOBAT       0 // Use JeeNode lowbat measurement
 #define _NRF24            0
 
-#define REPORT_EVERY      1  // report every N measurement cycles
-#define SMOOTH            5  // smoothing factor used for running averages
+#define REPORT_EVERY      1 // report every N measurement cycles
+#define SMOOTH            5 // smoothing factor used for running averages
 #define MEASURE_PERIOD    30 // how often to measure, in tenths of seconds
 //#define TEMP_OFFSET       -57
 //#define TEMP_K            1.0
@@ -173,24 +173,20 @@ static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-
 /* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 
 struct Config {
-  char node[3];
+  char node[3]; // Alphanumeric Id (for sketch)
+  int node_id; // Id suffix integer (for unique run-time Id)
   int version;
-  int node_id;
   signed int temp_offset;
   int temp_k;
 } config = {
   /* default values */
-  { node[0], node[1], node[2], }, version, 0,
+  { node[0], node[1], node[2], }, 0, version,
   TEMP_OFFSET, TEMP_K
 };
 
@@ -241,6 +237,14 @@ void writeConfig(Config &c)
 
 
 /* *** /EEPROM config *** }}} */
+
+/* *** Scheduled tasks *** {{{ */
+
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduled tasks *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -563,8 +567,6 @@ static int findDS18B20s(int &ds_search) {
 #endif //_DS
 
 
-#endif // DS
-
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
@@ -639,8 +641,6 @@ void help_sercmd(void) {
 // forward declarations
 void initConfig(void);
 void doReset(void);
-void report_sercmd(void);
-void measure_sercmd(void);
 
 static void config_sercmd() {
   cmdIo.print("c ");
@@ -1098,10 +1098,10 @@ const InputParser::Commands cmdTab[] = {
   { 'o', 0, ctempconfig_sercmd },
   { 'T', 1, ctempoffset_sercmd },
   { 't', 0, ctemp_sercmd },
-  { 'r', 0, report_sercmd },
-  { 'M', 0, measure_sercmd },
+  { 'r', 0, doReport },
+  { 'M', 0, doMeasure },
   { 'E', 0, eraseEEPROM },
-  { 'x', 0, reset_sercmd },
+  { 'x', 0, doReset },
   { 0 }
 };
 

@@ -29,3 +29,11 @@ Other notes:
 
 [Misc](./Misc/main.rst)
 
+----
+
+With `arduino-cli`
+```sh
+
+  arduino-cli compile -b arduino:avr:pro --build-properties build.extra_flags=-DBLINK_PIN=13 Prototype/Blink
+  arduino-cli upload -v -b arduino:avr:pro -p /dev/ttyUSB1 Prototype/Blink
+```

@@ -5,7 +5,7 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
+#define SERIAL_EN       1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
 #define DEBUG_MEASURE   1
 
@@ -164,14 +164,14 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
-#if SERIAL && DEBUG_DS
+#if SERIAL_EN && DEBUG_DS
 	Serial.print(F("Data="));
 	Serial.print(present, HEX);
 	Serial.print(" ");
 #endif
 	for ( i = 0; i < 9; i++) {           // we need 9 bytes
 		data[i] = ds.read();
-#if SERIAL && DEBUG_DS
+#if SERIAL_EN && DEBUG_DS
 		Serial.print(i);
 		Serial.print(':');
 		Serial.print(data[i], HEX);
@@ -181,7 +181,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 
 	uint8_t crc8 = OneWire::crc8( data, 8);
 
-#if SERIAL && DEBUG_DS
+#if SERIAL_EN && DEBUG_DS
 	Serial.print(F(" CRC="));
 	Serial.print( crc8, HEX);
 	Serial.println();
@@ -214,7 +214,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-#if SERIAL && ( DEBUG || DEBUG_DS )
+#if SERIAL_EN && ( DEBUG || DEBUG_DS )
 	Serial.print("Reading Address=");
 	for (int i=0;i<8;i++) {
 		Serial.print(i);
@@ -228,7 +228,7 @@ static int readDS18B20(uint8_t addr[8]) {
 	int result = ds_readdata(addr, data);
 
 	if (result != DS_OK) {
-#if SERIAL
+#if SERIAL_EN
 		Serial.println(F("CRC error in ds_readdata"));
 		serialFlush();
 #endif
@@ -272,7 +272,7 @@ static void readDSAddr(int a, byte addr[8]) {
 }
 
 static void printDSAddrs(int ds_count) {
-#if SERIAL && DEBUG_DS
+#if SERIAL_EN && DEBUG_DS
 	Serial.print("Reading ");
 	Serial.print(ds_count);
 	Serial.println(" DS18B20 sensors");
@@ -298,7 +298,7 @@ static int findDS18B20s(int &ds_search) {
 
 	if (!ds.search(addr)) {
 		ds.reset_search();
-#if SERIAL && DEBUG_DS
+#if SERIAL_EN && DEBUG_DS
 		Serial.println("No more addresses.");
 		Serial.print("Found ");
 		Serial.print(ds_search);
@@ -311,13 +311,13 @@ static int findDS18B20s(int &ds_search) {
 	}
 
 	if ( OneWire::crc8( addr, 7 ) != addr[7]) {
-#if SERIAL
+#if SERIAL_EN
 		Serial.println("CRC is not valid!");
 #endif
 		return 2;
 	}
 
-#if SERIAL && ( DEBUG || DEBUG_DS )
+#if SERIAL_EN && ( DEBUG || DEBUG_DS )
 	Serial.print("New Address=");
 	for( i = 0; i < 8; i++) {
 		Serial.print(i);
@@ -461,7 +461,7 @@ void receiveEvent(int howMany)
 
 void setup(void)
 {
-#if SERIAL
+#if SERIAL_EN
 	mpeser.begin();
 	mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM

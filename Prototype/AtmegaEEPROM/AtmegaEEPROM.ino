@@ -7,20 +7,19 @@ AtmegaEEPROM extends Node
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN       1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _MEM            1   // Report free memory
-#define MAXLENLINE      79
+#define _MEM              1 // Report free memory
 
-#define CONFIG_VERSION "nx1 "
+#define CONFIG_VERSION    "nx1 "
 #define CONFIG_EEPROM_START 0
 
 
 
-#include <Wire.h>
 #include <EEPROM.h>
 #include <JeeLib.h>
+#include <Wire.h>
 #include <OneWire.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
@@ -50,7 +49,7 @@ MpeSerial mpeser (57600);
 
 /* *** InputParser *** {{{ */
 
-Stream& cmdIo = Serial;
+Stream& cmdIo = cmdIo;
 extern const InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 const InputParser parser (buffer, 50, cmdTab);
@@ -83,12 +82,14 @@ struct Config {
   signed int temp_offset;
   //float temp_k;
   int temp_k;
-} config = {
+} static_config = {
   /* default values */
   { node[0], node[1], }, 0, version,
   CONFIG_VERSION,
   TEMP_OFFSET, TEMP_K
 };
+
+Config config;
 
 
 bool loadConfig(Config &c)
@@ -108,11 +109,11 @@ bool loadConfig(Config &c)
     {
       *((char*)&c + t) = EEPROM.read(CONFIG_EEPROM_START + t);
     }
-
     return true;
+
   } else {
 #if SERIAL_EN && DEBUG
-    Serial.println("No valid data in eeprom");
+    cmdIo.println("No valid data in eeprom");
 #endif
     return false;
   }
@@ -123,14 +124,15 @@ void writeConfig(Config &c)
   for (unsigned int t=0; t<sizeof(c); t++) {
 
     EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
-#if SERIAL_EN && DEBUG
+
     // verify
     if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
     {
       // error writing to EEPROM
-      Serial.println("Error writing "+ String(t)+" to EEPROM");
-    }
+#if SERIAL_EN && DEBUG
+      cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
+    }
   }
 #if _RFM12B
 #endif //_RFM12B
@@ -146,6 +148,7 @@ void writeConfig(Config &c)
 #endif
 
 #if _DHT
+/* DHTxx: Digital temperature/humidity (Adafruit) */
 #endif // DHT
 
 #if _LCD84x48
@@ -171,10 +174,13 @@ void writeConfig(Config &c)
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
+
+
 #endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
+
 
 #endif // HMC5883L
 
@@ -198,11 +204,6 @@ void writeConfig(Config &c)
 
 #endif // DHT
 
-#if _RFM12B
-/* HopeRF RFM12B 868Mhz digital radio */
-
-#endif //_RFM12B
-
 #if _LCD
 #endif //_LCD
 
@@ -216,6 +217,12 @@ void writeConfig(Config &c)
 
 
 #endif // DS
+
+#if _RFM12B
+/* HopeRF RFM12B 868Mhz digital radio routines */
+
+
+#endif //_RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -270,19 +277,18 @@ void config_sercmd() {
 }
 
 static void configNodeCmd(void) {
-  //Serial.println("n " + node_id);
-  //Serial.print('n');
-  //Serial.print(' ');
-  //Serial.print(node_id);
-  //Serial.print('\n');
+  cmdIo.print('n');
+  cmdIo.print(' ');
+  cmdIo.print(node_id);
+  cmdIo.print('\n');
 }
 
 static void configVersionCmd(void) {
   cmdIo.print("v ");
   cmdIo.println(config.version);
-  //Serial.print("v ");
+  //cmdIo.print("v ");
   //showNibble(config.version);
-  //Serial.println("");
+  //cmdIo.println("");
 }
 
 // fwd decl.
@@ -307,7 +313,7 @@ static void configNodeIDCmd() {
   serialFlush();
 }
 
-static void configEEPROMCmd() {
+static void configToEEPROMCmd() {
   int write;
   parser >> write;
   if (write) {
@@ -328,24 +334,24 @@ void ctempoffset_sercmd(void) {
     v -= 256;
   }
   config.temp_offset = v;
-  Serial.print("New offset: ");
-  Serial.println(config.temp_offset);
+  cmdIo.print("New offset: ");
+  cmdIo.println(config.temp_offset);
   writeConfig(config);
 }
 
 void ctemp_sercmd(void) {
-  Serial.print("Offset: ");
-  Serial.println(config.temp_offset);
-  Serial.print("K: ");
-  Serial.println(config.temp_k);
-  Serial.print("Raw: ");
-  Serial.println(internalTemp(config.temp_offset, config.temp_k));
+  cmdIo.print("Offset: ");
+  cmdIo.println(config.temp_offset);
+  cmdIo.print("K: ");
+  cmdIo.println(config.temp_k);
+  cmdIo.print("Raw: ");
+  cmdIo.println(internalTemp(config.temp_offset, config.temp_k));
 }
 
 void tempCmd(void) {
   float temp_k = config.temp_k / 10;
   double t = ( internalTemp(config.temp_offset, temp_k) + config.temp_offset ) * temp_k ;
-  Serial.println( t );
+  cmdIo.println( t );
 }
 
 static void eraseEEPROM() {
@@ -442,8 +448,8 @@ void handshakeCmd() {
   //node.toCharArray(buf, 7);
   parser >> v;
   sprintf(node_id, "%s%i", node, v);
-  Serial.print("handshakeCmd:");
-  Serial.println(node_id);
+  cmdIo.print("handshakeCmd:");
+  cmdIo.println(node_id);
   serialFlush();
 }
 
@@ -455,7 +461,7 @@ const InputParser::Commands cmdTab[] = {
   { 'v', 0, configVersionCmd },
   { 'N', 3, configSetNodeCmd },
   { 'C', 1, configNodeIDCmd },
-  { 'W', 1, configEEPROMCmd },
+  { 'W', 1, configToEEPROMCmd },
   //{ 'o', 0, ctempconfig_sercmd },
   { 'T', 1, ctempoffset_sercmd },
   { 't', 0, tempCmd },
@@ -480,8 +486,8 @@ void setup(void)
   mpeser.begin();
   mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 #endif
   serialFlush();
 #endif
