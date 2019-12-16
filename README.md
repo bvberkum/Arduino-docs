@@ -1,9 +1,8 @@
-Arduino-docs
-============
+## Arduino-docs
+##### Master: [ ![master branch CI status](https://travis-ci.org/dotmpe/Arduino-docs.svg) ](https://travis-ci.org/dotmpe/Arduino-docs) Dev: [ ![dev branch CI status](https://travis-ci.org/dotmpe/Arduino-docs.svg?branch=dev) ](https://travis-ci.org/dotmpe/Arduino-docs/branches)
+My Arduino sketch folder 
 
-My Arduino sketch folder
-
-- My first "Arduino's" where BB atmega328P, and elm-chan-style TQFP
+- My first "Arduino's" where BB atmega328P, [elm-chan-style](http://elm-chan.org/docs/wire/wiring_e.html) TQFP, and one [mega1284p](http://forum.freetronics.com/viewtopic.php?t=330).
 - The first modules I bought where JeeNode's [JeeLabs](./JeeLabs/main.rst)
   and a collection of JeePort modules
 
