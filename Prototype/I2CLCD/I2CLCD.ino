@@ -6,7 +6,7 @@
 /*-----( Import needed libraries )-----*/
 // Comes with Arduino IDE
 #include <Wire.h>
-// Get the LCD I2C Library here: 
+// Get the LCD I2C Library here:
 // https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads
 // Move any other LCD libraries to another folder or delete them
 // See Library "Docs" folder for possible commands etc.
@@ -38,16 +38,16 @@ void setup()   /*----( SETUP: RUNS ONCE )----*/
     lcd.setBacklight(1);
     delay(250);
   }
-  lcd.setBacklight(0); // finish with backlight on  
+  lcd.setBacklight(0); // finish with backlight on
 
 //-------- Write characters on the display ------------------
-// NOTE: Cursor Position: (CHAR, LINE) start at 0  
+// NOTE: Cursor Position: (CHAR, LINE) start at 0
   lcd.setCursor(0,0); //Start at character 4 on line 0
   lcd.print("Hello, world!");
   delay(1000);
   lcd.setCursor(0,1);
   lcd.print("HI!YourDuino.com");
-  delay(8000);  
+  delay(8000);
 
 // Wait and then tell user they can start the Serial Monitor and type in characters to
 // Display. (Set Serial Monitor option to "No Line Ending")
@@ -55,7 +55,7 @@ void setup()   /*----( SETUP: RUNS ONCE )----*/
   lcd.setCursor(0,0); //Start at character 0 on line 0
   lcd.print("Use Serial Mon");
   lcd.setCursor(0,1);
-  lcd.print("Type to display");  
+  lcd.print("Type to display");
 
 
 }/*--(end setup )---*/
@@ -80,5 +80,5 @@ void loop()   /*----( LOOP: RUNS CONSTANTLY )----*/
 
 }
 
-/* }}} *** */
+/* *** }}} */
 

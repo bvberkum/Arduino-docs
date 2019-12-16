@@ -20,22 +20,22 @@ TODO: get NRF24 client stuff running
 #define SERIAL_EN         1 /* Enable serial */
 #define DEBUG             1 /* Enable trace statements */
 
-#define _MEM              1  // Report free memory
+#define _MEM              1 // Report free memory
 #define _DHT              0
-#define DHT_HIGH          0   // enable for DHT22/AM2302, low for DHT11
+#define DHT_HIGH          0 // enable for DHT22/AM2302, low for DHT11
 #define _DS               0
 #define _LCD              0
-#define _LCD84x48         1
-#define _NRF24            1
+#define _LCD84x48         0
+#define _NRF24            0
 
-#define REPORT_EVERY      2  // report every N measurement cycles
-#define SMOOTH            5  // smoothing factor used for running averages
-#define MEASURE_PERIOD    30 // how often to measure, in tenths of seconds
-#define UI_SCHED_IDLE     4000  // tenths of seconds idle time, ...
-#define UI_STDBY          8000  // ms
+#define REPORT_EVERY      2 // report every N measurement cycles
+#define SMOOTH            5 // smoothing factor used for running averages
+#define MEASURE_PERIOD    300 // how often to measure, in tenths of seconds
+#define UI_SCHED_IDLE     4000 // tenths of seconds idle time, ...
+#define UI_STDBY          8000 // ms
+#define MAXLENLINE        79
 #define BL_INVERTED       0xFF
 #define NRF24_CHANNEL     90
-#define MAXLENLINE        79
 #define ANNOUNCE_START    0
 
 
@@ -49,12 +49,11 @@ TODO: get NRF24 client stuff running
 #if _DHT
 #include <Adafruit_Sensor.h>
 #include <DHT.h> // Adafruit DHT
-#endif
+#endif // DHT
 #include <RF24.h>
 #include <RF24Network.h>
 #include <DotmpeLib.h>
 #include <mpelib.h>
-
 
 
 
@@ -88,9 +87,6 @@ char node_id[7];
 //             SCK      13    NRF24
 //#       define _DBG_LED 13 // SCK
 
-//#if _DHT
-//static const byte DHT_PIN = 7;
-//#endif
 
 MpeSerial mpeser (57600);
 
@@ -103,7 +99,7 @@ extern const InputParser::Commands cmdTab[] PROGMEM;
 const InputParser parser (50, cmdTab);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
@@ -140,6 +136,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 
 /* *** EEPROM config *** {{{ */
 
+// See Prototype Node or SensorNode
 
 struct Config {
   char node[3]; // Alphanumeric Id (for sketch)
@@ -165,16 +162,14 @@ void writeConfig(Config &c)
 }
 
 
-
 /* *** /EEPROM config *** }}} */
 
-/* *** Scheduled tasks *** {{{ */
-
+/* *** Scheduler routines *** {{{ */
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-static bool schedRunning(void)
+bool schedRunning(void)
 {
   for (int i=0;i<TASK_END;i++) {
     if (schedbuf[i] != 0 && schedbuf[i] != 0xFFFF) {
@@ -184,7 +179,7 @@ static bool schedRunning(void)
   return false;
 }
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduler routines *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -195,10 +190,10 @@ static bool schedRunning(void)
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** PIR *** {{{ */
 #if PIR_PORT
 #endif
-/* *** /PIR support }}} *** */
+/* *** /PIR *** }}} */
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
@@ -215,10 +210,6 @@ DHT dht (DHT_PIN, DHT21);
 DHT dht(DHT_PIN, DHT11);
 #endif
 #endif // DHT
-
-#if _DHT2
-DHT dht2 (DHT2_PIN, DHT11);
-#endif
 
 #if _LCD84x48
 /* Nokkia 5110 display */
@@ -248,8 +239,6 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
 
-
-
 #endif // DS
 
 #if _RFM12B
@@ -265,13 +254,18 @@ static PCD8544 lcd84x48(SCLK, SDIN, DC, RESET, SCE);
 RF24 radio(CE, CSN);
 
 // Network uses that radio
-RF24Network/*Debug*/ network(radio);
+#if DEBUG
+RF24NetworkDebug network(radio);
+#else
+RF24Network network(radio);
+#endif
 
 // Address of our node
 const uint16_t this_node = 1;
 
 // Address of the other node
 const uint16_t rf24_link_node = 0;
+
 
 #endif // NRF24
 
@@ -287,17 +281,20 @@ const uint16_t rf24_link_node = 0;
 
 /* *** /Peripheral devices *** }}} */
 
+/* *** Generic routines *** {{{ */
+
+/* *** /Generic routines *** }}} */
+
 /* *** Peripheral hardware routines *** {{{ */
 
 
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -305,7 +302,7 @@ const uint16_t rf24_link_node = 0;
 #endif // DHT
 
 #if _LCD
-#endif //_LCD
+#endif // LCD
 
 #if _LCD84x48
 
@@ -318,8 +315,8 @@ void lcd_start()
 
   lcd84x48.send( LOW, 0x21 );  // LCD Extended Commands on
   lcd84x48.send( LOW, 0x07 );  // Set Temp coefficent. //0x04--0x07
-    lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
-    lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
+  lcd84x48.send( LOW, 0x12 );  // LCD bias mode 1:48. //0x13
+  lcd84x48.send( LOW, 0x0C );  // LCD in normal mode.
   lcd84x48.send( LOW, 0x20 );  // LCD Extended Commands toggle off
 }
 
@@ -385,17 +382,24 @@ static void findDS18B20s(void) {
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
 void rf24_init()
 {
+  SPI.begin();
+  radio.begin();
+  config.rf24id = 3;
+  network.begin( NRF24_CHANNEL, config.rf24id );
 }
 
 void rf24_start()
 {
+#if DEBUG
+  radio.printDetails();
+#endif
 }
 
 
@@ -407,22 +411,14 @@ void rf24_start()
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
 
-void Init_HMC5803L(void)
-{
-}
 
-int HMC5803L_Read(byte Axis)
-{
-  int Result;
-
-  return Result;
-}
 #endif // HMC5883L
 
 
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
+
 
 //ISR(INT0_vect)
 void irq0()
@@ -463,10 +459,10 @@ bool keyActive(void) {
 
 void printKeys(void) {
   for (int i=0;i<4;i++) {
-    Serial.print(keys[i]);
-    Serial.print(" ");
+    cmdIo.print(keys[i]);
+    cmdIo.print(" ");
   }
-  Serial.println();
+  cmdIo.println();
 }
 
 
@@ -476,7 +472,7 @@ void printKeys(void) {
 
 #if SERIAL_EN
 
-void helpCmd(void) {
+void help_sercmd(void) {
   cmdIo.println("n: print Node ID");
   cmdIo.println("t: internal temperature");
   cmdIo.println("T: set offset");
@@ -484,7 +480,8 @@ void helpCmd(void) {
   cmdIo.println("r: report");
   cmdIo.println("M: measure");
   cmdIo.println("E: erase EEPROM!");
-  cmdIo.println("x: reset");
+  cmdIo.println("x: soft reset");
+  cmdIo.println("z: power-down; put to deep sleep (requires hard-reset)");
   cmdIo.println("?/h: this help");
   idle.set(UI_SCHED_IDLE);
 }
@@ -494,26 +491,28 @@ void doReset(void);
 void doReport(void);
 void doMeasure(void);
 
-void reset_sercmd() {
+void reset_sercmd(void) {
   doReset();
 }
 
-void reportCmd() {
+void report_sercmd(void) {
   doReport();
   idle.set(UI_SCHED_IDLE);
 }
 
-void stdbyCmd() {
+void stdby_sercmd(void) {
   ui = false;
+#if _LCD84x48
   digitalWrite(BL, LOW ^ BL_INVERTED);
+#endif // LCD84x48
 }
 
-static void measureCmd() {
+void measure_sercmd(void) {
   doMeasure();
   idle.set(UI_SCHED_IDLE);
 }
 
-static void configCmd() {
+void config_sercmd(void) {
   cmdIo.print("c ");
   cmdIo.print(config.node);
   cmdIo.print(" ");
@@ -523,18 +522,18 @@ static void configCmd() {
   cmdIo.println();
 }
 
-void tempConfigCmd(void) {
-  Serial.print("Offset: ");
-  Serial.println(config.temp_offset);
-  Serial.print("K: ");
-  Serial.println(config.temp_k/10);
-  Serial.print("Raw: ");
+void ctempconfig_sercmd(void) {
+  cmdIo.print("Offset: ");
+  cmdIo.println(config.temp_offset);
+  cmdIo.print("K: ");
+  cmdIo.println(config.temp_k/10);
+  cmdIo.print("Raw: ");
   float temp_k = (float) config.temp_k / 10;
   int ctemp = internalTemp(config.temp_offset, temp_k);
-  Serial.println(ctemp);
+  cmdIo.println(ctemp);
 }
 
-void tempOffsetCmd(void) {
+void ctempoffset_sercmd(void) {
   char c;
   parser >> c;
   int v = c;
@@ -542,18 +541,18 @@ void tempOffsetCmd(void) {
     v -= 256;
   }
   config.temp_offset = v;
-  Serial.print("New offset: ");
-  Serial.println(config.temp_offset);
+  cmdIo.print("New offset: ");
+  cmdIo.println(config.temp_offset);
   writeConfig(config);
 }
 
-void tempCmd(void) {
+void ctemp_sercmd(void) {
   float temp_k = (float) config.temp_k / 10;
   double ctemp = internalTemp(config.temp_offset, temp_k);
-  Serial.println(ctemp);
+  cmdIo.println(ctemp);
 }
 
-static void eraseEEPROMCmd() {
+void eraseEEPROM_sercmd(void) {
   cmdIo.print("! Erasing EEPROM..");
   for (int i = 0; i<EEPROM_SIZE; i++) {
     char b = EEPROM.read(i);
@@ -572,18 +571,17 @@ static void eraseEEPROMCmd() {
 
 /* *** UART commands *** }}} */
 
-/* Wire init {{{ */
+/* *** Wire *** {{{ */
 
 // See I2CPIR
 
-/* Wire init }}} */
+/* *** - Wire commands *** {{{ */
+/* *** - Wire commands *** }}} */;
 
-/* Wire commands {{{ */
+/* *** - Wire handling *** {{{ */
+/* *** - Wire handling *** }}} */
 
-/* Wire commands }}} */;
-
-/* Wire handling {{{ */
-/* Wire Handling }}} */
+/* *** Wire *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -601,7 +599,7 @@ void doConfig(void)
   initConfig();
 }
 
-void initLibs()
+void initLibs(void)
 {
 #if _NRF24
   rf24_init();
@@ -620,9 +618,13 @@ void doReset(void)
 #ifdef _DBG_LED
   pinMode(_DBG_LED, OUTPUT);
 #endif
+
+#if _LCD84x48
   pinMode(BL, OUTPUT);
   digitalWrite(BL, LOW ^ BL_INVERTED);
   attachInterrupt(INT0, irq0, RISING);
+#endif // LCD84x48
+
   ui_irq = true;
   tick = 0;
 
@@ -632,9 +634,24 @@ void doReset(void)
 
   reportCount = REPORT_EVERY; // report right away for easy debugging
   scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
+
 #if SERIAL_EN && DEBUG
-  Serial.println("Reinitialized");
+  cmdIo.println("Reinitialized");
 #endif
+}
+
+void powerDown(void)
+{
+#if SERIAL_EN && DEBUG
+  debugline(PSTR(" Zzz...\n"));
+  cmdIo.flush();
+  serialFlush();
+#endif
+#if _RFM12
+  rf12_sleep(RF12_SLEEP);
+#endif
+  cli();
+  Sleepy::powerDown();
 }
 
 bool doAnnounce(void)
@@ -649,21 +666,21 @@ bool doAnnounce(void)
 #endif // SERIAL_EN && DEBUG
   cmdIo.println(node_id);
 #if LDR_PORT
-  Serial.print("light:8 ");
+  cmdIo.print("light:8 ");
 #endif
 #if PIR
-  Serial.print("moved:1 ");
+  cmdIo.print("moved:1 ");
 #endif
 #if _DHT
-  Serial.print(F("rhum:7 "));
-  Serial.print(F("temp:10 "));
+  cmdIo.print(F("rhum:7 "));
+  cmdIo.print(F("temp:10 "));
 #endif
-  Serial.print(F("ctemp:10 "));
+  cmdIo.print(F("ctemp:10 "));
 #if _MEM
-  Serial.print(F("memfree:16 "));
+  cmdIo.print(F("memfree:16 "));
 #endif
 #if _RFM12LOBAT
-  Serial.print(F("lobat:1 "));
+  cmdIo.print(F("lobat:1 "));
 #endif //_RFM12LOBAT
   return false;
 }
@@ -677,20 +694,20 @@ void doMeasure(void)
   int ctemp = internalTemp(config.temp_offset, (float)config.temp_k/10);
   payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.println();
-  Serial.print("AVR T new/avg ");
-  Serial.print(ctemp);
-  Serial.print(' ');
-  Serial.println(payload.ctemp);
+  cmdIo.println();
+  cmdIo.print("AVR T new/avg ");
+  cmdIo.print(ctemp);
+  cmdIo.print(' ');
+  cmdIo.println(payload.ctemp);
 #endif
 
 #if _MEM
   payload.memfree = freeRam();
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("MEM free ");
-  Serial.println(payload.memfree);
+  cmdIo.print("MEM free ");
+  cmdIo.println(payload.memfree);
 #endif
-#endif //_MEM
+#endif // MEM
 }
 
 
@@ -710,19 +727,19 @@ void doReport(void)
 #endif // NRF24
 
 #if SERIAL_EN
-  Serial.print(node_id);
-  Serial.print(' ');
-  Serial.print((int) payload.ctemp);
+  cmdIo.print(node_id);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.ctemp);
 #if _MEM
-  Serial.print(' ');
-  Serial.print((int) payload.memfree);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.memfree);
 #endif //_MEM
 #if _RFM12LOBAT
-  Serial.print(' ');
-  Serial.print((int) payload.lobat);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.lobat);
 #endif //_RFM12LOBAT
 
-  Serial.println();
+  cmdIo.println();
 #endif //SERIAL_EN
 }
 
@@ -731,8 +748,10 @@ void uiStart()
   idle.set(UI_SCHED_IDLE);
   if (!ui) {
     ui = true;
+#if _LCD84x48
     lcd_start();
     lcd_printWelcome();
+#endif // LCD84x48
   }
 }
 
@@ -743,9 +762,11 @@ void runScheduler(char task)
     case ANNOUNCE:
       debugline("ANNOUNCE");
       // TODO: see SensorNode
-        doAnnounce();
-        scheduler.timer(MEASURE, 0); //schedule next step
+      doAnnounce();
+      scheduler.timer(MEASURE, 0); //schedule next step
+#if SERIAL_EN
       serialFlush();
+#endif
       break;
 
     case MEASURE:
@@ -774,14 +795,14 @@ void runScheduler(char task)
 #if DEBUG && SERIAL_EN
     case SCHED_WAITING:
     case SCHED_IDLE:
-      Serial.print("!");
+      cmdIo.print("!");
       serialFlush();
       break;
 
     default:
-      Serial.print("0x");
-      Serial.print(task, HEX);
-      Serial.println(" ?");
+      cmdIo.print("0x");
+      cmdIo.print(task, HEX);
+      cmdIo.println(" ?");
       serialFlush();
       break;
 #endif
@@ -797,17 +818,18 @@ void runScheduler(char task)
 #if SERIAL_EN
 
 const InputParser::Commands cmdTab[] = {
-  { '?', 0, helpCmd },
-  { 'h', 0, helpCmd },
-  { 'c', 0, configCmd },
-  { 'o', 0, tempConfigCmd },
-  { 'T', 1, tempOffsetCmd },
-  { 't', 0, tempCmd },
-  { 'r', 0, reportCmd },
-  { 's', 0, stdbyCmd },
-  { 'M', 0, measureCmd },
-  { 'E', 0, eraseEEPROMCmd },
+  { '?', 0, help_sercmd },
+  { 'h', 0, help_sercmd },
+  { 'c', 0, config_sercmd },
+  { 'o', 0, ctempconfig_sercmd },
+  { 'T', 1, ctempoffset_sercmd },
+  { 't', 0, ctemp_sercmd },
+  { 'r', 0, report_sercmd },
+  { 's', 0, stdby_sercmd },
+  { 'M', 0, measure_sercmd },
+  { 'E', 0, eraseEEPROM_sercmd },
   { 'x', 0, doReset },
+  { 'z', 0, powerDown },
   { 0 }
 };
 
@@ -825,8 +847,8 @@ void setup(void)
   mpeser.begin();
   mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 #endif
   serialFlush();
 #endif
@@ -849,7 +871,9 @@ void loop(void)
     debugline("Irq");
     ui_irq = false;
     uiStart();
+#if _LCD84x48
     analogWrite(BL, 0xAF ^ BL_INVERTED);
+#endif // LCD84x48
   }
   debug_ticks();
 
@@ -861,22 +885,31 @@ void loop(void)
   char task = scheduler.poll();
   if (-1 < task && task < SCHED_IDLE) {
     runScheduler(task);
+    return;
   }
 
   if (ui) {
     if (idle.poll()) {
+      debugline("Idle");
+#if _LCD84x48
       analogWrite(BL, 0x1F ^ BL_INVERTED);
+#endif // LCD84x48
       stdby.set(UI_STDBY);
     } else if (stdby.poll()) {
+      debugline("StdBy");
+#if _LCD84x48
       digitalWrite(BL, LOW ^ BL_INVERTED);
       lcd84x48.clear();
       lcd84x48.stop();
+#endif // LCD84x48
       ui = false;
     } else if (!stdby.idle()) {
       // XXX toggle UI stdby Power, got to some lower power mode..
       delay(30);
     }
+#if _LCD84x48
     lcd_printTicks();
+#endif // LCD84x48
   } else {
 #ifdef _DBG_LED
     blink(_DBG_LED, 1, 25);
@@ -885,6 +918,10 @@ void loop(void)
     task = scheduler.pollWaiting();
     if (-1 < task && task < SCHED_IDLE) {
       runScheduler(task);
+    } else {
+      debugline("Losing some time...");
+      serialFlush();
+      Sleepy::loseSomeTime(1000);
     }
   }
 }

@@ -10,25 +10,19 @@
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN        1 /* Enable serial */
-#define DEBUG            1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _MEM            1   // Report free memory
+#define _MEM              1 // Report free memory
 
-#define ANNOUNCE_START  0
-#define UI_SCHED_IDLE   4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
-#define MAXLENLINE      79
-#define CONFIG_VERSION "nx1"
+#define UI_SCHED_IDLE     4000 // tenths of seconds idle time, ...
+#define UI_STDBY          8000 // ms
+#define MAXLENLINE        79
+#define ANNOUNCE_START    0
+#define CONFIG_VERSION   "nx1"
 #define CONFIG_EEPROM_START 0
 
 
-
-
-// Definition of interrupt names
-//#include <avr/io.h>
-// ISR interrupt service routine
-//#include <avr/interrupt.h>
 
 //#include <SoftwareSerial.h>
 #include <Wire.h>
@@ -38,11 +32,8 @@
 #include <SPI.h>
 #include <RF24.h>
 #include <RF24Network.h>
-#include <Adafruit_Sensor.h>
-#include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
-
 
 
 
@@ -81,11 +72,10 @@ MilliTimer idle, stdby;
 Stream& cmdIo = Serial;
 extern const InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
-InputParser parser (buffer, 50, cmdTab);//, virtSerial);
-//InputParser parser (50, cmdTab);
+const InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
@@ -107,10 +97,6 @@ static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-
 /* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
@@ -118,8 +104,8 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 // See Prototype Node or SensorNode
 
 struct Config {
-  char node[4];
-  int node_id;
+  char node[4]; // Alphanumeric Id (for sketch)
+  int node_id; // Id suffix integer (for unique run-time Id)
   int version;
   char config_id[4];
   signed int temp_offset;
@@ -178,6 +164,13 @@ void writeConfig(Config &c)
 
 /* *** /EEPROM config *** }}} */
 
+/* *** Scheduler routines *** {{{ */
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduler routines *** }}} */
+
 /* *** Peripheral devices *** {{{ */
 
 #if SHT11_PORT
@@ -209,7 +202,7 @@ void writeConfig(Config &c)
 #endif // RFM12B
 
 #if _NRF24
-/* nRF24L01+: nordic 2.4Ghz digital radio  */
+/* nRF24L01+: nordic 2.4Ghz digital radio */
 
 
 #endif // NRF24
@@ -221,14 +214,12 @@ void writeConfig(Config &c)
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
-
 #endif // HMC5883L
 
 
 /* *** /Peripheral devices *** }}} */
 
 /* *** Generic routines *** {{{ */
-
 
 /* *** /Generic routines *** }}} */
 
@@ -238,11 +229,10 @@ void writeConfig(Config &c)
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -303,19 +293,19 @@ void irq0()
 
 #if SERIAL_EN
 
-static void ser_helpCmd(void) {
+void help_sercmd(void) {
   cmdIo.println("n: print Node ID");
   cmdIo.println("c: print config");
-//  Serial.println("v: print version");
-//  Serial.println("N: set Node (3 byte char)");
-//  Serial.println("C: set Node ID (1 byte int)");
+//  cmdIo.println("v: print version");
+//  cmdIo.println("N: set Node (3 byte char)");
+//  cmdIo.println("C: set Node ID (1 byte int)");
   cmdIo.println("m: print free and used memory");
   cmdIo.println("t: internal temperature");
   cmdIo.println("T: set offset");
   cmdIo.println("o: temperature config");
   cmdIo.println("r: report");
   cmdIo.println("M: measure");
-//  Serial.println("W: load/save EEPROM");
+//  cmdIo.println("W: load/save EEPROM");
   cmdIo.println("E: erase EEPROM!");
   cmdIo.println("x: reset");
   cmdIo.println("?/h: this help");
@@ -339,25 +329,25 @@ void doReset(void);
 void doReport(void);
 void doMeasure(void);
 
-void reset_sercmd() {
+void reset_sercmd(void) {
   doReset();
 }
 
-void report_sercmd() {
+void report_sercmd(void) {
   doReport();
   idle.set(UI_SCHED_IDLE);
 }
 
-void measure_sercmd() {
+void measure_sercmd(void) {
   doMeasure();
   idle.set(UI_SCHED_IDLE);
 }
 
-void stdby_sercmd() {
+void stdby_sercmd(void) {
   ui = false;
 }
 
-void ser_configCmd() {
+void config_sercmd() {
   cmdIo.print("c ");
   cmdIo.print(config.node);
   cmdIo.print(" ");
@@ -369,13 +359,13 @@ void ser_configCmd() {
   cmdIo.println();
 }
 
-void ser_tempConfig(void) {
-  Serial.print("Offset: ");
-  Serial.println(config.temp_offset);
-  Serial.print("K: ");
-  Serial.println(config.temp_k);
-  Serial.print("Raw: ");
-  Serial.println(internalTemp());
+void ctempconfig_sercmd(void) {
+  cmdIo.print("Offset: ");
+  cmdIo.println(config.temp_offset);
+  cmdIo.print("K: ");
+  cmdIo.println(config.temp_k);
+  cmdIo.print("Raw: ");
+  cmdIo.println(internalTemp(0, 0));
 }
 
 void ser_tempOffset(void) {
@@ -386,14 +376,14 @@ void ser_tempOffset(void) {
     v -= 256;
   }
   config.temp_offset = v;
-  Serial.print("New offset: ");
-  Serial.println(config.temp_offset);
+  cmdIo.print("New offset: ");
+  cmdIo.println(config.temp_offset);
   writeConfig(config);
 }
 
-void ser_temp(void) {
-  double t = ( internalTemp() + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+void ctemp_srcmd(void) {
+  double t = ( internalTemp(0, 0) + config.temp_offset ) * config.temp_k ;
+  cmdIo.println( t );
 }
 
 static void eraseEEPROM() {
@@ -503,14 +493,14 @@ void runScheduler(char task)
 #if DEBUG && SERIAL_EN
     case SCHED_WAITING:
     case SCHED_IDLE:
-      Serial.print("!");
+      cmdIo.print("!");
       serialFlush();
       break;
 
     default:
-      Serial.print("0x");
-      Serial.print(task, HEX);
-      Serial.println(" ?");
+      cmdIo.print("0x");
+      cmdIo.print(task, HEX);
+      cmdIo.println(" ?");
       serialFlush();
       break;
 #endif
@@ -526,13 +516,13 @@ void runScheduler(char task)
 #if SERIAL_EN
 
 const InputParser::Commands cmdTab[] = {
-  { '?', 0, ser_helpCmd },
-  { 'h', 0, ser_helpCmd },
-  { 'c', 0, ser_configCmd },
+  { '?', 0, help_sercmd },
+  { 'h', 0, help_sercmd },
+  { 'c', 0, config_sercmd },
   { 'm', 0, memstat_serscmd },
-  { 'o', 0, ser_tempConfig },
+  { 'o', 0, ctempconfig_sercmd },
   { 'T', 1, ser_tempOffset },
-  { 't', 0, ser_temp },
+  { 't', 0, ctemp_srcmd },
   { 'r', 0, reset_sercmd },
   { 's', 0, stdby_sercmd },
   { 'x', 0, report_sercmd },
@@ -555,8 +545,8 @@ void setup(void)
   mpeser.begin();
   mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 #endif
   serialFlush();
 #endif
@@ -575,11 +565,11 @@ void loop(void)
     debugline("Irq");
     ui_irq = false;
     uiStart();
-    //analogWrite(BL, 0xAF ^ BL_INVERTED);
   }
   debug_ticks();
 
-  if (parser.poll()) {
+  if (cmdIo.available()) {
+    parser.poll();
     return;
   }
 
@@ -591,8 +581,10 @@ void loop(void)
 
   if (ui) {
     if (idle.poll()) {
+      debugline("Idle");
       stdby.set(UI_STDBY);
     } else if (stdby.poll()) {
+      debugline("StdBy");
       ui = false;
     } else if (!stdby.idle()) {
       // XXX toggle UI stdby Power, got to some lower power mode..
@@ -606,6 +598,8 @@ void loop(void)
     task = scheduler.pollWaiting();
     if (-1 < task && task < SCHED_IDLE) {
       runScheduler(task);
+    } else {
+      Sleepy::loseSomeTime(1000);
     }
   }
 }

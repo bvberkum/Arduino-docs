@@ -90,8 +90,7 @@ Scheduler scheduler (schedbuf, TASK_END);
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-
-/* *** /EEPROM config *** }}} */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -103,7 +102,7 @@ SHT11 sht11 (SHT11_PORT);
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** PIR *** {{{ */
 #if PIR_PORT
 
 PIR pir (PIR_PORT);
@@ -112,14 +111,14 @@ PIR pir (PIR_PORT);
 ISR(PCINT2_vect) { pir.poll(); }
 
 #endif
-/* *** /PIR support }}} *** */
+/* *** /PIR *** }}} */
 
 #if _DHT
 
-#endif //_DHT
+#endif // DHT
 
 #if _NRF24
-#endif //_NRF24
+#endif // NRF24
 #if _HMC5883L
 /* Digital magnetometer I2C module */
 
@@ -163,95 +162,6 @@ struct {
 #endif
 } payload;
 
-
-/** AVR routines */
-
-int freeRam () {
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
-}
-
-int usedRam () {
-  return SRAM_SIZE - freeRam();
-}
-
-
-/** ATmega routines */
-
-double internalTemp(void)
-{
-  unsigned int wADC;
-  double t;
-
-  // The internal temperature has to be used
-  // with the internal reference of 1.1V.
-  // Channel 8 can not be selected with
-  // the analogRead function yet.
-
-  // Set the internal reference and mux.
-  ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-  ADCSRA |= _BV(ADEN);  // enable the ADC
-
-  delay(20);            // wait for voltages to become stable.
-
-  ADCSRA |= _BV(ADSC);  // Start the ADC
-
-  // Detect end-of-conversion
-  while (bit_is_set(ADCSRA,ADSC));
-
-  // Reading register "ADCW" takes care of how to read ADCL and ADCH.
-  wADC = ADCW;
-
-  // The offset of 324.31 could be wrong. It is just an indication.
-  t = (wADC - 311 ) / 1.22;
-
-  // The returned temperature is in degrees Celcius.
-  return (t);
-}
-
-
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL_EN
-#if ARDUINO >= 100
-  Serial.flush();
-#endif
-  delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length) {
-  for (int i=0;i<count;i++) {
-    digitalWrite (led, HIGH);
-    delay(length);
-    digitalWrite (led, LOW);
-    delay(length);
-  }
-}
-
-void debug_ticks(void)
-{
-#if DEBUG
-  blink(ledPin, 1, 15);
-#if SERIAL_EN
-  Serial.print('.');
-  if (pos > MAXLENLINE) {
-    pos = 0;
-    Serial.println();
-  }
-  pos++;
-#endif
-#endif
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-  if (firstTime)
-    return next;
-  return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
 
 
 #if PIR_PORT

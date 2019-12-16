@@ -7,7 +7,7 @@ Basetype Node
   - sketch_id  XY
   - version    0
 
-- Subtypes of this prototype: cmdIo.
+- Subtypes of this prototype: Serial.
 
 - Depends on JeeLib Ports InputParser, but not all of ports compiles on t85.
 
@@ -17,9 +17,9 @@ See
 - AtmegaEEPROM
 - Cassette328P
 
-cmdIo protocol: [value[,arg2] ]command
+Serial protocol: [value[,arg2] ]command
 
-cmdIo config
+Serial config
   Set node to 'aa'::
 
     "aa" N
@@ -39,6 +39,7 @@ cmdIo config
  */
 
 
+
 /* *** Globals and sketch configuration *** */
 #define SERIAL_EN         1 /* Enable serial */
 #define DEBUG             1 /* Enable trace statements */
@@ -56,11 +57,6 @@ cmdIo config
 #define CONFIG_EEPROM_START 0
 
 
-
-// Definition of interrupt names
-//#include <avr/io.h>
-// ISR interrupt service routine
-//#include <avr/interrupt.h>
 
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
@@ -104,20 +100,20 @@ MilliTimer idle, stdby;
 
 /* *** InputParser *** {{{ */
 
-Stream& cmdIo = cmdIo;
+Stream& cmdIo = Serial;
 extern const InputParser::Commands cmdTab[] PROGMEM;
 byte* buffer = (byte*) malloc(50);
 const InputParser parser (buffer, 50, cmdTab);//, virtSerial);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
 
 static byte reportCount;    // count up until next report, i.e. packet send
 
-// This defines the structure of the packets which get sent out by wireless:
+/* Data reported by this sketch */
 struct {
 #if _DHT
   int rhum        :7;  // rel-humdity: 0..100 (4 or 5% resolution?)
@@ -154,11 +150,6 @@ static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
-
-// has to be defined because we're using the watchdog for low-power waiting
-//ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-// XXX????
-
 
 /* *** /Scheduled tasks *** }}} */
 
@@ -224,6 +215,13 @@ void writeConfig(Config &c)
 
 /* *** /EEPROM config *** }}} */
 
+/* *** Scheduler routines *** {{{ */
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduler routines *** }}} */
+
 /* *** Peripheral devices *** {{{ */
 
 #if SHT11_PORT
@@ -234,9 +232,8 @@ SHT11 sht11 (SHT11_PORT);
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
-
-/* *** /PIR support }}} *** */
+/* *** PIR *** {{{ */
+/* *** /PIR *** }}} */
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
@@ -284,11 +281,10 @@ Port ldr (LDR_PORT);
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -313,7 +309,7 @@ Port ldr (LDR_PORT);
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -322,7 +318,7 @@ Port ldr (LDR_PORT);
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -377,7 +373,7 @@ void stdbyCmd() {
   ui = false;
 }
 
-static void config_sercmd() {
+void config_sercmd(void) {
   cmdIo.print("c ");
   cmdIo.print(config.node);
   cmdIo.print(" ");
@@ -420,7 +416,7 @@ static void configNodeIDCmd() {
   serialFlush();
 }
 
-static void configToEEPROMCmd() {
+void configToEEPROMCmd(void) {
   int write;
   parser >> write;
   if (write) {
@@ -659,7 +655,5 @@ void loop(void)
     }
   }
 }
-
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 /* *** }}} */

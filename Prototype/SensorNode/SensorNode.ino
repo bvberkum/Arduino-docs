@@ -96,7 +96,7 @@ byte* buffer = (byte*) malloc(50);
 const InputParser parser (buffer, 50, cmdTab);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
@@ -184,12 +184,13 @@ struct Config {
   int version;
   signed int temp_offset;
   int temp_k;
-} config = {
+} static_config = {
   /* default values */
   { node[0], node[1], node[2], }, 0, version,
   TEMP_OFFSET, TEMP_K
 };
 
+Config config;
 
 bool loadConfig(Config &c)
 {
@@ -210,7 +211,7 @@ bool loadConfig(Config &c)
     return true;
   } else {
 #if SERIAL_EN && DEBUG
-    Serial.println("No valid data in eeprom");
+    cmdIo.println("No valid data in eeprom");
 #endif
     return false;
   }
@@ -221,14 +222,15 @@ void writeConfig(Config &c)
   for (unsigned int t=0; t<sizeof(c); t++) {
 
     EEPROM.write(CONFIG_EEPROM_START + t, *((char*)&c + t));
-#if SERIAL_EN && DEBUG
+
     // verify
     if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
     {
       // error writing to EEPROM
-      Serial.println("Error writing "+ String(t)+" to EEPROM");
-    }
+#if SERIAL_EN && DEBUG
+      cmdIo.println("Error writing "+ String(t)+" to EEPROM");
 #endif
+    }
   }
 #if _RFM12B
 #endif //_RFM12B
@@ -238,13 +240,12 @@ void writeConfig(Config &c)
 
 /* *** /EEPROM config *** }}} */
 
-/* *** Scheduled tasks *** {{{ */
-
+/* *** Scheduler routines *** {{{ */
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-/* *** /Scheduled tasks *** }}} */
+/* *** /Scheduler routines *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -255,10 +256,10 @@ ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** PIR *** {{{ */
 #if PIR_PORT
 #endif
-/* *** /PIR support }}} *** */
+/* *** /PIR *** }}} */
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
@@ -270,7 +271,7 @@ DHT dht (DHT_PIN, DHT21);
 #else
 DHT dht(DHT_PIN, DHT11);
 #endif
-#endif //_DHT
+#endif // DHT
 
 #if _AM2321
 #include <Wire.h>
@@ -288,7 +289,7 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 
 #if _LCD84x48
 /* Nokkia 5110 display */
-#endif //_LCD84x48
+#endif // LCD84x48
 
 #if _DS
 /* Dallas OneWire bus with registration for DS18B20 temperature sensors */
@@ -314,7 +315,7 @@ enum { DS_OK, DS_ERR_CRC };
 /* HopeRF RFM12B 868Mhz digital radio */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* nRF24L01+: nordic 2.4Ghz digital radio */
@@ -337,11 +338,10 @@ const uint16_t rf24_link_node = 0;
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
 
 #endif // HMC5883L
 
@@ -354,11 +354,10 @@ const uint16_t rf24_link_node = 0;
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -384,8 +383,7 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
   ds.select(addr);
   ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
-  //Sleepy::loseSomeTime(800);
-  //delay(800);     // maybe 750ms is enough, maybe not
+  //Sleepy::loseSomeTime(800); //delay(800); // maybe 750ms is enough, maybe not
   // we might do a ds.depower() here, but the reset will take care of it.
 
   present = ds.reset();
@@ -393,26 +391,26 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
   ds.write(0xBE);         // Read Scratchpad
 
 #if SERIAL_EN && DEBUG_DS
-  Serial.print(F("Data="));
-  Serial.print(present, HEX);
-  Serial.print(" ");
+  cmdIo.print(F("Data="));
+  cmdIo.print(present, HEX);
+  cmdIo.print(" ");
 #endif
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds.read();
 #if SERIAL_EN && DEBUG_DS
-    Serial.print(i);
-    Serial.print(':');
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
+    cmdIo.print(i);
+    cmdIo.print(':');
+    cmdIo.print(data[i], HEX);
+    cmdIo.print(" ");
 #endif
   }
 
   uint8_t crc8 = OneWire::crc8( data, 8);
 
 #if SERIAL_EN && DEBUG_DS
-  Serial.print(F(" CRC="));
-  Serial.print( crc8, HEX);
-  Serial.println();
+  cmdIo.print(F(" CRC="));
+  cmdIo.print( crc8, HEX);
+  cmdIo.println();
   serialFlush();
 #endif
 
@@ -442,21 +440,21 @@ static int readDS18B20(byte addr[8]) {
   int SignBit;
 
 #if SERIAL_EN && ( DEBUG || DEBUG_DS )
-  Serial.print("Reading Address=");
+  cmdIo.print("Reading Address=");
   for (int i=0;i<8;i++) {
-    Serial.print(i);
-    Serial.print(':');
-    Serial.print(addr[i], HEX);
-    Serial.print(' ');
+    cmdIo.print(i);
+    cmdIo.print(':');
+    cmdIo.print(addr[i], HEX);
+    cmdIo.print(' ');
   }
-  Serial.println();
+  cmdIo.println();
 #endif
 
   int result = ds_readdata(addr, data);
 
   if (result != DS_OK) {
 #if SERIAL_EN
-    Serial.println(F("CRC error in ds_readdata"));
+    cmdIo.println(F("CRC error in ds_readdata"));
     serialFlush();
 #endif
     return 32767;
@@ -500,21 +498,21 @@ static void readDSAddr(int a, byte addr[8]) {
 
 static void printDSAddrs(int ds_count) {
 #if SERIAL_EN && DEBUG_DS
-  Serial.print("Reading ");
-  Serial.print(ds_count);
-  Serial.println(" DS18B20 sensors");
+  cmdIo.print("Reading ");
+  cmdIo.print(ds_count);
+  cmdIo.println(" DS18B20 sensors");
   for (int q=0; q<ds_count;q++) {
-    Serial.print("Mem Address=");
+    cmdIo.print("Mem Address=");
     int l = DS_EEPROM_OFFSET + 1 + ( q * 8 );
     int r[8];
     for (int i=0;i<8;i++) {
       r[i] = EEPROM.read(l+i);
-      Serial.print(i);
-      Serial.print(':');
-      Serial.print(r[i], HEX);
-      Serial.print(' ');
+      cmdIo.print(i);
+      cmdIo.print(':');
+      cmdIo.print(r[i], HEX);
+      cmdIo.print(' ');
     }
-    Serial.println();
+    cmdIo.println();
   }
 #endif
 }
@@ -526,37 +524,37 @@ static int findDS18B20s(int &ds_search) {
   if (!ds.search(addr)) {
     ds.reset_search();
 #if SERIAL_EN && DEBUG_DS
-    Serial.println("No more addresses.");
-    Serial.print("Found ");
-    Serial.print(ds_search);
-    Serial.println(" addresses.");
-    Serial.print("Previous search found ");
-    Serial.print(readDSCount());
-    Serial.println(" addresses.");
+    cmdIo.println("No more addresses.");
+    cmdIo.print("Found ");
+    cmdIo.print(ds_search);
+    cmdIo.println(" addresses.");
+    cmdIo.print("Previous search found ");
+    cmdIo.print(readDSCount());
+    cmdIo.println(" addresses.");
 #endif
     return 0;
   }
 
   if ( OneWire::crc8( addr, 7 ) != addr[7]) {
 #if SERIAL_EN
-    Serial.println("CRC is not valid!");
+    cmdIo.println("CRC is not valid!");
 #endif
     return 2;
   }
 
 #if SERIAL_EN && ( DEBUG || DEBUG_DS )
-  Serial.print("New Address=");
+  cmdIo.print("New Address=");
   for( i = 0; i < 8; i++) {
-    Serial.print(i);
-    Serial.print(':');
-    Serial.print(addr[i], HEX);
-    Serial.print(" ");
+    cmdIo.print(i);
+    cmdIo.print(':');
+    cmdIo.print(addr[i], HEX);
+    cmdIo.print(" ");
   }
-  Serial.println();
+  cmdIo.println();
 #endif
 
   ds_search++;
-  Serial.println(ds_search);
+  cmdIo.println(ds_search);
 
   writeDSAddr(( ds_search-1 ), addr);
 
@@ -564,14 +562,13 @@ static int findDS18B20s(int &ds_search) {
 }
 
 
-#endif //_DS
-
+#endif // DS
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -595,7 +592,7 @@ void rf24_start()
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -607,8 +604,6 @@ void rf24_start()
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
-
-
 
 
 
@@ -634,7 +629,7 @@ void help_sercmd(void) {
   cmdIo.println("E: erase EEPROM!");
   cmdIo.println("n: node cfg.");
   cmdIo.println("v: node ver.");
-  cmdIo.println("x: reset");
+  cmdIo.println("x: soft reset");
   cmdIo.println("?/h: this help");
 }
 
@@ -642,7 +637,7 @@ void help_sercmd(void) {
 void initConfig(void);
 void doReset(void);
 
-static void config_sercmd() {
+void config_sercmd(void) {
   cmdIo.print("c ");
   cmdIo.print(config.node);
   cmdIo.print(" ");
@@ -682,14 +677,14 @@ static void configNodeIDCmd() {
 }
 
 void ctempconfig_sercmd(void) {
-  Serial.print("Offset: ");
-  Serial.println(config.temp_offset);
-  Serial.print("K: ");
-  Serial.println(config.temp_k/10);
-  Serial.print("Raw: ");
+  cmdIo.print("Offset: ");
+  cmdIo.println(config.temp_offset);
+  cmdIo.print("K: ");
+  cmdIo.println(config.temp_k/10);
+  cmdIo.print("Raw: ");
   float temp_k = (float) config.temp_k / 10;
   int ctemp = internalTemp(config.temp_offset, temp_k);
-  Serial.println(ctemp);
+  cmdIo.println(ctemp);
 }
 
 void ctempoffset_sercmd(void) {
@@ -700,18 +695,18 @@ void ctempoffset_sercmd(void) {
     v -= 256;
   }
   config.temp_offset = v;
-  Serial.print("New offset: ");
-  Serial.println(config.temp_offset);
+  cmdIo.print("New offset: ");
+  cmdIo.println(config.temp_offset);
   writeConfig(config);
 }
 
 void ctemp_sercmd(void) {
   float temp_k = (float) config.temp_k / 10;
   double ctemp = internalTemp(config.temp_offset, temp_k);
-  Serial.println(ctemp);
+  cmdIo.println(ctemp);
 }
 
-static void configEEPROMCmd() {
+void configEEPROMCmd(void) {
   int write;
   parser >> write;
   if (write) {
@@ -771,11 +766,11 @@ void initLibs()
 #if _DHT
   dht.begin();
 #if DEBUG
-  Serial.println("Initialized DHT");
+  cmdIo.println("Initialized DHT");
   float t = dht.readTemperature();
-  Serial.println(t);
+  cmdIo.println(t);
   float rh = dht.readHumidity();
-  Serial.println(rh);
+  cmdIo.println(rh);
 #endif
 #endif
 
@@ -801,14 +796,14 @@ void doReset(void)
 {
   doConfig();
 
+#ifdef _DBG_LED
+  pinMode(_DBG_LED, OUTPUT);
+#endif
+
 #if _DS
   int ds_search = 0;
   while (findDS18B20s(ds_search) == 1) ;
   updateDSCount(ds_search);
-#endif
-
-#ifdef _DBG_LED
-  pinMode(_DBG_LED, OUTPUT);
 #endif
   tick = 0;
 
@@ -816,10 +811,10 @@ void doReset(void)
   rf24_init();
 #endif //_NRF24
 
-  reportCount = REPORT_EVERY;     // report right away for easy debugging
+  reportCount = REPORT_EVERY; // report right away for easy debugging
   scheduler.timer(ANNOUNCE, ANNOUNCE_START); // get the measurement loop going
 #if SERIAL_EN && DEBUG
-  Serial.println("Reinitialized");
+  cmdIo.println("Reinitialized");
 #endif
 }
 
@@ -835,21 +830,21 @@ bool doAnnounce(void)
 #endif // SERIAL_EN && DEBUG
   cmdIo.println(node_id);
 #if LDR_PORT
-  Serial.print("light:8 ");
+  cmdIo.print("light:8 ");
 #endif
 #if PIR
-  Serial.print("moved:1 ");
+  cmdIo.print("moved:1 ");
 #endif
 #if _DHT
-  Serial.print(F("rhum:7 "));
-  Serial.print(F("temp:10 "));
+  cmdIo.print(F("rhum:7 "));
+  cmdIo.print(F("temp:10 "));
 #endif
-  Serial.print(F("ctemp:10 "));
+  cmdIo.print(F("ctemp:10 "));
 #if _MEM
-  Serial.print(F("memfree:16 "));
+  cmdIo.print(F("memfree:16 "));
 #endif
 #if _RFM12LOBAT
-  Serial.print(F("lobat:1 "));
+  cmdIo.print(F("lobat:1 "));
 #endif //_RFM12LOBAT
   return false;
 }
@@ -863,19 +858,19 @@ void doMeasure(void)
   int ctemp = internalTemp(config.temp_offset, (float)config.temp_k/10);
   payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("Payload size: ");
-  Serial.println(sizeof(payload));
-  Serial.print("AVR T new/avg ");
-  Serial.print(ctemp);
-  Serial.print('/');
-  Serial.println(payload.ctemp);
+  cmdIo.print("Payload size: ");
+  cmdIo.println(sizeof(payload));
+  cmdIo.print("AVR T new/avg ");
+  cmdIo.print(ctemp);
+  cmdIo.print('/');
+  cmdIo.println(payload.ctemp);
 #endif
 
 #if _RFM12LOBAT
   payload.lobat = rf12_lowbat();
 #if SERIAL_EN && DEBUG_MEASURE
   if (payload.lobat) {
-    Serial.println("Low battery");
+    cmdIo.println("Low battery");
   }
 #endif
 #endif //_RFM12LOBAT
@@ -885,29 +880,29 @@ void doMeasure(void)
   float t = dht.readTemperature();
   if (isnan(h)) {
 #if SERIAL_EN | DEBUG
-    Serial.println(F("Failed to read DHT11 humidity"));
+    cmdIo.println(F("Failed to read DHT11 humidity"));
 #endif
   } else {
     int rh = h * 10;
     payload.rhum = smoothedAverage(payload.rhum, rh, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print(F("DHT RH new/avg "));
-    Serial.print(rh);
-    Serial.print(' ');
-    Serial.println(payload.rhum);
+    cmdIo.print(F("DHT RH new/avg "));
+    cmdIo.print(rh);
+    cmdIo.print(' ');
+    cmdIo.println(payload.rhum);
 #endif
   }
   if (isnan(t)) {
 #if SERIAL_EN | DEBUG
-    Serial.println(F("Failed to read DHT11 temperature"));
+    cmdIo.println(F("Failed to read DHT11 temperature"));
 #endif
   } else {
     payload.temp = smoothedAverage(payload.temp, (int)(t * 10), firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print(F("DHT T new/avg "));
-    Serial.print(t);
-    Serial.print(' ');
-    Serial.println(payload.temp);
+    cmdIo.print(F("DHT T new/avg "));
+    cmdIo.print(t);
+    cmdIo.print(' ');
+    cmdIo.println(payload.temp);
 #endif
   }
 #endif //_DHT
@@ -918,10 +913,10 @@ void doMeasure(void)
   ldr.digiWrite2(0);  // disable pull-up to reduce current draw
   payload.light = smoothedAverage(payload.light, light, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print(F("LDR new/avg "));
-  Serial.print(light);
-  Serial.print(' ');
-  Serial.println(payload.light);
+  cmdIo.print(F("LDR new/avg "));
+  cmdIo.print(light);
+  cmdIo.print(' ');
+  cmdIo.println(payload.light);
 #endif
 #endif //_LDR_PORT
 
@@ -932,12 +927,12 @@ void doMeasure(void)
     readDSAddr(i, addr);
     ds_value[i] = readDS18B20(addr);
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print(F("DS18B20 #"));
-    Serial.print(i+1);
-    Serial.print('/');
-    Serial.print(ds_count);
-    Serial.print(' ');
-    Serial.println( (float) ds_value[i] / 100 );
+    cmdIo.print(F("DS18B20 #"));
+    cmdIo.print(i+1);
+    cmdIo.print('/');
+    cmdIo.print(ds_count);
+    cmdIo.print(' ');
+    cmdIo.println( (float) ds_value[i] / 100 );
 #endif
   }
 #endif //_DS
@@ -951,8 +946,8 @@ void doMeasure(void)
 #if _MEM
   payload.memfree = freeRam();
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("MEM free ");
-  Serial.println(payload.memfree);
+  cmdIo.print("MEM free ");
+  cmdIo.println(payload.memfree);
 #endif
 #endif //_MEM
 
@@ -960,7 +955,7 @@ void doMeasure(void)
   payload.lobat = rf12_lowbat();
 #if SERIAL_EN && DEBUG_MEASURE
   if (payload.lobat) {
-    Serial.println("Low battery");
+    cmdIo.println("Low battery");
   }
 #endif
 #endif //_RFM12LOBAT
@@ -988,34 +983,33 @@ bool doReport(void)
 
 #if SERIAL_EN
   /* Report over serial, same fields and order as announced */
-  Serial.print(node_id);
+  cmdIo.print(node_id);
 #if LDR_PORT
-  Serial.print(' ');
-  Serial.print((int) payload.light);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.light);
 #endif
-  Serial.print((int) payload.ctemp);
+  cmdIo.print((int) payload.ctemp);
 #if _DS
   int ds_count = readDSCount();
   for (int i=0;i<ds_count;i++) {
-    Serial.print((int) ds_value[i]);
-    Serial.print(' ');
+    cmdIo.print((int) ds_value[i]);
+    cmdIo.print(' ');
   }
 #endif
 #if _MEM
-  Serial.print(' ');
-  Serial.print((int) payload.memfree);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.memfree);
 #endif //_MEM
 #if _RFM12LOBAT
-  Serial.print(' ');
-  Serial.print((int) payload.lobat);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.lobat);
 #endif //_RFM12LOBAT
 
-  Serial.println();
+  cmdIo.println();
 #endif //SERIAL_EN
 
   return ok;
 }
-
 
 void runScheduler(char task)
 {
@@ -1023,11 +1017,11 @@ void runScheduler(char task)
 
     case ANNOUNCE:
       debugline("ANNOUNCE");
-      Serial.print(strlen(node_id));
-      Serial.println();
+      cmdIo.print(strlen(node_id));
+      cmdIo.println();
       if (strlen(node_id) > 0) {
-        Serial.print("Node: ");
-        Serial.println(node_id);
+        cmdIo.print("Node: ");
+        cmdIo.println(node_id);
         //scheduler.timer(MEASURE, 0); schedule next step
       } else {
         doAnnounce();
@@ -1064,14 +1058,14 @@ void runScheduler(char task)
 #if DEBUG && SERIAL_EN
     case SCHED_WAITING:
     case SCHED_IDLE:
-      Serial.print("!");
+      cmdIo.print("!");
       serialFlush();
       break;
 
     default:
-      Serial.print("0x");
-      Serial.print(task, HEX);
-      Serial.println(" ?");
+      cmdIo.print("0x");
+      cmdIo.print(task, HEX);
+      cmdIo.println(" ?");
       serialFlush();
       break;
 #endif
@@ -1119,8 +1113,8 @@ void setup(void)
   mpeser.begin();
   mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 #endif
   serialFlush();
 #endif
@@ -1141,7 +1135,7 @@ void loop(void)
   bool ds_reset = digitalRead(7);
   if (ds_search || ds_reset) {
     if (ds_reset) {
-      Serial.println("DS-reset triggered");
+      cmdIo.println("DS-reset triggered");
     }
     int ds_search = 0;
     while (findDS18B20s(ds_search) == 1) ;

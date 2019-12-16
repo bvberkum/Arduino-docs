@@ -17,13 +17,13 @@ Pinout:
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG           1 /* Enable trace statements */
-							
-#define _MEM            1   // Report free memory 
+
+#define _MEM            1   // Report free memory
 #define UI_IDLE         4000  // tenths of seconds idle time, ...
 #define UI_STDBY        8000  // ms
-							
+
 #define MAXLENLINE      79
-							
+
 
 
 #include <JeeLib.h>
@@ -43,7 +43,7 @@ volatile bool ui_irq;
 bool ui;
 
 const byte ROWS = 1;
-const byte COLS = 4; 
+const byte COLS = 4;
 //define the cymbols on the buttons of the keypads
 char pad1x3[ROWS][COLS] = {
   {'A','B','C','D'},
@@ -76,7 +76,7 @@ MilliTimer idle, stdby;
 
 /* *** InputParser *** {{{ */
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
@@ -93,13 +93,13 @@ Scheduler scheduler (schedbuf, TASK_END);
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 
 
-/* *** /EEPROM config }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -108,13 +108,13 @@ byte rowPins[ROWS] = { ROW1_PIN };
 byte colPins[COLS] = { COL1_PIN, COL2_PIN, COL3_PIN, COL4_PIN };
 
 //initialize an instance of class NewKeypad
-Keypad customKeypad = Keypad( makeKeymap(pad1x3), rowPins, colPins, ROWS, COLS); 
+Keypad customKeypad = Keypad( makeKeymap(pad1x3), rowPins, colPins, ROWS, COLS);
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 /* *** Initialization routines *** {{{ */
 
@@ -138,7 +138,7 @@ void initLibs()
 }
 
 
-/* *** /Initialization routines }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -199,7 +199,7 @@ void runScheduler(char task)
 }
 
 
-/* *** /Run-time handlers }}} *** */
+/* *** /Run-time handlers *** }}} */
 
 /* *** Main *** {{{ */
 
@@ -269,5 +269,5 @@ void loop(void)
 	} */
 }
 
-/* }}} *** */
+/* *** }}} */
 

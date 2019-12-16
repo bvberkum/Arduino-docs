@@ -1,25 +1,26 @@
 #include <DotmpeLib.h>
 #include <JeeLib.h>
 #include <Wire.h>
+#include <mpelib.h>
 
 
 /** Globals and sketch configuration  */
 #define DEBUG           1 /* Enable trace statements */
 #define SERIAL          1 /* Enable serial */
 #define DEBUG_MEASURE   0
-							
+
 #define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
-							
+
 #define MAXLENLINE      79
 #define SRAM_SIZE       0x800 // atmega328, for debugging
 // set the sync mode to 2 if the fuses are still the Arduino default
 // mode 3 (full powerdown) can only be used with 258 CK startup fuses
 #define RADIO_SYNC_MODE 2
-							
+
 #define _HMC5883L       1
-							
+
 
 String sketch = "Magnetometer";
 String version = "0";
@@ -68,67 +69,6 @@ struct {
 } payload;
 
 
-/** AVR routines */
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v;
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
-int usedRam () {
-	return SRAM_SIZE - freeRam();
-}
-
-
-/** Generic routines */
-
-static void serialFlush () {
-#if SERIAL
-#if ARDUINO >= 100
-	Serial.flush();
-#endif
-	delay(2); // make sure tx buf is empty before going back to sleep
-#endif
-}
-
-void blink(int led, int count, int length) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-	}
-}
-
-void debug_ticks(void)
-{
-#if SERIAL && DEBUG
-	tick++;
-	if ((tick % 20) == 0) {
-		Serial.print('.');
-		pos++;
-	}
-	if (pos > MAXLENLINE) {
-		pos = 0;
-		Serial.println();
-	}
-	serialFlush();
-#endif
-}
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-void debug(String msg) {
-#if DEBUG
-	Serial.println(msg);
-#endif
-}
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
@@ -167,7 +107,7 @@ int HMC5803L_Read(byte Axis)
 	Wire.write(Axis);
 	Wire.endTransmission();
 
-	/* Read the data from registers (there are two 8 bit registers for each axis) */  
+	/* Read the data from registers (there are two 8 bit registers for each axis) */
 	Wire.requestFrom(HMC5803L_Address, 2);
 	Result = Wire.read() << 8;
 	Result |= Wire.read();
@@ -177,7 +117,7 @@ int HMC5803L_Read(byte Axis)
 #endif //_HMC5883L
 
 
-/* Initialization routines */
+/* *** Initialization routines *** {{{ */
 
 void doConfig(void)
 {
@@ -189,7 +129,7 @@ void initLibs()
 	/* Initialise the Wire library */
 	Wire.begin();
 
-	/* Initialise the module */ 
+	/* Initialise the module */
 	Init_HMC5803L();
 #endif //_HMC5883L
 }
@@ -315,13 +255,13 @@ void loop(void)
 	doReport();
 	delay(300);
 	return;
-	
+
 	debug_ticks();
 
 	char task = scheduler.pollWaiting();
 	//if (task == 0xFF) {} // -1
 	//else if (task == 0xFE) {} // -2
-	//else 
+	//else
 	runScheduler(task);
 }
 

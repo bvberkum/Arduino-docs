@@ -18,13 +18,13 @@ int pos = 0;
 
 /* *** Generic routines *** {{{ */
 
-#if SERIAL_EN
-
 extern void serialFlush() {
+#if SERIAL_EN
 #if ARDUINO >= 100
 	Serial.flush();
 #endif
 	delay(2); // make sure tx buf is empty before going back to sleep
+#endif
 }
 
 extern bool debug_ticks(void)
@@ -47,12 +47,10 @@ extern bool debug_ticks(void)
 }
 
 extern void debugline(char* msg) {
-#if DEBUG
+#if SERIAL_EN && DEBUG
 	Serial.println(msg);
 #endif
 }
-
-#endif
 
 void blink(int led, int count, int length, int length_off=-1, bool reverse=false) {
 	int i;
@@ -71,8 +69,6 @@ int smoothedAverage(int prev, int next, byte firstTime) {
 	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
 }
 
-/* }}} *** */
-
+/* *** }}} */
 
 #endif
-

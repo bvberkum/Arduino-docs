@@ -7,30 +7,30 @@ RoomNodeRF24
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN        1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
-#define DEBUG_MEASURE   0
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
+#define DEBUG_MEASURE     0
 
-#define _MEM            1   // Report free memory
-#define _DHT            1
-#define DHT_HIGH        0   // enable for DHT22/AM2302, low for DHT11
-#define _RFM12B         0
-#define _NRF24          1
-#define SHT11_PORT      0   // defined if SHT11 is connected to a port
-#define PIR_PORT        0   // defined if PIR is connected to a port's DIO pin
-#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
+#define _MEM              1 // Report free memory
+#define _DHT              1
+#define DHT_HIGH          0 // enable for DHT22/AM2302, low for DHT11
+#define _RFM12B           0
+#define _NRF24            1
+#define SHT11_PORT        0 // defined if SHT11 is connected to a port
+#define PIR_PORT          0 // defined if PIR is connected to a port's DIO pin
+#define LDR_PORT          0 // defined if LDR is connected to a port's AIO pin
 
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  600 // how often to measure, in tenths of seconds
-//#define TEMP_OFFSET     -65
-//#define TEMP_K          1.0
-#define ANNOUNCE_START  0
-#define UI_SCHED_IDLE         4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
-#define CONFIG_VERSION "nx1"
+#define REPORT_EVERY      5 // report every N measurement cycles
+#define SMOOTH            5 // smoothing factor used for running averages
+#define MEASURE_PERIOD    600 // how often to measure, in tenths of seconds
+//#define TEMP_OFFSET       -65
+//#define TEMP_K            1.0
+#define ANNOUNCE_START    0
+#define UI_SCHED_IDLE     4000 // tenths of seconds idle time, ...
+#define UI_STDBY          8000 // ms
+#define CONFIG_VERSION    "nx1"
 #define CONFIG_EEPROM_START 50
-#define NRF24_CHANNEL   90
+#define NRF24_CHANNEL     90
 
 
 
@@ -42,8 +42,8 @@ RoomNodeRF24
 #include <DHT.h> // Adafruit DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
-#include "printf.h"
 
+#include "printf.h"
 
 
 
@@ -76,15 +76,14 @@ MpeSerial mpeser (57600);
 
 MilliTimer idle, stdby;
 
-
 /* *** InputParser *** {{{ */
 
 Stream& cmdIo = Serial;
-extern InputParser::Commands cmdTab[];
-InputParser parser (50, cmdTab);
+extern const InputParser::Commands cmdTab[];
+const InputParser parser (50, cmdTab);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
@@ -140,10 +139,6 @@ static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
-
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
 
 /* *** /Scheduled tasks *** }}} */
 
@@ -210,8 +205,14 @@ void writeConfig(Config &c)
 }
 
 
-
 /* *** /EEPROM config *** }}} */
+
+/* *** Scheduler routines *** {{{ */
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduler routines *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -223,10 +224,10 @@ SHT11 sht11 (SHT11_PORT);
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** PIR *** {{{ */
 #if PIR_PORT
 #endif
-/* *** /PIR support }}} *** */
+/* *** /PIR *** }}} */
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
@@ -281,6 +282,7 @@ RF24Network network(radio);
 // Address of the other node
 const uint16_t rf24_link_node = 0;
 
+
 #endif // NRF24
 
 #if _RTC
@@ -289,7 +291,6 @@ const uint16_t rf24_link_node = 0;
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
-
 
 #endif // HMC5883L
 
@@ -302,11 +303,10 @@ const uint16_t rf24_link_node = 0;
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -869,4 +869,3 @@ void loop(void)
 }
 
 /* *** }}} */
-

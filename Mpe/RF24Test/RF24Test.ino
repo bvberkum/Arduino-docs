@@ -10,15 +10,15 @@
  */
 
 
+
 /* *** Globals and sketch configuration *** */
-#define SERIAL          1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _MEM            1   // Report free memory
-#define _NRF24          1
+#define _MEM              1 // Report free memory
+#define _NRF24            1
+#define MAXLENLINE        79
 
-
-#define MAXLENLINE      79
 
 
 //#include <EEPROM.h>
@@ -54,13 +54,13 @@ MpeSerial mpeser (57600);
 /* *** Scheduled tasks *** {{{ */
 
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
 
 
-/* *** /EEPROM config }}} *** */
+/* *** /EEPROM config *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -78,14 +78,14 @@ RF24 radio(CE, CSN);
 
 // nRF24L01 addresses: one for broadcast, one for listening
 const uint64_t pipes[2] = {
-	0xF0F0F0F0D2LL, /* dest id: central link node */
-	0xF0F0F0F0E1LL /* src id: local node */
+  0xF0F0F0F0D2LL, /* dest id: central link node */
+  0xF0F0F0F0E1LL /* src id: local node */
 };
 
 #endif // NRF24
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -93,16 +93,13 @@ const uint64_t pipes[2] = {
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
-/* DHT temp/rh sensor
- - AdafruitDHT
-*/
+/* DHT temp/rh sensor routines (AdafruitDHT) */
 
 #endif // DHT
 
@@ -126,6 +123,11 @@ const uint64_t pipes[2] = {
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
+void rf24_init()
+{
+  SPI.begin();
+  radio.begin();
+}
 
 #endif // NRF24 funcs
 
@@ -139,7 +141,7 @@ const uint64_t pipes[2] = {
 #endif // HMC5883L
 
 
-/* *** /Peripheral hardware routines }}} *** */
+/* *** /Peripheral hardware routines *** }}} */
 
 
 /* *** Initialization routines *** {{{ */
@@ -148,63 +150,63 @@ void doConfig(void)
 {
 }
 
-void initLibs()
+void initLibs(void)
 {
 #if _NRF24
-	radio.begin();
+  rf24_init();
 #endif // NRF24
 
-#if SERIAL && DEBUG
-	printf_begin();
+#if SERIAL_EN && DEBUG
+  printf_begin();
 #endif
 }
 
 
-/* *** /Initialization routines }}} *** */
+/* *** /Initialization routines *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
 void doReset(void)
 {
-	tick = 0;
+  tick = 0;
 
 #if _NRF24
-	radio.openReadingPipe(1,pipes[1]);
-	radio.startListening();
+  radio.openReadingPipe(1,pipes[1]);
+  radio.startListening();
 #endif //_NRF24
 }
 
 
 
-/* *** /InputParser handlers }}} *** */
+/* *** /InputParser handlers *** }}} */
 
 /* *** Main *** {{{ */
 
 
 void setup(void)
 {
-#if SERIAL
-	mpeser.begin();
-	mpeser.startAnnounce(sketch, String(version));
+#if SERIAL_EN
+  mpeser.begin();
+  mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-	Serial.print(F("Free RAM: "));
-	Serial.println(freeRam());
+  Serial.print(F("Free RAM: "));
+  Serial.println(freeRam());
 #endif
-	serialFlush();
+  serialFlush();
 #endif
 
-	initLibs();
+  initLibs();
 
-	Serial.print("Init done, resetting libs..");
+  Serial.print("Init done, resetting libs..");
 
-	doReset();
+  doReset();
 
-	Serial.println("OK\n\r[RF24/examples/GettingStarted/]");
+  Serial.println("OK\n\r[RF24/examples/GettingStarted/]");
 
 #if _NRF24
-	Serial.print("Radio details:");
-	radio.printDetails();
-	Serial.println();
+  Serial.print("Radio details:");
+  radio.printDetails();
+  Serial.println();
 #endif
 }
 
@@ -212,5 +214,5 @@ void loop(void)
 {
 }
 
-/* }}} *** */
+/* *** }}} */
 

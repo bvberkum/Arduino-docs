@@ -92,7 +92,7 @@ extern const InputParser::Commands cmdTab[] PROGMEM;
 const InputParser parser (50, cmdTab);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 

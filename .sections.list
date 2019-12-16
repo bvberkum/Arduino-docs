@@ -1,0 +1,19 @@
+InputParser
+Report variables
+Scheduled tasks
+EEPROM config
+Scheduler routines
+Peripheral devices
+PIR
+Generic routines
+Peripheral hardware routines
+- PIR routines
+UI
+UART commands
+Wire
+- Wire commands
+- Wire handling
+Initialization routines
+Run-time handlers
+InputParser handlers
+Main

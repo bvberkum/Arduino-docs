@@ -5,21 +5,21 @@ Dallas OneWire Temperature Bus with autodetect and eeprom config
 
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN       1 /* Enable serial */
-#define DEBUG           1 /* Enable trace statements */
-#define DEBUG_MEASURE   1
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
+#define DEBUG_MEASURE     1
 
-#define _MEM            1   // Report free memory
-#define _DHT            0
-#define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
-#define _DS             1
-#define DEBUG_DS        0
-#define _LCD84x48       0
-#define _NRF24          0
+#define _MEM              1 // Report free memory
+#define _DHT              0
+#define DHT_HIGH          1 // enable for DHT22/AM2302, low for DHT11
+#define _DS               1
+#define DEBUG_DS          0
+#define _LCD84x48         0
+#define _NRF24            0
 
-#define SMOOTH          5   // smoothing factor used for running averages
+#define SMOOTH            5 // smoothing factor used for running averages
 
-#define MAXLENLINE      79
+#define MAXLENLINE        79
 
 
 #include <EEPROM.h>
@@ -111,7 +111,7 @@ enum { DS_OK, DS_ERR_CRC };
 
 #if _RTC
 /* DS1307: Real Time Clock over I2C */
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C module */
@@ -128,10 +128,10 @@ enum { DS_OK, DS_ERR_CRC };
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
-#endif //PIR_PORT
-/* *** /PIR support *** }}} */
+#endif // PIR_PORT
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -139,7 +139,7 @@ enum { DS_OK, DS_ERR_CRC };
 #endif // DHT
 
 #if _LCD
-#endif //_LCD
+#endif // LCD
 
 #if _LCD84x48
 
@@ -337,18 +337,18 @@ static int findDS18B20s(int &ds_search) {
 }
 
 
-#endif //_DS
+#endif // DS
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
 
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
 
-void radio_init()
+void rf24_init()
 {
 	SPI.begin();
 	radio.begin();
@@ -367,7 +367,7 @@ void rf24_start()
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */

@@ -123,16 +123,6 @@ struct {
 } payload;
 
 
-/** Generic routines */
-
-void blink(int led, int count, int length) {
-	for (int i=0;i<count;i++) {
-		digitalWrite (led, HIGH);
-		delay(length);
-		digitalWrite (led, LOW);
-		delay(length);
-	}
-}
 
 // spend a little time in power down mode while the SHT11 does a measurement
 static void lpDelay () {

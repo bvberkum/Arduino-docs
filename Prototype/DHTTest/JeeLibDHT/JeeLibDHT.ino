@@ -2,6 +2,7 @@
 */
 #include <DotmpeLib.h>
 #include <JeeLib.h>
+#include <mpelib.h>
 
 
 /* *** Globals and sketch configuration *** */
@@ -9,7 +10,7 @@
 #define DEBUG_MEASURE   1
 #define DEBUG_RH    1
 #define SERIAL          1 /* Enable serial */
-							
+
 #define _DHT        1    // define to use JeeLib DHT for DHT
 
 #define _MEM        1
@@ -21,9 +22,9 @@
 #define RETRY_LIMIT     2   // maximum number of times to retry
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define RADIO_SYNC_MODE 2
-							
+
 #define MAXLENLINE      79
-							
+
 #if defined(__AVR_ATtiny84__)
 #define SRAM_SIZE       512
 #elif defined(__AVR_ATmega168__)
@@ -31,7 +32,7 @@
 #elif defined(__AVR_ATmega328__) || defined(__AVR_ATmega328P__)
 #define SRAM_SIZE       2048
 #endif
-							
+
 #if SERIAL || DEBUG
 
 const String sketch = "DHT11Test_JeeLib";
@@ -58,61 +59,6 @@ enum { ANNOUNCE_MSG, REPORT_MSG };
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
 
-/** Generic routines */
-
-#if SERIAL || DEBUG
-static void serialFlush () {
-    #if ARDUINO >= 100
-        Serial.flush();
-    #endif  
-    delay(2); // make sure tx buf is empty before going back to sleep
-}
-#endif
-
-// utility code to perform simple smoothing as a running average
-static int smoothedAverage(int prev, int next, byte firstTime =0) {
-	if (firstTime)
-		return next;
-	return ((SMOOTH - 1) * prev + next + SMOOTH / 2) / SMOOTH;
-}
-
-double internalTemp(void)
-{
-	unsigned int wADC;
-	double t;
-
-	// The internal temperature has to be used
-	// with the internal reference of 1.1V.
-	// Channel 8 can not be selected with
-	// the analogRead function yet.
-
-	// Set the internal reference and mux.
-	ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-	ADCSRA |= _BV(ADEN);  // enable the ADC
-
-	delay(20);            // wait for voltages to become stable.
-
-	ADCSRA |= _BV(ADSC);  // Start the ADC
-
-	// Detect end-of-conversion
-	while (bit_is_set(ADCSRA,ADSC));
-
-	// Reading register "ADCW" takes care of how to read ADCL and ADCH.
-	wADC = ADCW;
-
-	// The offset of 324.31 could be wrong. It is just an indication.
-	t = (wADC - 311 ) / 1.22;
-
-	// The returned temperature is in degrees Celcius.
-	return (t);
-}
-
-int freeRam () {
-	extern int __heap_start, *__brkval; 
-	int v; 
-	return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
-
 /* *** Initialization routines *** {{{ */
 
 void doConfig(void)
@@ -128,7 +74,7 @@ void initLibs()
 	rf12_initialize(1, RF12_868MHZ, 4);
 }
 
-/* }}} *** */
+/* *** }}} */
 
 /* *** Run-time handlers *** {{{ */
 
@@ -256,7 +202,7 @@ static void doReport() {
 }
 
 
-/* }}} *** */
+/* *** }}} */
 
 /* *** Main *** {{{ */
 

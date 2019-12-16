@@ -1,28 +1,36 @@
-#ID           PREFIX                 CORE       BOARD          DEFINES
-jn1-1112
-jn2-1306
-jn3-1306
-blink-t85     Prototype/Blink        attiny     attiny85       BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
-tinyrf24-20   Mpe/TinyRF24           attiny     attiny85-20
-tinyrf24      Mpe/TinyRF24           digistump  digispark-tiny 
-sensornode    Prototype/SensorNode   arduino    fio
-#sensornode    Prototype/SensorNode   arduino    mini
-#sensornode    Prototype/SensorNode   arduino    8MHzatmega328
-weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
-#tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
-tinyclock     Prototype/ClockTemp    digistump  tiny
+#STT ID            PREFIX                 FQBN                      DEFINES
 
-#rgb           Mpe/WS2801             attiny     attiny85
-rgb           Mpe/WS2812             arduino    atmega328
-mf            Mpe/RC522              arduino    atmega328
+0    pcd8544thermo Misc/PCD8544_Thermometer arduino:avr:pro:cpu=8MHzatmega328 
+0    blink         Prototype/Blink        arduino:avr:pro
+0    rf24node1     Prototype/RF24Node     arduino:avr:pro
+0    rf24node2     Prototype/RF24Node     arduino:avr:nano
+0    rf24node3     Prototype/RF24Node     arduino:avr:pro:cpu=16MHzatmega328
+0    rf24node4     Prototype/RF24Node     arduino:avr:pro:cpu=8MHzatmega328 
 
-# V-USB for arduino 005 device: not for tiny8, or m8
-vusb-t85      Prototype/VUSB         attiny     attiny85
-#vusb-m8       Prototype/VUSB         arduino    atmega8
-#vusb-m328     Prototype/VUSB         arduino    uno
+-    jn1-1112
+-    jn2-1306
+-    jn3-1306
+-    blink-t85     Prototype/Blink        attiny     attiny85       BLINK_PIN=1 DELAY_HIGH=1000 DELAY_LOW=1000
+-    tinyrf24-20   Mpe/TinyRF24           attiny     attiny85-20
+-    tinyrf24      Mpe/TinyRF24           digistump  digispark-tiny 
+-    sensornode    Prototype/SensorNode   arduino    fio
+-    #sensornode    Prototype/SensorNode   arduino    mini
+-    #sensornode    Prototype/SensorNode   arduino    8MHzatmega328
+-    weathernode   Prototype/WeatherNode  dotmpe     nanodccduino
+-    #tinyclock     Prototype/ClockTemp    dotmpe     tiny2313
+-    tinyclock     Prototype/ClockTemp    digistump  tiny
+    
+-    #rgb           Mpe/WS2801             attiny     attiny85
+-    rgb           Mpe/WS2812             arduino    atmega328
+-    mf            Mpe/RC522              arduino    atmega328
+    
+-    # V-USB for arduino 005 device: not for tiny8, or m8
+-    vusb-t85      Prototype/VUSB         attiny     attiny85
+-    #vusb-m8       Prototype/VUSB         arduino    atmega8
+-    #vusb-m328     Prototype/VUSB         arduino    uno
+    
+-    #i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     
+    
+-    ssd1306       Mpe/SSD1306            arduino    atmega328      SSD1306_128_64=1
 
-#ID           PREFIX                                                           CORE       BOARD          DEFINES
-#i2c-lcd       Misc/I2C_LCD_CustomChars_mjkdz/I2C_LCD_CustomChars_mjkdz.ino     
-
-#ID           PREFIX                 CORE       BOARD          DEFINES
-ssd1306       Mpe/SSD1306            arduino    atmega328      SSD1306_128_64=1
+# vim:nowrap:

@@ -58,7 +58,7 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 

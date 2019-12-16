@@ -4,7 +4,7 @@
 	- First version: flipping probes on jack A and B, connected to JP3, 4.
 	- Planning JP1 and 2 to be shift register control
 
-	- Need to adapt wiring for eBay node. 
+	- Need to adapt wiring for eBay node.
 		Testing radio.
 
 Hardware
@@ -20,7 +20,7 @@ Hardware
 		(A7) probe right (aluminium)
 		(A8) metercoil
 
-JeeLib RF12 
+JeeLib RF12
 	- Header byte is CTL, DST, ACK bits and 5bit node ID.
 	- Node ID 0 and 31 is special. 30 unique IDs left per group.
 
@@ -33,7 +33,7 @@ JeeLib RF12
 		- 110 ack response (stored in eeprom nodeId too)
 		- 111 control for node with ack-request
 
-	
+
 
 */
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
@@ -41,10 +41,10 @@ JeeLib RF12
 /* *** Globals and sketch configuration *** */
 #define SERIAL          1   // set to 1 to enable serial interface
 #define DEBUG           1 /* Enable trace statements */
-							
+
 #define DEBUG_DS   0
 #define FIND_DS    0
-							
+
 #define REPORT_EVERY    5   // report every N measurement cycles
 #define SMOOTH          5   // smoothing factor used for running averages
 #define MEASURE_PERIOD  50 // how often to measure, in tenths of seconds
@@ -53,7 +53,7 @@ JeeLib RF12
 #define ACK_TIME        10  // number of milliseconds to wait for an ack
 #define RADIO_SYNC_MODE 2
 #define COLLECT 0x20 // collect mode, i.e. pass incoming without sending acks
-							
+
 
 #include <avr/sleep.h>
 #include <util/crc16.h>
@@ -75,7 +75,7 @@ const int version = 0;
 String node_id = "";
 String inputString = "";         // a string to hold incoming data
 
-const char helpText1[] PROGMEM = 
+const char helpText1[] PROGMEM =
   "\n"
   "Available commands:" "\n"
   "  <nn> i     - set node ID (standard node ids are 1..30)" "\n"
@@ -140,23 +140,23 @@ static void saveRF12Config () {
   // set up a nice config string to be shown on startup
   memset(rf12_config.msg, 0, sizeof rf12_config.msg);
   strcpy(rf12_config.msg, " ");
-  
+
   byte id = rf12_config.nodeId & 0x1F;
   addCh(rf12_config.msg, '@' + id);
   strcat(rf12_config.msg, " i");
   addInt(rf12_config.msg, id);
   if (rf12_config.nodeId & COLLECT)
     addCh(rf12_config.msg, '*');
-  
+
   strcat(rf12_config.msg, " g");
   addInt(rf12_config.msg, rf12_config.group);
-  
+
   strcat(rf12_config.msg, " @ ");
   static word bands[4] = { 315, 433, 868, 915 };
   word band = rf12_config.nodeId >> 6;
   addInt(rf12_config.msg, bands[band]);
   strcat(rf12_config.msg, " MHz ");
-  
+
   rf12_config.crc = ~0;
   for (byte i = 0; i < sizeof config - 2; ++i)
     rf12_config.crc = _crc16_update(rf12_config.crc, ((byte*) &config)[i]);
@@ -166,7 +166,7 @@ static void saveRF12Config () {
     byte b = ((byte*) &config)[i];
     eeprom_write_byte(RF12_EEPROM_ADDR + i, b);
   }
-  
+
   if (!rf12_config())
     Serial.println("config save failed");
 }
@@ -200,7 +200,7 @@ static byte reportCount;    // count up until next report, i.e. packet send
 // This defines the structure of the packets which get sent out by wireless:
 struct {
 //	int probe1 :10;  // moisture detector: 0..100?
-//	int probe2 :10; 
+//	int probe2 :10;
 //	int temp1  :10;  // temperature: -500..+500 (tenths)
 //	int temp2  :10;  // temperature: -500..+500 (tenths)
 	int ctemp       :10; // atmega temperature: -500..+500 (tenths)
@@ -208,19 +208,19 @@ struct {
 } payload;
 
 
-/* *** /Report variables }}} *** */
+/* *** /Report variables *** }}} */
 
 /* *** Scheduled tasks *** {{{ */
 
 // has to be defined because we're using the watchdog for low-power waiting
 ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 
-/* *** /Scheduled tasks }}} *** */
+/* *** /Scheduled tasks *** }}} */
 
 
 
 
-/* *** /Peripheral devices }}} *** */
+/* *** /Peripheral devices *** }}} */
 
 /* *** Peripheral hardware routines *** {{{ */
 
@@ -236,12 +236,12 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 	ds.write(0x44,1);         // start conversion, with parasite power on at the end
 
 	serialFlush();
-	Sleepy::loseSomeTime(800); 
+	Sleepy::loseSomeTime(800);
 	//delay(1000);     // maybe 750ms is enough, maybe not
 	// we might do a ds.depower() here, but the reset will take care of it.
 
 	present = ds.reset();
-	ds.select(addr);    
+	ds.select(addr);
 	ds.write(0xBE);         // Read Scratchpad
 
 #if DEBUG
@@ -268,9 +268,9 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
 #endif
 
 	if (crc8 != data[8]) {
-		return DS_ERR_CRC; 
-	} else { 
-		return DS_OK; 
+		return DS_ERR_CRC;
+	} else {
+		return DS_OK;
 	}
 }
 
@@ -292,8 +292,8 @@ static int readDS18B20(uint8_t addr[8]) {
 	byte data[12];
 	int SignBit;
 
-	int result = ds_readdata(addr, data);	
-	
+	int result = ds_readdata(addr, data);
+
 	if (result != 0) {
 #if DEBUG || DEBUG_DS
 		Serial.println("CRC error in ds_readdata");
@@ -355,8 +355,8 @@ static void printDS18B20s(void) {
 	}
 #endif
 
-	int result = ds_readdata(addr, data);	
-	
+	int result = ds_readdata(addr, data);
+
 	if (result != 0) {
 #if DEBUG || DEBUG_DS
 		Serial.println("CRC error in ds_readdata");
@@ -416,7 +416,7 @@ bool doAnnounce(void) {
 
 	rf12_sendNow(
 		(rf12_config.nodeId & RF12_HDR_MASK) | RF12_HDR_ACK,
-		&test, 
+		&test,
 		sizeof test);
 	rf12_sendWait(RADIO_SYNC_MODE);
 	byte acked = waitForAck();
@@ -461,7 +461,7 @@ static void doMeasure() {
 	payload.lobat = rf12_lowbat();
 
 //	int p1 = readProbe();
-//	payload.probe1 = smoothedAverage(payload.probe1, p1, firstTime); 
+//	payload.probe1 = smoothedAverage(payload.probe1, p1, firstTime);
 
 //	int t1 = readDS18B20(ds_addr[0]);
 //	if (t1 > 0 && t1 < 8500) {
@@ -527,20 +527,20 @@ static void showHelp () {
 void serialEvent() {
 	while (Serial.available()) {
 		// get the new byte:
-		char inChar = (char)Serial.read(); 
+		char inChar = (char)Serial.read();
 		// add it to the inputString:
 		if (inChar == '\n') {
 			inputString = "";
-		} 
+		}
 		else if (inputString == "NEW ") {
 			node_id += inChar;
-		} 
+		}
 		else {
 			inputString += inChar;
 		}
 	}
 }
-		
+
 	switch (scheduler.pollWaiting()) {
 
 		case ANNOUNCE:
@@ -607,7 +607,7 @@ void setup()
 //		doConfig();
 //	}
 
-	
+
 
 	Serial.println("REG TWM attemp lobat");
 	serialFlush();
@@ -638,5 +638,5 @@ void loop(void)
 		}
 }
 
-/* }}} *** */
+/* *** }}} */
 

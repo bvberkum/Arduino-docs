@@ -72,32 +72,32 @@ ToDo
 #define _EEPROMEX_DEBUG 1  // Enables logging of maximum of writes and out-of-memory
 
 /* *** Globals and sketch configuration *** */
-#define SERIAL_EN        1 /* Enable serial */
-#define DEBUG            1 /* Enable trace statements */
+#define SERIAL_EN         1 /* Enable serial */
+#define DEBUG             1 /* Enable trace statements */
 
-#define _DHT            0
-#define LDR_PORT        0   // defined if LDR is connected to a port's AIO pin
-#define _DS             0
-#define DEBUG_DS        1
+#define _DHT              0
+#define LDR_PORT          0 // defined if LDR is connected to a port's AIO pin
+#define _DS               0
+#define DEBUG_DS          1
 //#define FIND_DS    1
-#define DHT_PIN         0   // DIO for DHTxx
-#define DHT_HIGH        1   // enable for DHT22/AM2302, low for DHT11
-#define PIR_PORT        0
-#define _HMC5883L       1
-#define _LCD84x48       0
-#define _RFM12B         0
-#define _RFM12LOBAT    1   // Use JeeNode lowbat measurement
-#define _NRF24          0
+#define DHT_PIN           0 // DIO for DHTxx
+#define DHT_HIGH          1 // enable for DHT22/AM2302, low for DHT11
+#define PIR_PORT          0
+#define _HMC5883L         1
+#define _LCD84x48         0
+#define _RFM12B           0
+#define _RFM12LOBAT       1 // Use JeeNode lowbat measurement
+#define _NRF24            0
 
-#define REPORT_EVERY    5   // report every N measurement cycles
-#define SMOOTH          5   // smoothing factor used for running averages
-#define MEASURE_PERIOD  50  // how often to measure, in tenths of seconds
-#define RETRY_PERIOD    10  // how soon to retry if ACK didn't come in
-#define RETRY_LIMIT     2   // maximum number of times to retry
-#define ACK_TIME        10  // number of milliseconds to wait for an ack
-#define UI_SCHED_IDLE   4000  // tenths of seconds idle time, ...
-#define UI_STDBY        8000  // ms
-#define MAXLENLINE      79
+#define REPORT_EVERY      5 // report every N measurement cycles
+#define SMOOTH            5 // smoothing factor used for running averages
+#define MEASURE_PERIOD    50 // how often to measure, in tenths of seconds
+#define RETRY_PERIOD      10 // how soon to retry if ACK didn't come in
+#define RETRY_LIMIT       2 // maximum number of times to retry
+#define ACK_TIME          10 // number of milliseconds to wait for an ack
+#define UI_SCHED_IDLE     4000 // tenths of seconds idle time, ...
+#define UI_STDBY          8000 // ms
+#define MAXLENLINE        79
 #define DS_EEPROM_OFFSET  96
 #define CONFIG_VERSION "cc1"
 #define CONFIG_EEPROM_START 50
@@ -124,8 +124,10 @@ ToDo
 #include <SPI.h>
 #include <RF24.h>
 #include <RF24Network.h>
+#if _DHT
 #include <Adafruit_Sensor.h>
 #include <DHT.h> // Adafruit DHT
+#endif // DHT
 #include <DotmpeLib.h>
 #include <mpelib.h>
 #include <EmBencode.h>
@@ -165,7 +167,7 @@ byte* buffer = (byte*) malloc(50);
 const InputParser parser (buffer, 50, cmdTab);
 
 
-/* *** /InputParser }}} *** */
+/* *** /InputParser *** }}} */
 
 /* *** Report variables *** {{{ */
 
@@ -236,32 +238,30 @@ static const char SCHED_IDLE = 0xFE; // -2: no tasks running
 static word schedbuf[TASK_END];
 Scheduler scheduler (schedbuf, TASK_END);
 
-// has to be defined because we're using the watchdog for low-power waiting
-ISR(WDT_vect) { Sleepy::watchdogEvent(); }
-
-
 /* *** /Scheduled tasks *** }}} */
 
 /* *** EEPROM config *** {{{ */
 
+// See Prototype Node or SensorNode
 const long maxAllowedWrites = 100000; /* if evenly distributed, the ATmega328 EEPROM
 should have at least 100,000 writes */
 const int memBase          = 0;
 //const int memCeiling       = EEPROMSizeATmega328;
 
 struct Config {
-  char node[4];
-  int node_id;
+  char node[4]; // Alphanumeric Id (for sketch)
+  int node_id; // Id suffix integer (for unique run-time Id)
   int version;
   char config_id[4];
   signed int temp_offset;
   float temp_k;
-} config = {
+} static_config = {
   /* default values */
   { node[0], node[1], 0, 0 }, 0, version,
   CONFIG_VERSION, 0, 1.0,
 };
 
+Config config;
 
 bool loadConfig(Config &c)
 {
@@ -282,7 +282,7 @@ bool loadConfig(Config &c)
     return true;
   } else {
 #if SERIAL_EN && DEBUG
-    Serial.println("No valid data in eeprom");
+    cmdIo.println("No valid data in eeprom");
 #endif
     return false;
   }
@@ -298,7 +298,7 @@ void writeConfig(Config &c)
     if (EEPROM.read(CONFIG_EEPROM_START + t) != *((char*)&c + t))
     {
       // error writing to EEPROM
-      Serial.println("Error writing "+ String(t)+" to EEPROM");
+      cmdIo.println("Error writing "+ String(t)+" to EEPROM");
     }
 #endif
   }
@@ -310,17 +310,23 @@ void writeConfig(Config &c)
   int nodeId = eeprom_read_byte(RF12_EEPROM_ADDR);
   int group = eeprom_read_byte(RF12_EEPROM_ADDR + 1);
 
-  Serial.print("nodeId: ");
-  Serial.println(nodeId);
-  Serial.print("group: ");
-  Serial.println(group);
+  cmdIo.print("nodeId: ");
+  cmdIo.println(nodeId);
+  cmdIo.print("group: ");
+  cmdIo.println(group);
   serialFlush();
 #endif //_RFM12B
 }
 
 
-
 /* *** /EEPROM config *** }}} */
+
+/* *** Scheduler routines *** {{{ */
+
+// has to be defined because we're using the watchdog for low-power waiting
+ISR(WDT_vect) { Sleepy::watchdogEvent(); }
+
+/* *** /Scheduler routines *** }}} */
 
 /* *** Peripheral devices *** {{{ */
 
@@ -332,7 +338,7 @@ SHT11 sht11 (SHT11_PORT);
 Port ldr (LDR_PORT);
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** PIR *** {{{ */
 #if PIR_PORT
 
 #define PIR_INVERTED    0   // 0 or 1, to match PIR reporting high or low
@@ -385,7 +391,7 @@ PIR pir (PIR_PORT);
 ISR(PCINT2_vect) { pir.poll(); }
 
 #endif
-/* *** /PIR support }}} *** */
+/* *** /PIR *** }}} */
 
 #if _DHT
 /* DHTxx: Digital temperature/humidity (Adafruit) */
@@ -461,9 +467,9 @@ static void lpDelay () {
 //String serialBuffer = "";         // a string to hold incoming data
 
 //void serialEvent() {
-//  while (Serial.available()) {
+//  while (cmdIo.available()) {
 //    // get the new byte:
-//    char inchar = (char)Serial.read();
+//    char inchar = (char)cmdIo.read();
 //    // add it to the serialBuffer:
 //    if (inchar == '\n') {
 //      serialBuffer = "";
@@ -491,12 +497,12 @@ void embenc_push(char ch) {
     embencBuff = np;
     embencBuff[embencBuffLen] = ch;
   } else {
-    Serial.println(F("Out of Memory"));
+    cmdIo.println(F("Out of Memory"));
   }
 }
 
 void EmBencode::PushChar(char ch) {
-  Serial.write(ch);
+  cmdIo.write(ch);
   embenc_push(ch);
 }
 
@@ -512,11 +518,10 @@ void freeEmbencBuff() {
 #if LDR_PORT
 #endif
 
-/* *** PIR support *** {{{ */
+/* *** - PIR routines *** {{{ */
 #if PIR_PORT
 #endif // PIR_PORT
-/* *** /PIR support *** }}} */
-
+/* *** /- PIR routines *** }}} */
 
 #if _DHT
 /* DHT temp/rh sensor routines (AdafruitDHT) */
@@ -552,26 +557,26 @@ static int ds_readdata(uint8_t addr[8], uint8_t data[12]) {
   ds.write(0xBE);         // Read Scratchpad
 
 #if SERIAL_EN && DEBUG_DS
-  Serial.print(F("Data="));
-  Serial.print(present,HEX);
-  Serial.print(" ");
+  cmdIo.print(F("Data="));
+  cmdIo.print(present,HEX);
+  cmdIo.print(" ");
 #endif
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds.read();
 #if SERIAL_EN && DEBUG_DS
-    Serial.print(i);
-    Serial.print(':');
-    Serial.print(data[i], HEX);
-    Serial.print(" ");
+    cmdIo.print(i);
+    cmdIo.print(':');
+    cmdIo.print(data[i], HEX);
+    cmdIo.print(" ");
 #endif
   }
 
   uint8_t crc8 = OneWire::crc8( data, 8);
 
 #if SERIAL_EN && DEBUG_DS
-  Serial.print(F(" CRC="));
-  Serial.print( crc8, HEX);
-  Serial.println();
+  cmdIo.print(F(" CRC="));
+  cmdIo.print( crc8, HEX);
+  cmdIo.println();
   serialFlush();
 #endif
 
@@ -605,7 +610,7 @@ static int readDS18B20(uint8_t addr[8]) {
 
   if (result != DS_OK) {
 #if SERIAL_EN
-    Serial.println(F("CRC error in ds_readdata"));
+    cmdIo.println(F("CRC error in ds_readdata"));
     serialFlush();
 #endif
     return 0;
@@ -649,17 +654,17 @@ static void readDSAddr(int a, uint8_t addr[8]) {
 
 static void printDSAddrs(void) {
   for (int q=0;q<ds_count;q++) {
-    Serial.print("Mem Address=");
+    cmdIo.print("Mem Address=");
     int l = DS_EEPROM_OFFSET + 1 + ( q * 8 );
     int r[8];
     for (int i=0;i<8;i++) {
       r[i] = EEPROM.read(l+i);
-      Serial.print(i);
-      Serial.print(':');
-      Serial.print(r[i], HEX);
-      Serial.print(' ');
+      cmdIo.print(i);
+      cmdIo.print(':');
+      cmdIo.print(r[i], HEX);
+      cmdIo.print(' ');
     }
-    Serial.println();
+    cmdIo.println();
   }
 }
 
@@ -669,17 +674,17 @@ static void findDS18B20s(void) {
 
   if (!ds.search(addr)) {
 #if SERIAL_EN && DEBUG_DS
-    Serial.println("No more addresses.");
+    cmdIo.println("No more addresses.");
 #endif
     ds.reset_search();
     if (ds_search != ds_count) {
 #if DEBUG || DEBUG_DS
-      Serial.print("Found ");
-      Serial.print(ds_search );
-      Serial.println(" addresses.");
-      Serial.print("Previous search found ");
-      Serial.print(ds_count);
-      Serial.println(" addresses.");
+      cmdIo.print("Found ");
+      cmdIo.print(ds_search );
+      cmdIo.println(" addresses.");
+      cmdIo.print("Previous search found ");
+      cmdIo.print(ds_count);
+      cmdIo.println(" addresses.");
 #endif
     }
     updateDSCount(ds_search);
@@ -689,7 +694,7 @@ static void findDS18B20s(void) {
 
   if ( OneWire::crc8( addr, 7) != addr[7]) {
 #if DEBUG || DEBUG_DS
-    Serial.println("CRC is not valid!");
+    cmdIo.println("CRC is not valid!");
 #endif
     return;
   }
@@ -697,21 +702,21 @@ static void findDS18B20s(void) {
   ds_search++;
 
 #if DEBUG || DEBUG_DS
-  Serial.print("New Address=");
+  cmdIo.print("New Address=");
   for( i = 0; i < 8; i++) {
-    Serial.print(i);
-    Serial.print(':');
-    Serial.print(addr[i], HEX);
-    Serial.print(" ");
+    cmdIo.print(i);
+    cmdIo.print(':');
+    cmdIo.print(addr[i], HEX);
+    cmdIo.print(" ");
   }
-  Serial.println();
+  cmdIo.println();
 #endif
 
   writeDSAddr(addr);
 }
 
 
-#endif //_DS
+#endif // DS
 
 #if _RFM12B
 /* HopeRF RFM12B 868Mhz digital radio routines */
@@ -730,7 +735,7 @@ static bool waitForAck() {
     return 0;
 }
 
-#endif //_RFM12B
+#endif // RFM12B
 
 #if _NRF24
 /* Nordic nRF24L01+ radio routines */
@@ -783,7 +788,7 @@ static void sendSomeData () {
 #endif // NRF24 funcs
 
 #if _RTC
-#endif //_RTC
+#endif // RTC
 
 #if _HMC5883L
 /* Digital magnetometer I2C routines */
@@ -834,7 +839,6 @@ int HMC5803L_Read(byte Axis)
 /* *** /Peripheral hardware routines *** }}} */
 
 /* *** UI *** {{{ */
-
 /* *** /UI *** }}} */
 
 /* *** UART commands *** {{{ */
@@ -866,12 +870,12 @@ void config_sercmd() {
 }
 
 void ctempconfig_sercmd(void) {
-  Serial.print("Offset: ");
-  Serial.println(config.temp_offset);
-  Serial.print("K: ");
-  Serial.println(config.temp_k);
-  Serial.print("Raw: ");
-  Serial.println(internalTemp(config.temp_offset, config.temp_k));
+  cmdIo.print("Offset: ");
+  cmdIo.println(config.temp_offset);
+  cmdIo.print("K: ");
+  cmdIo.println(config.temp_k);
+  cmdIo.print("Raw: ");
+  cmdIo.println(internalTemp(config.temp_offset, config.temp_k));
 }
 
 void ctempoffset_sercmd(void) {
@@ -882,14 +886,14 @@ void ctempoffset_sercmd(void) {
     v -= 256;
   }
   config.temp_offset = v;
-  Serial.print("New offset: ");
-  Serial.println(config.temp_offset);
+  cmdIo.print("New offset: ");
+  cmdIo.println(config.temp_offset);
   writeConfig(config);
 }
 
 void ctemp_sercmd(void) {
   double t = ( internalTemp(config.temp_offset, config.temp_k) + config.temp_offset ) * config.temp_k ;
-  Serial.println( t );
+  cmdIo.println( t );
 }
 
 static void eraseEEPROM() {
@@ -955,32 +959,32 @@ void doConfig(void)
   }
 
   if (!bytes) {
-    Serial.println("Unable to decode");
+    cmdIo.println("Unable to decode");
   } else {
-    Serial.print(" => ");
-    Serial.print((int) bytes);
-    Serial.println(" bytes");
+    cmdIo.print(" => ");
+    cmdIo.print((int) bytes);
+    cmdIo.println(" bytes");
     for (;;) {
       uint8_t token = decoder.nextToken();
       if (token == EmBdecode::T_END)
         break;
       switch (token) {
         case EmBdecode::T_STRING:
-          Serial.print(" string: ");
-          Serial.println(decoder.asString());
+          cmdIo.print(" string: ");
+          cmdIo.println(decoder.asString());
           break;
         case EmBdecode::T_NUMBER:
-          Serial.print(" number: ");
-          Serial.println(decoder.asNumber());
+          cmdIo.print(" number: ");
+          cmdIo.println(decoder.asNumber());
           break;
         case EmBdecode::T_DICT:
-          Serial.println(" > dict");
+          cmdIo.println(" > dict");
           break;
         case EmBdecode::T_LIST:
-          Serial.println(" > list");
+          cmdIo.println(" > list");
           break;
         case EmBdecode::T_POP:
-          Serial.println(" < pop");
+          cmdIo.println(" < pop");
           break;
       }
     }
@@ -988,7 +992,7 @@ void doConfig(void)
   }
 }
 
-void initLibs()
+void initLibs(void)
 {
 #if _NRF24
   radio_init();
@@ -1001,11 +1005,11 @@ void initLibs()
 #if _DHT
   dht.begin();
 #if DEBUG
-  Serial.println("Initialized DHT");
+  cmdIo.println("Initialized DHT");
   float t = dht.readTemperature();
-  Serial.println(t);
+  cmdIo.println(t);
   float rh = dht.readHumidity();
-  Serial.println(rh);
+  cmdIo.println(rh);
 #endif
 #endif //_DHT
 
@@ -1016,7 +1020,7 @@ void initLibs()
   if(!bmp.begin())
   {
 #if SERIAL_EN
-    Serial.print("Missing BMP085");
+    cmdIo.print("Missing BMP085");
 #endif
   }
 #endif // _BMP085
@@ -1080,30 +1084,30 @@ bool doAnnounce(void)
   cmdIo.print(node_id);
   cmdIo.print(' ');
 #if LDR_PORT
-  Serial.print("light:8 ");
+  cmdIo.print("light:8 ");
 #endif
 #if PIR
-  Serial.print("moved:1 ");
+  cmdIo.print("moved:1 ");
 #endif
 #if _DHT
-  Serial.print(F("rhum:7 "));
-  Serial.print(F("temp:10 "));
+  cmdIo.print(F("rhum:7 "));
+  cmdIo.print(F("temp:10 "));
 #endif
-  Serial.print(F("ctemp:10 "));
+  cmdIo.print(F("ctemp:10 "));
 #if _AM2321
-  Serial.print(F("am2321rhum:7 "));
-  Serial.print(F("am2321temp:9 "));
+  cmdIo.print(F("am2321rhum:7 "));
+  cmdIo.print(F("am2321temp:9 "));
 #endif //_AM2321
 #if _BMP085
-  Serial.print(F("bmp085pressure:12 "));
-  Serial.print(F("bmp085temp:9 "));
+  cmdIo.print(F("bmp085pressure:12 "));
+  cmdIo.print(F("bmp085temp:9 "));
 #endif //_BMP085
 #if _DS
   ds_count = readDSCount();
   for ( int i = 0; i < ds_count; i++) {
-    Serial.print(F("dstemp:7 "));
-    //Serial.print(" ds-");
-    //Serial.print(i+1);
+    cmdIo.print(F("dstemp:7 "));
+    //cmdIo.print(" ds-");
+    //cmdIo.print(i+1);
   }
 #endif
 
@@ -1125,7 +1129,7 @@ bool doAnnounce(void)
   payload_spec.push("int(0-255)");
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print(F(" ldr"));
+  cmdIo.print(F(" ldr"));
 #endif
 #endif
 #if PIR_PORT
@@ -1134,7 +1138,7 @@ bool doAnnounce(void)
   payload_spec.push(1);
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print("moved:1 ");
+  cmdIo.print("moved:1 ");
 #endif
 #endif
 #if _DHT
@@ -1143,7 +1147,7 @@ bool doAnnounce(void)
   payload_spec.push(7);
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print(F(" dht11-rhum dht11-temp"));
+  cmdIo.print(F(" dht11-rhum dht11-temp"));
 #endif
 #endif // _DHT
   payload_spec.startList();
@@ -1151,7 +1155,7 @@ bool doAnnounce(void)
   payload_spec.push(10);
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print(F(" ctemp"));
+  cmdIo.print(F(" ctemp"));
 #endif
 #if _MEM
   payload_spec.startList();
@@ -1159,27 +1163,27 @@ bool doAnnounce(void)
   payload_spec.push(16);
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print(F("memfree:16 "));
+  cmdIo.print(F("memfree:16 "));
 #endif
 #endif
   payload_spec.startList();
   payload_spec.push("lobat");
   payload_spec.endList();
 #if SERIAL_EN
-  Serial.print(F("lobat:1 "));
+  cmdIo.print(F("lobat:1 "));
   serialFlush();
 #endif //if SERIAL_EN
   payload_spec.endList();
 
-  Serial.println();
+  cmdIo.println();
   for (int i=0; i<embencBuffLen; i++) {
-    if (i > 0) Serial.print(' ');
-    Serial.print((int)embencBuff[i]);
+    if (i > 0) cmdIo.print(' ');
+    cmdIo.print((int)embencBuff[i]);
   }
-  Serial.println();
-  Serial.print(F("Sending"));
-  Serial.print((int)embencBuffLen);
-  Serial.println(F("bytes"));
+  cmdIo.println();
+  cmdIo.print(F("Sending"));
+  cmdIo.print((int)embencBuffLen);
+  cmdIo.println(F("bytes"));
 
   if (embencBuffLen > 66) {
   // FIXME: need to send in chunks
@@ -1199,12 +1203,12 @@ bool doAnnounce(void)
   freeEmbencBuff();
 
   if (acked) {
-//    Serial.println("ACK");
+//    cmdIo.println("ACK");
 //  } else {
-//    Serial.println("NACK");
+//    cmdIo.println("NACK");
   }
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 
   rf12_sleep(RF12_SLEEP);
   return acked;
@@ -1212,15 +1216,15 @@ bool doAnnounce(void)
 #if _DS
       // report a new node or reinitialize node with central link node
 //      for ( int x=0; x<ds_count; x++) {
-//        Serial.print("SEN ");
-//        Serial.print(node_id);
-//        Serial.print(" ds-");
-//        Serial.print(x);
+//        cmdIo.print("SEN ");
+//        cmdIo.print(node_id);
+//        cmdIo.print(" ds-");
+//        cmdIo.print(x);
 //        for ( int y= 0; y<9; y++) {           // we need 9 bytes
-//          Serial.print(" ");
-//          Serial.print(ds_addr[x][y], HEX);
+//          cmdIo.print(" ");
+//          cmdIo.print(ds_addr[x][y], HEX);
 //        }
-//        Serial.println("");
+//        cmdIo.println("");
 //      }
 #endif
   return false;
@@ -1235,12 +1239,12 @@ void doMeasure(void)
   int ctemp = internalTemp(config.temp_offset, config.temp_k);
   payload.ctemp = smoothedAverage(payload.ctemp, ctemp, firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("Payload size: ");
-  Serial.println(sizeof(payload));
-  Serial.print("AVR T new/avg ");
-  Serial.print(ctemp);
-  Serial.print(' ');
-  Serial.println(payload.ctemp);
+  cmdIo.print("Payload size: ");
+  cmdIo.println(sizeof(payload));
+  cmdIo.print("AVR T new/avg ");
+  cmdIo.print(ctemp);
+  cmdIo.print(' ');
+  cmdIo.println(payload.ctemp);
 #endif
 
 #if SHT11_PORT
@@ -1255,32 +1259,32 @@ void doMeasure(void)
   if (event.pressure) {
     payload.bmp085pressure = ( (event.pressure - 990 ) * 100 ) ;
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print("BMP085 Measure pressure-raw/-ranged: ");
-    Serial.print( event.pressure );
-    Serial.print(' ');
-    Serial.print( payload.bmp085pressure );
-    Serial.println();
+    cmdIo.print("BMP085 Measure pressure-raw/-ranged: ");
+    cmdIo.print( event.pressure );
+    cmdIo.print(' ');
+    cmdIo.print( payload.bmp085pressure );
+    cmdIo.println();
 #endif
   } else {
 #if SERIAL_EN
-    Serial.println("Failed rading BMP085");
+    cmdIo.println("Failed rading BMP085");
 #endif
   }
   float bmp085temperature;
   bmp.getTemperature(&bmp085temperature);
   payload.bmp085temp = ( bmp085temperature + 10 ) * 10;
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print("BMP085 Measure temp-raw/-ranged: ");
-    Serial.print(bmp085temperature);
-    Serial.print(' ');
-    Serial.println( payload.bmp085temp );
+    cmdIo.print("BMP085 Measure temp-raw/-ranged: ");
+    cmdIo.print(bmp085temperature);
+    cmdIo.print(' ');
+    cmdIo.println( payload.bmp085temp );
 #endif
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("BMP085 Pressure/temp: ");
-  Serial.print( (float) 990 + ( (float) payload.bmp085pressure / 100 ) );
-  Serial.print(' ');
-  Serial.print( (float) ( (float) payload.bmp085temp / 10 ) - 10 );
-  Serial.println();
+  cmdIo.print("BMP085 Pressure/temp: ");
+  cmdIo.print( (float) 990 + ( (float) payload.bmp085pressure / 100 ) );
+  cmdIo.print(' ');
+  cmdIo.print( (float) ( (float) payload.bmp085temp / 10 ) - 10 );
+  cmdIo.println();
 #endif
 #endif //_BMP085
 
@@ -1292,28 +1296,28 @@ void doMeasure(void)
   float t = dht.readTemperature();
   if (isnan(h)) {
 #if SERIAL_EN | DEBUG
-    Serial.println(F("Failed to read DHT11 humidity"));
+    cmdIo.println(F("Failed to read DHT11 humidity"));
 #endif
   } else {
     payload.rhum = smoothedAverage(payload.rhum, round(h), firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print(F("DHT RH new/avg "));
-    Serial.print(h);
-    Serial.print(' ');
-    Serial.println(payload.rhum);
+    cmdIo.print(F("DHT RH new/avg "));
+    cmdIo.print(h);
+    cmdIo.print(' ');
+    cmdIo.println(payload.rhum);
 #endif
   }
   if (isnan(t)) {
 #if SERIAL_EN | DEBUG
-    Serial.println(F("Failed to read DHT11 temperature"));
+    cmdIo.println(F("Failed to read DHT11 temperature"));
 #endif
   } else {
     payload.temp = smoothedAverage(payload.temp, (int)(t * 10), firstTime);
 #if SERIAL_EN && DEBUG_MEASURE
-    Serial.print(F("DHT T new/avg "));
-    Serial.print(t);
-    Serial.print(' ');
-    Serial.println(payload.temp);
+    cmdIo.print(F("DHT T new/avg "));
+    cmdIo.print(t);
+    cmdIo.print(' ');
+    cmdIo.println(payload.temp);
 #endif
   }
 #endif //_DHT
@@ -1342,8 +1346,8 @@ void doMeasure(void)
 #if _MEM
   payload.memfree = freeRam();
 #if SERIAL_EN && DEBUG_MEASURE
-  Serial.print("MEM free ");
-  Serial.println(payload.memfree);
+  cmdIo.print("MEM free ");
+  cmdIo.println(payload.memfree);
 #endif
 #endif //_MEM
 
@@ -1351,7 +1355,7 @@ void doMeasure(void)
   payload.lobat = rf12_lowbat();
 #if SERIAL_EN && DEBUG_MEASURE
   if (payload.lobat) {
-    Serial.println("Low battery");
+    cmdIo.println("Low battery");
   }
 #endif
 #endif //_RFM12LOBAT
@@ -1377,59 +1381,59 @@ void doReport(void)
 
 #if SERIAL_EN
   /* Report over serial, same fields and order as announced */
-  Serial.print(node_id);
+  cmdIo.print(node_id);
 #if LDR_PORT
-  Serial.print(' ');
-  Serial.print((int) payload.light);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.light);
 #endif
 #if PIR_PORT
-  Serial.print((int) payload.moved);
-  Serial.print(' ');
+  cmdIo.print((int) payload.moved);
+  cmdIo.print(' ');
 #endif
 #if _DHT
-  Serial.print((int) payload.rhum);
-  Serial.print(' ');
-  Serial.print((int) payload.temp);
-  Serial.print(' ');
+  cmdIo.print((int) payload.rhum);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.temp);
+  cmdIo.print(' ');
 #endif
-  Serial.print((int) payload.ctemp);
+  cmdIo.print((int) payload.ctemp);
 #if _AM2321
-  Serial.print(' ');
-  Serial.print((int) payload.am2321temp);
-  Serial.print(' ');
-  Serial.print((int) payload.am2321rhum);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.am2321temp);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.am2321rhum);
 #endif //_AM2321
 #if _BMP085
-  Serial.print(' ');
-  Serial.print((int) payload.bmp085temp);
-  Serial.print(' ');
-  Serial.print((int) payload.bmp085pressure);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.bmp085temp);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.bmp085pressure);
 #endif //_BMP085
 #if _DS
   int ds_count = readDSCount();
   for (int i=0;i<ds_count;i++) {
-    Serial.print((int) ds_value[i]);
-    Serial.print(' ');
+    cmdIo.print((int) ds_value[i]);
+    cmdIo.print(' ');
   }
 #endif
 #if _HMC5883L
-  Serial.print(' ');
-  Serial.print(payload.magnx);
-  Serial.print(' ');
-  Serial.print(payload.magny);
-  Serial.print(' ');
-  Serial.print(payload.magnz);
+  cmdIo.print(' ');
+  cmdIo.print(payload.magnx);
+  cmdIo.print(' ');
+  cmdIo.print(payload.magny);
+  cmdIo.print(' ');
+  cmdIo.print(payload.magnz);
 #endif //_HMC5883L
 #if _MEM
-  Serial.print(' ');
-  Serial.print((int) payload.memfree);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.memfree);
 #endif //_MEM
 #if _RFM12LOBAT
-  Serial.print(' ');
-  Serial.print((int) payload.lobat);
+  cmdIo.print(' ');
+  cmdIo.print((int) payload.lobat);
 #endif //_RFM12LOBAT
 
-  Serial.println();
+  cmdIo.println();
 #endif //SERIAL_EN
 }
 
@@ -1439,11 +1443,11 @@ void doReport(void)
 void doTrigger(void)
 {
 #if DEBUG
-  Serial.print("PIR ");
-  Serial.print((int) payload.moved);
-  Serial.print(' ');
-  Serial.print((int) pir.lastOn);
-  Serial.println(' ');
+  cmdIo.print("PIR ");
+  cmdIo.print((int) payload.moved);
+  cmdIo.print(' ');
+  cmdIo.print((int) pir.lastOn);
+  cmdIo.println(' ');
   serialFlush();
 #endif
 
@@ -1457,8 +1461,8 @@ void doTrigger(void)
 
     if (acked) {
 #if DEBUG
-      Serial.print(" ack ");
-      Serial.println((int) i);
+      cmdIo.print(" ack ");
+      cmdIo.println((int) i);
       serialFlush();
 #endif
       // reset scheduling to start a fresh measurement cycle
@@ -1471,7 +1475,7 @@ void doTrigger(void)
 #endif
   scheduler.timer(MEASURE, MEASURE_PERIOD);
 #if DEBUG
-  Serial.println(" no ack!");
+  cmdIo.println(" no ack!");
   serialFlush();
 #endif
 }
@@ -1531,14 +1535,14 @@ void runScheduler(char task)
 #if DEBUG && SERIAL_EN
     case SCHED_WAITING:
     case SCHED_IDLE:
-      Serial.print("!");
+      cmdIo.print("!");
       serialFlush();
       break;
 
     default:
-      Serial.print("0x");
-      Serial.print(task, HEX);
-      Serial.println(" ?");
+      cmdIo.print("0x");
+      cmdIo.print(task, HEX);
+      cmdIo.println(" ?");
       serialFlush();
       break;
 #endif
@@ -1582,8 +1586,8 @@ void setup(void)
   mpeser.begin();
   mpeser.startAnnounce(sketch, String(version));
 #if DEBUG || _MEM
-  Serial.print(F("Free RAM: "));
-  Serial.println(freeRam());
+  cmdIo.print(F("Free RAM: "));
+  cmdIo.println(freeRam());
 #endif
   serialFlush();
 //#if DEBUG
@@ -1623,10 +1627,10 @@ void setup(void)
 //  uint8_t nid = EEPROM.read(0);
 //  if (nid == 0x0) {
 //#if DEBUG
-//    Serial.println("");
+//    cmdIo.println("");
 //#endif
 //  }
-  Serial.println();
+  cmdIo.println();
   serialFlush();
 
   initLibs();
@@ -1646,7 +1650,7 @@ void loop(void)
   bool ds_reset = digitalRead(7);
   if (ds_search || ds_reset) {
     if (ds_reset) {
-      Serial.println("DS-reset triggered");
+      cmdIo.println("DS-reset triggered");
     }
     int ds_search = 0;
     while (findDS18B20s(ds_search) == 1) ;

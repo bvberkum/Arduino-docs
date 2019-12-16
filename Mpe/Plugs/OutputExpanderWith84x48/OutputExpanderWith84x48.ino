@@ -1,7 +1,7 @@
 /**
- * 
+ * 2014
  */
-#define LCD_94x48 0
+#define LCD_84x48 0
 #define SERIAL 0
 
 //#if !defined(__AVR_ATtiny85__)
@@ -14,7 +14,7 @@
 //ISR(WDT_vect) { Sleepy::watchdogEvent(); }
 //#endif
 
-#if LCD_94x48
+#if LCD_84x48
 
 #include <PCD8544.h>
 static const byte LCD_WIDTH = 84;
@@ -33,7 +33,7 @@ int dataPin = 4;
 
 int outputEnable = 0;
 
-// Testing on 5 pins (MSB, so starting at 
+// Testing on 5 pins (MSB, so starting at
 int maxPins = 8;
 
 void shift(int q)
@@ -43,19 +43,19 @@ void shift(int q)
   digitalWrite(latchPin, HIGH);
 }
 
-void setup() 
+void setup()
 {
   /*
 #if SERIAL
    Serial.begin( 57600 );
    #endif
-   #if LCD_94x48
+   #if LCD_84x48
    lcd.begin(LCD_WIDTH, LCD_HEIGHT);
    lcd.setCursor(0, 0);
    lcd.print("OutputExpander");
    #endif
    */
-   
+
   pinMode(outputEnable, OUTPUT);
   digitalWrite(outputEnable, LOW);
   //set pins to output so you can control the shift register
@@ -64,20 +64,20 @@ void setup()
   pinMode(dataPin, OUTPUT);
 }
 
-void loop() 
+void loop()
 {
-  for (int pinNumber = 0; pinNumber < maxPins; pinNumber++) 
+  for (int pinNumber = 0; pinNumber < maxPins; pinNumber++)
   {
     shift(pinNumber);
-    
-#if LCD_94x48
+
+#if LCD_84x48
      		lcd.setCursor(0, 1);
      		lcd.print(pinNumber);
      #endif
      #if SERIAL
      		Serial.println(pinNumber);
      #endif
-     
+
     delay(200);
     //Sleepy::loseSomeTime(300);
   }

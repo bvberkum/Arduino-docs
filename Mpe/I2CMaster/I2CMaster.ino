@@ -1,4 +1,4 @@
-/** 
+/**
  * Master
  */
 
@@ -39,7 +39,7 @@ void loop(void)
   Wire.requestFrom(2, 6);    // request 6 bytes from slave device #2
 
   while(Wire.available())    // slave may send less than requested
-  { 
+  {
     char c = Wire.read(); // receive a byte as character
     Serial.print(c);         // print the character
   }
@@ -49,16 +49,16 @@ void loop(void)
   // Send
   //Wire.beginTransmission(4); // transmit to device #4
   //Wire.write("x is ");        // sends five bytes
-  //Wire.write(x);              // sends one byte  
+  //Wire.write(x);              // sends one byte
   //Wire.endTransmission();    // stop transmitting
 
     Serial.println(".");
 
   //x++;
   //delay(500);
-  
+
 
 }
 
-/* }}} *** */
+/* *** }}} */
 
