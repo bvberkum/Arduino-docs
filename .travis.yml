@@ -13,3 +13,8 @@ branches:
   only:
     - master
     - dev
+env:
+  global:
+    - DEBUG=
+    - PROJ_DIR=$HOME/build/dotmpe
+    - DCKR_VOL=$HOME/docker-volumes
